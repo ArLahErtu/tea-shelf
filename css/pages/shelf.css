@@ -1,0 +1,540 @@
+/* ============================================================
+   pages/shelf.css
+   Стили личной полки
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   Stats
+   ------------------------------------------------------------ */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.stat {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: var(--space-3) var(--space-4);
+}
+
+.stat .num {
+  font-family: 'Prata', serif;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.stat .lbl {
+  margin-top: var(--space-1);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* ------------------------------------------------------------
+   Shelf layout
+   ------------------------------------------------------------ */
+.shelf-layout {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  align-items: start;
+  gap: var(--space-4);
+}
+
+/* ------------------------------------------------------------
+   Shelf cards
+   ------------------------------------------------------------ */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: var(--space-4);
+  cursor: pointer;
+  transition: transform 0.18s;
+  animation: fadeUp 0.4s ease both;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+}
+
+.card.low-ring {
+  border-color: #E5C68F;
+}
+
+.card-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--radius-xs);
+  padding: var(--space-1) 9px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.pill i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.pill-active {
+  background: var(--green-soft);
+  color: var(--green-d);
+}
+
+.pill-low {
+  background: var(--amber-soft);
+  color: #8A5A16;
+}
+
+.pill-finished {
+  background: #ECE7DA;
+  color: #776D58;
+}
+
+.rate-badge {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--amber);
+}
+
+.card-tools {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.fav-btn {
+  color: #C9BEA6;
+}
+
+.fav-btn.on {
+  color: var(--amber);
+}
+
+.fav-btn svg {
+  fill: currentColor;
+  stroke: none;
+}
+
+/* ------------------------------------------------------------
+   Card dropdown menu
+   ------------------------------------------------------------ */
+.menu-wrap {
+  position: relative;
+}
+
+.menu {
+  position: absolute;
+  right: 0;
+  top: 42px;
+  z-index: 20;
+  width: 200px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  padding: 5px;
+  animation: pop 0.16s ease;
+}
+
+.menu button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 9px;
+  border: none;
+  background: none;
+  border-radius: var(--radius-xs);
+  padding: 9px 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.menu button:hover {
+  background: var(--surface2);
+}
+
+.menu button.danger {
+  color: var(--red);
+}
+
+.menu button svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ------------------------------------------------------------
+   Quantity / progress
+   ------------------------------------------------------------ */
+.card-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 19px;
+}
+
+.card-name:hover {
+  color: var(--green-d);
+}
+
+.qty-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.qty {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+
+.qty span {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.brews {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.bar {
+  height: 6px;
+  border-radius: var(--space-1);
+  background: #EFE7D4;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: var(--space-1);
+  transition: width 0.4s;
+}
+
+.bar-active {
+  background: linear-gradient(90deg, #5E8A57, var(--green));
+}
+
+.bar-low {
+  background: linear-gradient(90deg, #DFA244, var(--amber));
+}
+
+.bar-finished {
+  background: #C9BEA6;
+}
+
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: auto;
+  padding-top: var(--space-1);
+}
+
+/* ------------------------------------------------------------
+   Shopping list
+   ------------------------------------------------------------ */
+.buyrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-1);
+  border-bottom: 1px dashed var(--line);
+}
+
+.buyrow:last-of-type {
+  border-bottom: none;
+}
+
+.buy-check input {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--green);
+  flex: none;
+}
+
+.buy-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.buy-info b {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 14px;
+}
+
+.buy-info span {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.st-fin {
+  color: #A79B82;
+}
+
+.st-low {
+  color: var(--amber);
+}
+
+.buy-amt {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+}
+
+.buy-amt input {
+  width: 66px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface2);
+  padding: 7px var(--space-2);
+  font-size: 13.5px;
+  font-weight: 700;
+  text-align: right;
+  outline: none;
+}
+
+.buy-amt input:focus {
+  border-color: var(--green);
+  background: #fff;
+}
+
+.buy-amt em {
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--muted);
+}
+
+.buy-ok {
+  background: #DFE9D8;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: var(--space-4);
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--green-d);
+}
+
+.buy-foot {
+  margin-top: var(--space-3);
+}
+
+/* ------------------------------------------------------------
+   Wishlist / moderation rows
+   ------------------------------------------------------------ */
+.wrow,
+.modrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 9px var(--space-1);
+  border-bottom: 1px dashed var(--line);
+}
+
+.wrow:last-child,
+.modrow:last-of-type {
+  border-bottom: none;
+}
+
+.wrow .wn,
+.modrow .wn {
+  flex: 1;
+  min-width: 0;
+}
+
+.wrow b,
+.modrow b {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 13.5px;
+}
+
+.wrow span,
+.modrow span {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.modbadge {
+  flex: none;
+  background: var(--amber-soft);
+  border: 1px solid #E5C68F;
+  color: #8A5A16;
+  border-radius: var(--radius-xs);
+  padding: var(--space-1) var(--space-2);
+  font-size: 10.5px;
+  font-weight: 800;
+}
+
+/* ------------------------------------------------------------
+   Journal
+   ------------------------------------------------------------ */
+.jentry {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-1);
+  border-bottom: 1px dashed var(--line);
+}
+
+.jentry:last-child {
+  border-bottom: none;
+}
+
+.jdate {
+  min-width: 64px;
+  padding-top: var(--space-1);
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--muted);
+}
+
+.jbody {
+  flex: 1;
+}
+
+.jbody b {
+  font-size: 14px;
+}
+
+.jbody .jm {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.jnote {
+  margin-top: var(--space-1);
+  font-size: 13px;
+  line-height: 1.5;
+  color: #5C543F;
+}
+
+.jstars {
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: var(--amber);
+}
+
+/* ------------------------------------------------------------
+   Rating / presets
+   ------------------------------------------------------------ */
+.stars-input {
+  display: flex;
+  gap: 6px;
+  margin: var(--space-1) 0;
+}
+
+.star-btn {
+  background: none;
+  border: none;
+  font-size: 26px;
+  line-height: 1;
+  color: #D8CDB4;
+  transition: 0.12s;
+}
+
+.star-btn.on {
+  color: var(--amber);
+}
+
+.star-btn:hover {
+  transform: scale(1.15);
+}
+
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.preset {
+  border: 1px solid var(--line);
+  background: var(--surface2);
+  border-radius: var(--radius-xs);
+  padding: 9px 14px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.preset.sel {
+  background: var(--green-soft);
+  border-color: var(--green);
+  color: var(--green-d);
+}
+
+.previz {
+  background: var(--surface2);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  margin-bottom: var(--space-3);
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+.previz b {
+  color: var(--green-d);
+}
+
+/* ------------------------------------------------------------
+   Shelf responsive
+   ------------------------------------------------------------ */
+@media (max-width: 960px) {
+  .shelf-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .stats {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .stats {
+    grid-template-columns: 1fr;
+  }
+
+  .card-actions .btn {
+    flex: 1;
+    justify-content: center;
+  }
+}

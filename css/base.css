@@ -1,0 +1,219 @@
+/* ============================================================
+   base.css
+   Токены, reset, типографика, базовые утилиты, анимации
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   Design tokens
+   Модульная сетка: базовый шаг 8px
+   ------------------------------------------------------------ */
+:root {
+  /* Surfaces */
+  --bg: #F5EFE2;
+  --surface: #FFFCF4;
+  --surface2: #FBF6EA;
+
+  /* Typography & Lines */
+  --ink: #292418;
+  --muted: #8C8270;
+  --line: #E6DCC6;
+
+  /* Brand */
+  --green: #2F5D3C;
+  --green-d: #25492F;
+  --green-soft: #E3EDDF;
+
+  --amber: #C0761F;
+  --amber-soft: #F7E9D2;
+
+  --red: #B4442C;
+  --red-soft: #F6E0D8;
+
+  /* UI */
+  --radius: 16px;
+  --radius-sm: 12px;
+  --radius-xs: 8px;
+
+  --shadow:
+    0 1px 2px rgba(60, 48, 26, 0.06),
+    0 10px 28px -14px rgba(60, 48, 26, 0.22);
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 40px;
+  --space-8: 48px;
+  --space-9: 56px;
+  --space-10: 64px;
+}
+
+/* ------------------------------------------------------------
+   Reset
+   ------------------------------------------------------------ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Manrope', system-ui, -apple-system, sans-serif;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--ink);
+  background:
+    radial-gradient(900px 420px at 85% -10%, rgba(192, 118, 31, 0.08), transparent 60%),
+    radial-gradient(700px 380px at -10% 0%, rgba(47, 93, 60, 0.07), transparent 60%),
+    var(--bg);
+  min-height: 100vh;
+}
+
+h1,
+h2 {
+  font-family: 'Prata', serif;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+h1 {
+  font-size: clamp(26px, 4vw, 38px);
+}
+
+h2 {
+  font-size: clamp(24px, 3.4vw, 34px);
+}
+
+h3 {
+  font-family: 'Manrope', system-ui, sans-serif;
+  font-size: 16.5px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.serif {
+  font-family: 'Prata', serif;
+  font-weight: 400;
+}
+
+p {
+  line-height: 1.6;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: 15px;
+  color: var(--ink);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+/* ------------------------------------------------------------
+   Layout
+   ------------------------------------------------------------ */
+.wrap {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 var(--space-5);
+}
+
+/* ------------------------------------------------------------
+   Utilities
+   ------------------------------------------------------------ */
+.hidden,
+[hidden] {
+  display: none !important;
+}
+
+/* ------------------------------------------------------------
+   Accessibility
+   ------------------------------------------------------------ */
+:focus-visible {
+  outline: 3px solid rgba(47, 93, 60, 0.35);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+::selection {
+  background: rgba(47, 93, 60, 0.16);
+}
+
+/* ------------------------------------------------------------
+   Animations
+   ------------------------------------------------------------ */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* ------------------------------------------------------------
+   Reduced motion
+   ------------------------------------------------------------ */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

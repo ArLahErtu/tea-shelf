@@ -1,0 +1,13 @@
+# OS / editors
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/
+
+# deps (их нет, но на будущее)
+node_modules/
+
+# секреты (если когда-нибудь появятся)
+.env
+.env.*

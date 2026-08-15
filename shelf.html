@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Моя чайная полка — Чайная полка</title>
+  <meta name="description" content="Личная чайная полка: остатки, журнал завариваний, список покупок и хотелки. Данные привязаны к вашему аккаунту.">
+  <link rel="canonical" href="https://your-domain.ru/shelf.html">
+  <meta property="og:title" content="Моя чайная полка — Чайная полка">
+  <meta property="og:description" content="Остатки, журнал завариваний и список покупок — в одном месте.">
+  <meta name="theme-color" content="#2F5D3C">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Prata&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/pages/shelf.css">
+  <link rel="stylesheet" href="css/chatbot.css">
+</head>
+
+<body class="page-shelf" data-page="shelf">
+
+  <header class="topbar">
+    <div class="wrap topbar-in">
+      <a class="brand" href="index.html" aria-label="Чайная полка — на главную">
+        <span class="logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M5 20c0-8 5-13 14-15-1 9-6 14-14 15Z"/></svg>
+        </span>
+        <span class="btxt">Чайная полка</span>
+      </a>
+
+      <nav class="nav" aria-label="Основная навигация">
+        <a href="index.html">Главная</a>
+        <a href="shelf.html" class="active" aria-current="page">Полка</a>
+        <a href="catalog.html">Каталог</a>
+      </nav>
+
+      <div class="top-actions">
+        <span class="db-chip demo" id="dbStatus" role="status" aria-live="polite">
+          <i aria-hidden="true"></i>подключение…
+        </span>
+
+        <button class="btn btn-outline btn-sm" id="authOpen" type="button">Вход</button>
+
+        <div class="avatar-btn hidden" id="userArea">
+          <button class="avatar" id="avatarBtn" type="button" aria-haspopup="true"
+                  aria-expanded="false" aria-label="Меню пользователя">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/>
+              <path d="M4 20c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5"/>
+            </svg>
+          </button>
+          <div class="user-menu hidden" id="userMenu">
+            <p class="um-mail" id="userEmail">user@example.com</p>
+            <a href="shelf.html">Моя полка</a>
+            <button class="danger" id="logoutBtn" type="button">Выйти</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="wrap">
+
+      <div class="page-head">
+        <div>
+          <p class="crumbs">Личный кабинет · Полка</p>
+          <h1>Моя чайная полка</h1>
+          <p class="sub">
+            Остатки и журнал привязаны к вашему аккаунту.
+            Клик по карточке — каталожная карточка чая.
+          </p>
+        </div>
+        <div class="head-btns">
+          <a class="btn btn-primary" href="catalog.html">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            Добавить из каталога
+          </a>
+        </div>
+      </div>
+
+      <div class="banner hidden" id="shelfBanner" role="status">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 5v9"/><path d="M12 18h.01"/>
+          <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/>
+        </svg>
+        <span id="shelfBannerText">Некоторые чаи заканчиваются.</span>
+        <button class="banner-btn" id="shelfBannerAction" type="button">Посмотреть</button>
+      </div>
+
+      <div class="stats" aria-label="Сводка по полке">
+        <div class="stat"><div class="num" id="statTeas">–</div><div class="lbl">чаёв на полке</div></div>
+        <div class="stat"><div class="num" id="statBrews">–</div><div class="lbl">завариваний</div></div>
+        <div class="stat"><div class="num" id="statRating">–</div><div class="lbl">средняя оценка</div></div>
+        <div class="stat"><div class="num" id="statRestock">–</div><div class="lbl">нужно докупить</div></div>
+      </div>
+
+      <div class="shelf-layout">
+
+        <aside aria-label="Списки полки">
+          <section class="panel" aria-labelledby="shoppingTitle">
+            <h3 id="shoppingTitle">Что докупить <span class="cnt" id="shoppingCount">0</span></h3>
+            <p class="psub">Собирается из «мало» и закончившихся. Поправьте количество и пополните одной кнопкой.</p>
+            <div id="shoppingList">
+              <p class="hint">Список пуст. Когда чай закончится или его станет мало, он появится здесь.</p>
+            </div>
+            <div class="buy-ok hidden" id="shoppingSuccess">Выбранные позиции пополнены.</div>
+            <div class="buy-foot">
+              <button class="btn btn-primary btn-sm" id="restockSelectedBtn" type="button" disabled>
+                Пополнить выбранные
+              </button>
+              <p class="hint">Количество редактируется в строке. Это дозакупка к текущему остатку.</p>
+            </div>
+          </section>
+
+          <section class="panel" aria-labelledby="wishlistTitle">
+            <h3 id="wishlistTitle">Из хотелок</h3>
+            <p class="psub">Чаем из списка «хочу попробовать» удобно дополнить закупку.</p>
+            <div id="wishlistList">
+              <p class="hint">Пока пусто. Отмечайте чаи сердцем в каталоге.</p>
+            </div>
+          </section>
+
+          <section class="panel" aria-labelledby="moderationTitle">
+            <h3 id="moderationTitle">Ждёт модерации <span class="cnt" id="moderationCount">0</span></h3>
+            <p class="psub">Ваши заявки в каталог. Видны только вам, пока модератор не одобрит.</p>
+            <div id="moderationList">
+              <p class="hint">Заявок пока нет.</p>
+            </div>
+            <p class="mini-note">О результате модерации придёт уведомление при следующем входе.</p>
+          </section>
+        </aside>
+
+        <div>
+          <div class="toolbar" role="group" aria-label="Фильтры и сортировка полки">
+            <div class="tabs" aria-label="Фильтр по остатку">
+              <button class="tab active" type="button" data-status="all" aria-pressed="true">Все <span class="cnt" id="countAll">0</span></button>
+              <button class="tab" type="button" data-status="available" aria-pressed="false">В наличии <span class="cnt" id="countAvailable">0</span></button>
+              <button class="tab" type="button" data-status="low" aria-pressed="false">Мало <span class="cnt" id="countLow">0</span></button>
+              <button class="tab" type="button" data-status="finished" aria-pressed="false">Закончился <span class="cnt" id="countFinished">0</span></button>
+            </div>
+            <select class="sel" id="shelfTypeFilter" aria-label="Фильтр по типу чая">
+              <option value="all">Все типы</option>
+              <option value="black">Чёрный</option>
+              <option value="green">Зелёный</option>
+              <option value="white">Белый</option>
+              <option value="oolong">Улун</option>
+              <option value="puerh">Пуэр</option>
+              <option value="dark">Хэйча</option>
+              <option value="herbal">Травяной</option>
+            </select>
+            <select class="sel" id="shelfSort" aria-label="Сортировка полки">
+              <option value="ending">Сначала заканчивающиеся</option>
+              <option value="name">По названию, А–Я</option>
+              <option value="new">Сначала новые</option>
+            </select>
+          </div>
+
+          <div class="grid" id="shelfGrid" aria-busy="true">
+            <div class="empty grid-col-span" id="shelfEmpty">
+              <h3>Полка пока пуста</h3>
+              <p>Добавьте первый чай из каталога — остатки и заваривания будут привязаны к вашему аккаунту.</p>
+              <a class="btn btn-primary" href="catalog.html">Добавить из каталога</a>
+            </div>
+          </div>
+
+          <section class="panel" id="journalPanel" aria-labelledby="journalTitle">
+            <h3 id="journalTitle">Журнал завариваний</h3>
+            <div id="journalList">
+              <p class="hint">Записи появятся после первого заваривания.</p>
+            </div>
+          </section>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="wrap">© 2026 «Чайная полка» · Прототип: Supabase + RLS · Неделя 2 закрыта</div>
+  </footer>
+
+  <!-- Заваривание -->
+  <div class="overlay" id="brewOverlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="brewTitle">
+      <div class="modal-head">
+        <h2 id="brewTitle">Заварить чай</h2>
+        <button class="icon-btn" id="brewClose" type="button" aria-label="Закрыть окно заваривания">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+
+      <p class="modal-sub" id="brewTeaName">Название чая появится здесь.</p>
+
+      <form id="brewForm" novalidate>
+        <input type="hidden" id="brewTeaId" name="teaId">
+
+        <div class="row2">
+          <div class="field">
+            <label for="brewAmount">Количество</label>
+            <input id="brewAmount" name="amount" type="number" inputmode="decimal"
+                   min="1" step="1" value="7" required>
+            <p class="err">Укажите количество</p>
+          </div>
+          <div class="field">
+            <label for="brewUnit">Единица</label>
+            <select id="brewUnit" name="unit">
+              <option value="g">г</option>
+              <option value="sachet">пакетик</option>
+              <option value="pcs">упаковка</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="presets" id="brewPresets" aria-label="Быстрое количество">
+          <button class="preset" type="button" data-amount="5">5 г</button>
+          <button class="preset" type="button" data-amount="7">7 г</button>
+          <button class="preset" type="button" data-amount="10">10 г</button>
+          <button class="preset" type="button" data-amount="15">15 г</button>
+        </div>
+
+        <div class="previz" id="brewPreview">
+          После заваривания останется: <b id="brewRemaining">–</b>
+        </div>
+
+        <div class="field">
+          <label for="brewNote">Заметка</label>
+          <textarea id="brewNote" name="note" rows="3" maxlength="500"
+                    placeholder="Вкус, аромат, впечатления…"></textarea>
+        </div>
+
+        <div class="field">
+          <label>Оценка</label>
+          <div class="stars-input" id="brewStars" role="radiogroup" aria-label="Оценка заваривания">
+            <button class="star-btn" type="button" role="radio" aria-checked="false" data-value="1" aria-label="1 звезда">★</button>
+            <button class="star-btn" type="button" role="radio" aria-checked="false" data-value="2" aria-label="2 звезды">★</button>
+            <button class="star-btn" type="button" role="radio" aria-checked="false" data-value="3" aria-label="3 звезды">★</button>
+            <button class="star-btn" type="button" role="radio" aria-checked="false" data-value="4" aria-label="4 звезды">★</button>
+            <button class="star-btn" type="button" role="radio" aria-checked="false" data-value="5" aria-label="5 звёзд">★</button>
+          </div>
+        </div>
+
+        <div class="modal-foot">
+          <button class="btn btn-ghost" id="brewCancel" type="button">Отмена</button>
+          <button class="btn btn-primary" type="submit">Заварил</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Карточка чая (клик по карточке полки).
+       «На полку» здесь работает как «Пополнить» -->
+  <div class="overlay" id="teaOverlay" hidden>
+    <div class="modal wide" role="dialog" aria-modal="true" aria-labelledby="teaTitle">
+      <div class="modal-head">
+        <h2 id="teaTitle">Карточка чая</h2>
+        <button class="icon-btn" id="teaClose" type="button" aria-label="Закрыть карточку чая">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+
+      <div class="dmedia">
+        <div class="ph" id="teaPlaceholder" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M5 20c0-8 5-13 14-15-1 9-6 14-14 15Z"/></svg>
+        </div>
+        <img id="teaImage" class="hidden" alt="" loading="lazy" decoding="async">
+        <span class="phlabel" id="teaPhotoLabel">Фото добавит модератор</span>
+      </div>
+
+      <div class="dmeta">
+        <span class="typechip tc-green" id="teaTypeChip">Тип</span>
+        <span class="dorigin" id="teaOrigin">Регион</span>
+      </div>
+
+      <p class="ddesc" id="teaDescription">Описание.</p>
+
+      <div class="bgrid" aria-label="Параметры заваривания">
+        <div class="bcell"><div class="v" id="teaTemp">–</div><div class="l">температура</div></div>
+        <div class="bcell"><div class="v" id="teaTime">–</div><div class="l">время</div></div>
+        <div class="bcell"><div class="v" id="teaDose">–</div><div class="l">на чашку</div></div>
+        <div class="bcell"><div class="v" id="teaRating">–</div><div class="l">проливы</div></div>
+      </div>
+
+      <div class="tagrow" id="teaTags" hidden></div>
+
+      <p class="simtitle">Похожие чаи</p>
+      <div id="teaSimilar"></div>
+
+      <div class="modal-foot">
+        <button class="btn btn-outline" id="wishlistBtn" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10Z"/></svg>
+          В избранное
+        </button>
+        <button class="btn btn-primary" id="addToShelfBtn" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          Пополнить
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Количество и единицы -->
+  <div class="overlay" id="amountOverlay" hidden>
+    <div class="modal narrow" role="dialog" aria-modal="true" aria-labelledby="amountTitle">
+      <div class="modal-head">
+        <h2 id="amountTitle">Добавить на полку</h2>
+        <button class="icon-btn" id="amountClose" type="button" aria-label="Закрыть">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+
+      <p class="modal-sub" id="amountTeaName">—</p>
+
+      <form id="amountForm" novalidate>
+        <div class="row2">
+          <div class="field">
+            <label for="amountValue">Количество <span class="req">*</span></label>
+            <input id="amountValue" type="number" min="1" step="1" value="100" inputmode="decimal" required>
+            <p class="err">Укажите количество</p>
+          </div>
+          <div class="field">
+            <label for="amountUnitSel">Единица</label>
+            <select id="amountUnitSel">
+              <option value="g">граммы</option>
+              <option value="sachet">пакетики</option>
+              <option value="pcs">упаковки</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="presets" id="amountPresets">
+          <button type="button" class="preset" data-amount="50">50</button>
+          <button type="button" class="preset sel" data-amount="100">100</button>
+          <button type="button" class="preset" data-amount="250">250</button>
+        </div>
+
+        <div class="field" id="amountThresholdField">
+          <label for="amountThreshold">Порог «мало»</label>
+          <input id="amountThreshold" type="number" min="0" step="1" value="20">
+          <p class="hint">Когда остаток дойдёт до этого значения, чай попадёт в «Что докупить».</p>
+        </div>
+
+        <div class="modal-foot">
+          <button class="btn btn-ghost" type="button" id="amountCancel">Отмена</button>
+          <button class="btn btn-primary" type="submit" id="amountSubmit">Добавить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Вход / регистрация -->
+  <div class="overlay" id="authOverlay" hidden>
+    <div class="modal narrow" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+      <div class="modal-head">
+        <h2 id="authTitle">Вход</h2>
+        <button class="icon-btn" id="authClose" type="button" aria-label="Закрыть окно входа">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+
+      <div class="auth-tabs" aria-label="Выбор режима входа">
+        <button type="button" class="active" id="tabLogin">Вход</button>
+        <button type="button" id="tabRegister">Регистрация</button>
+      </div>
+
+      <div class="global-err" id="authError" role="alert"></div>
+
+      <form id="authForm" novalidate>
+        <div class="field hidden" id="fieldName">
+          <label for="authName">Имя</label>
+          <input id="authName" name="name" type="text" autocomplete="name" placeholder="Укажите имя">
+          <p class="err">Укажите имя</p>
+        </div>
+        <div class="field" id="fieldEmail">
+          <label for="authEmail">Email <span class="req">*</span></label>
+          <input id="authEmail" name="email" type="email" required autocomplete="email"
+                 placeholder="Укажите корректный email">
+          <p class="err">Укажите корректный email</p>
+        </div>
+        <div class="field" id="fieldPassword">
+          <label for="authPassword">Пароль <span class="req">*</span></label>
+          <input id="authPassword" name="password" type="password" required minlength="6"
+                 autocomplete="current-password" placeholder="Пароль — минимум 6 символов">
+          <p class="err">Пароль — минимум 6 символов</p>
+        </div>
+        <button class="btn btn-primary" id="authSubmit" type="submit">Войти</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="toasts" aria-live="polite"></div>
+
+  <!-- Чат-бот -->
+  <div id="chatbot-root">
+    <button class="chatbot-fab" id="chatbotToggle" type="button" aria-label="Открыть чат-помощник"
+            aria-expanded="false" aria-controls="chatbotWindow">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M5 20c0-8 5-13 14-15-1 9-6 14-14 15Z"/>
+        <path d="M5 20c3-6 7-10 12-13"/>
+      </svg>
+    </button>
+
+    <section class="chatbot-window" id="chatbotWindow" role="dialog" aria-modal="true"
+             aria-label="Чат-помощник" hidden>
+      <div class="chatbot-header">
+        <div class="chatbot-title">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 20c0-8 5-13 14-15-1 9-6 14-14 15Z"/>
+            <path d="M5 20c3-6 7-10 12-13"/>
+          </svg>
+          Чайный помощник
+        </div>
+        <button class="chatbot-close" id="chatbotClose" type="button" aria-label="Закрыть чат">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+
+      <div class="chatbot-messages" id="chatbotMessages">
+        <div class="chatbot-message is-bot">
+          Привет! Помогу с полкой: подскажу, что докупить, как отметить заваривание и где посмотреть журнал.
+        </div>
+      </div>
+
+      <div class="chatbot-suggestions" id="chatbotSuggestions">
+        <button class="chatbot-suggestion" type="button">Что докупить?</button>
+        <button class="chatbot-suggestion" type="button">Как заварить чай?</button>
+        <button class="chatbot-suggestion" type="button">Где журнал завариваний?</button>
+      </div>
+
+      <form class="chatbot-form" id="chatbotForm" autocomplete="off">
+        <input class="chatbot-input" id="chatbotInput" name="message" type="text"
+               placeholder="Напишите вопрос…" aria-label="Сообщение для чат-помощника">
+        <button class="chatbot-send" type="submit" aria-label="Отправить сообщение">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 12l16-7-4 14-4-5-8-2Z"/><path d="M12 14l8-9"/>
+          </svg>
+        </button>
+      </form>
+    </section>
+  </div>
+
+  <!-- Шаблон карточки полки -->
+  <template id="shelfCardTemplate">
+    <article class="card" tabindex="0" data-shelf-id="" data-tea-id="">
+      <div class="card-top">
+        <span class="pill pill-active"><i aria-hidden="true"></i>В наличии</span>
+        <span class="typechip tc-green">Тип</span>
+        <span class="rate-badge hidden">★ –</span>
+        <div class="card-tools">
+          <button class="icon-btn fav-btn" type="button" data-action="toggle-favorite"
+                  aria-label="Добавить в избранное" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10Z"/></svg>
+          </button>
+          <div class="menu-wrap">
+            <button class="icon-btn" type="button" data-action="open-menu"
+                    aria-label="Действия с чаем" aria-haspopup="true" aria-expanded="false">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg>
+            </button>
+            <div class="menu hidden">
+              <button type="button" data-action="edit">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l4-1 11-11-3-3L5 16l-1 4Z"/></svg>
+                Изменить количество
+              </button>
+              <button type="button" data-action="restock">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                Пополнить
+              </button>
+              <button type="button" class="danger" data-action="remove">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M9 7V5h6v2M7 7l1 12h8l1-12"/></svg>
+                Убрать с полки
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h3 class="card-name">Название чая</h3>
+
+      <div class="qty-row">
+        <div class="qty">0<span> г</span></div>
+        <div class="brews">0 завариваний</div>
+      </div>
+
+      <div class="bar" aria-hidden="true"><div class="bar-fill bar-active"></div></div>
+
+      <div class="card-actions">
+        <button class="btn btn-primary btn-sm" type="button" data-action="brew">Заварил</button>
+        <button class="btn btn-outline btn-sm" type="button" data-action="restock">Пополнить</button>
+      </div>
+    </article>
+  </template>
+
+  <!-- Шаблон строки «Что докупить» -->
+  <template id="shoppingRowTemplate">
+    <div class="buyrow" data-shelf-id="">
+      <label class="buy-check">
+        <input type="checkbox" checked aria-label="Выбрать к закупке">
+      </label>
+      <div class="buy-info">
+        <b>Название чая</b>
+        <span class="st-low">Мало · осталось –</span>
+      </div>
+      <div class="buy-amt">
+        <input type="number" min="1" step="1" value="50" inputmode="numeric" aria-label="Количество к дозакупке">
+        <em>г</em>
+      </div>
+    </div>
+  </template>
+
+  <!-- Шаблон строки хотелок -->
+  <template id="wishlistRowTemplate">
+    <div class="wrow" data-tea-id="">
+      <div class="wn">
+        <b>Название чая</b>
+        <span>Хочу попробовать</span>
+      </div>
+      <button class="btn btn-outline btn-sm" type="button" data-action="add-from-wishlist">На полку</button>
+    </div>
+  </template>
+
+  <!-- Шаблон строки модерации -->
+  <template id="moderationRowTemplate">
+    <div class="modrow" data-request-id="">
+      <div class="wn">
+        <b>Название чая</b>
+        <span>Заявка от –</span>
+      </div>
+      <span class="modbadge">На модерации</span>
+    </div>
+  </template>
+
+  <!-- Шаблон записи журнала -->
+  <template id="journalEntryTemplate">
+    <div class="jentry" data-brew-id="">
+      <div class="jdate">–</div>
+      <div class="jbody">
+        <b>Название чая</b>
+        <div class="jm">–</div>
+        <div class="jnote hidden"></div>
+        <div class="jstars hidden"></div>
+      </div>
+    </div>
+  </template>
+
+  <script type="module" src="js/shelf.js"></script>
+</body>
+</html>
