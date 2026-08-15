@@ -6,8 +6,7 @@
 
   <!-- ============================================================
        SEO / META
-       Перед деплоем заменить your-domain.ru на реальный домен
-       ============================================================ -->
+  ============================================================ -->
   <title>Чайная полка — умный учёт вашего чая</title>
 
   <meta
@@ -15,7 +14,7 @@
     content="Личная чайная полка: остатки, журнал завариваний, список покупок, общий каталог чаёв и модерация."
   >
 
-  <link rel="canonical" href="https://your-domain.ru/index.html">
+  <link rel="canonical" href="https://tea-shelf.vercel.app/index.html">
 
   <!-- Open Graph -->
   <meta property="og:type" content="website">
@@ -24,8 +23,8 @@
     property="og:description"
     content="Учёт чая в один тап: остатки, журнал завариваний, список покупок и общий каталог."
   >
-  <meta property="og:url" content="https://your-domain.ru/index.html">
-  <meta property="og:image" content="https://your-domain.ru/img/og-cover.jpg">
+  <meta property="og:url" content="https://tea-shelf.vercel.app/index.html">
+  <meta property="og:image" content="https://tea-shelf.vercel.app/img/icon-512.png">
 
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image">
@@ -34,13 +33,14 @@
   <meta name="theme-color" content="#2F5D3C">
 
   <!-- ============================================================
-       Favicon / PWA
-       Когда добавим favicon и manifest — раскомментировать
+       PWA / Favicon
        ============================================================ -->
-  <!--
-  <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="manifest.webmanifest">
-  -->
+  <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="img/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Чайная полка">
 
   <!-- ============================================================
        Fonts
@@ -72,6 +72,7 @@
     "description": "Личная чайная полка: остатки, журнал завариваний, список покупок, общий каталог чаёв и модерация.",
     "applicationCategory": "LifestyleApplication",
     "operatingSystem": "Web",
+    "url": "https://tea-shelf.vercel.app",
     "offers": {
       "@type": "Offer",
       "price": "0",
