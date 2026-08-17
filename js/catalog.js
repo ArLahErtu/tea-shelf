@@ -5,6 +5,8 @@
 // Блок B: «Избранное» вместо «хотелок»: сердце на карточке и
 // кнопка в модалке пишут в таблицу wishlist (единый список
 // избранного). Починена мёртвая кнопка «Хочу попробовать».
+// Блок C: серверная пагинация — по 20 карточек за запрос,
+// поиск и сортировка на сервере, кнопка «Показать ещё».
 // ============================================================
 import { initCommon } from './common.js';
 import { supabase } from './supabaseClient.js';
@@ -17,10 +19,18 @@ import { getUser } from './auth.js';
 import { openTeaModal } from './teaModal.js';
 import { initAmountModal, openAmountModal } from './amountModal.js';
 
-let teas = [];
+const PAGE_SIZE = 20;
+
+let published = [];   // загруженные страницы published
+let pending = [];     // мои pending-заявки (все, их мало)
+let teas = [];        // pending + published (для поиска по клику)
 let myShelf = new Set();
 let favorites = new Set();
 let currentTea = null;
+
+let loadedCount = 0;  // сколько published загружено в текущем запросе
+let canMore = false;  // возможно, в базе есть ещё
+let loading = false;
 
 const state = { q: '', sort: 'popular' };
 
@@ -42,17 +52,38 @@ async function safeFetch(build, label = '') {
   return null;
 }
 
-// ---------- Загрузка ----------
+// ---------- Серверный запрос: поиск + сортировка + страница ----------
+function pageQuery(offset) {
+  let q = supabase.from(TABLES.catalog).select('*')
+    .eq('status', 'published');
+  if (state.q) {
+    q = q.or(`name.ilike.%${state.q}%,region.ilike.%${state.q}%`);
+  }
+  if (state.sort === 'popular') {
+    q = q.order('popularity', { ascending: false }).order('id', { ascending: true });
+  } else if (state.sort === 'name') {
+    q = q.order('name', { ascending: true });
+  } else {
+    q = q.order('id', { ascending: true });
+  }
+  return q.range(offset, offset + PAGE_SIZE - 1);
+}
+
+function loadPublished(offset = 0) {
+  return safeFetch(() => pageQuery(offset), `catalog page ${offset}`);
+}
+
+// ---------- Загрузка (старт / смена входа) ----------
 async function load() {
-  const published = await safeFetch(
-    () => supabase.from(TABLES.catalog).select('*').eq('status', 'published'),
-    'catalog published',
-  );
-  if (published === null) {
+  const first = await loadPublished(0);
+  if (first === null) {
     throw new Error('Нет соединения с базой. Проверь сеть/блокировщики и нажми «Повторить».');
   }
+  published = first;
+  loadedCount = first.length;
+  canMore = first.length === PAGE_SIZE;
 
-  let pending = [];
+  pending = [];
   const user = getUser();
   if (user) {
     const [p, sh, wl] = await Promise.all([
@@ -67,28 +98,56 @@ async function load() {
     myShelf = new Set((sh || []).map((r) => r.tea_id));
     favorites = new Set((wl || []).map((r) => r.tea_id));
   }
-  teas = published.concat(pending);
+  teas = pending.concat(published);
+  render();
+  renderMore();
 }
 
-// ---------- Фильтры и рендер ----------
-function applyFilters() {
-  let list = [...teas];
-  if (state.q) {
-    list = list.filter((t) =>
-      ((t.name || '') + ' ' + (t.region || '')).toLowerCase().includes(state.q));
-  }
-  if (state.sort === 'popular') {
-    list.sort((a, b) => (b.popularity || 0) - (a.popularity || 0) || a.id - b.id);
-  }
-  if (state.sort === 'name') {
-    list.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ru'));
-  }
-  if (state.sort === 'order') {
-    list.sort((a, b) => a.id - b.id);
-  }
-  return list;
+// ---------- Поиск / сортировка: перезагрузка первой страницы ----------
+async function refresh() {
+  const first = await loadPublished(0);
+  if (first === null) return showToast('Не удалось обновить список', 'warn');
+  published = first;
+  loadedCount = first.length;
+  canMore = first.length === PAGE_SIZE;
+  teas = pending.concat(published);
+  render();
+  renderMore();
 }
 
+// ---------- «Показать ещё» ----------
+async function loadMore() {
+  if (loading || !canMore) return;
+  loading = true;
+  const btn = $('#moreBtn');
+  btn.disabled = true;
+  btn.textContent = 'Загружаем…';
+
+  const next = await loadPublished(loadedCount);
+  loading = false;
+
+  if (next === null) {
+    btn.disabled = false;
+    btn.textContent = 'Показать ещё';
+    return showToast('Не удалось загрузить ещё. Нажмите снова', 'warn');
+  }
+
+  published = published.concat(next);
+  loadedCount += next.length;
+  canMore = next.length === PAGE_SIZE;
+  teas = pending.concat(published);
+  render();
+  renderMore();
+}
+
+function renderMore() {
+  $('#moreWrap').classList.toggle('hidden', !canMore);
+  const btn = $('#moreBtn');
+  btn.disabled = false;
+  btn.textContent = 'Показать ещё';
+}
+
+// ---------- Рендер ----------
 function cardNode(tea) {
   const node = $('#teaCardTemplate').content.firstElementChild.cloneNode(true);
   node.dataset.teaId = tea.id;
@@ -140,7 +199,7 @@ function render() {
   grid.setAttribute('aria-busy', 'false');
   grid.innerHTML = '';
 
-  const list = applyFilters();
+  const list = teas; // фильтрация/сортировка уже выполнены сервером
   if (!list.length) {
     grid.innerHTML = `<div class="empty grid-col-span">
       <h3>Ничего не найдено</h3>
@@ -253,7 +312,6 @@ function initPropose() {
     e.target.reset();
     showToast('Заявка отправлена на модерацию');
     await load();
-    render();
   });
 }
 
@@ -262,15 +320,20 @@ async function init() {
   await initCommon();
   initAmountModal();
 
+  // Поиск с дебаунсом: запрос к БД через 350 мс после последней буквы
+  let searchTimer = null;
   $('#catalogSearch').addEventListener('input', (e) => {
     state.q = e.target.value.trim().toLowerCase();
-    render();
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(refresh, 350);
   });
 
   $('#catalogSort').addEventListener('change', (e) => {
     state.sort = e.target.value;
-    render();
+    refresh();
   });
+
+  $('#moreBtn').addEventListener('click', loadMore);
 
   const grid = $('#catalogGrid');
   grid.addEventListener('click', (e) => {
@@ -295,7 +358,7 @@ async function init() {
     if (currentTea) requestAdd(currentTea);
   });
 
-  // Кнопка избранного внутри карточки чая (Блок B: раньше была мёртвой)
+  // Кнопка избранного внутри карточки чая (Блок B)
   $('#wishlistBtn')?.addEventListener('click', () => {
     if (currentTea) toggleFavorite(currentTea);
   });
@@ -304,7 +367,6 @@ async function init() {
 
   try {
     await load();
-    render();
   } catch (err) {
     grid.setAttribute('aria-busy', 'false');
     grid.innerHTML = `<div class="empty grid-col-span">
