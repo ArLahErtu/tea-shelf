@@ -71,32 +71,10 @@ Topbar
 }
 
 /* ------------------------------------------------------------
-DB chip
+DB chip — СКРЫТА для конечных пользователей
 ------------------------------------------------------------ */
 .db-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  border-radius: var(--radius-xs);
-  padding: 6px var(--space-3);
-  font-size: 12px;
-  font-weight: 800;
-}
-.db-chip.ok {
-  background: var(--green-soft);
-  border: 1px solid #C7D8BE;
-  color: var(--green-d);
-}
-.db-chip.demo {
-  background: var(--amber-soft);
-  border: 1px solid #E5C68F;
-  color: #8A5A16;
-}
-.db-chip i {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: currentColor;
+  display: none !important;
 }
 
 /* ------------------------------------------------------------
@@ -677,8 +655,6 @@ Forms
 
 /* ------------------------------------------------------------
 Presets (модалки количества и заваривания)
-Перенесено из shelf.css: amountModal теперь используется
-и на каталоге, стили должны быть общими.
 ------------------------------------------------------------ */
 .presets {
   display: flex;
@@ -694,8 +670,6 @@ Presets (модалки количества и заваривания)
   font-size: 14px;
   font-weight: 700;
 }
-/* Выбранный пресет. Важно: специфичность выше, чем у .sel,
-   а background-шортхенд сбрасывает шеврон селекта. */
 .preset.sel {
   background: var(--green-soft);
   border-color: var(--green);
@@ -768,6 +742,7 @@ Overlay / modal
   max-width: 600px;
   max-height: 90vh;
   overflow: auto;
+  overscroll-behavior: contain;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);

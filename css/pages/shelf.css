@@ -529,10 +529,6 @@
 }
 
 @media (max-width: 640px) {
-  .stats {
-    grid-template-columns: 1fr;
-  }
-
   .card-actions .btn {
     flex: 1;
     justify-content: center;

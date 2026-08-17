@@ -67,6 +67,7 @@ export async function initAuth() {
     $('#authTitle').textContent = m === 'login' ? 'Вход' : 'Регистрация';
     $('#authSubmit').textContent = m === 'login' ? 'Войти' : 'Создать аккаунт';
     $('#authPassword').autocomplete = m === 'login' ? 'current-password' : 'new-password';
+    // Ошибку скрываем только при ПЕРЕКЛЮЧЕНИИ табов, не в finally
     $('#authError').classList.remove('show');
   }
 
@@ -143,11 +144,13 @@ export async function initAuth() {
       form.reset();
     } catch (err) {
       const box = $('#authError');
-      box.textContent = err.message || 'Не удалось выполнить вход';
+      box.textContent = err.message || 'Не удалось выполнить операцию. Попробуйте ещё раз.';
       box.classList.add('show');
     } finally {
       btn.disabled = false;
-      setMode(mode); // вернуть текст кнопки
+      // ФИКС: не вызываем setMode() — она скрывает ошибку.
+      // Просто возвращаем текст кнопки.
+      btn.textContent = mode === 'login' ? 'Войти' : 'Создать аккаунт';
     }
   });
 

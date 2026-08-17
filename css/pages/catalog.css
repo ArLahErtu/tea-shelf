@@ -80,8 +80,8 @@
    Favorite / pending
    ------------------------------------------------------------ */
 .heart {
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background: rgba(255, 252, 244, 0.94);
   border: 1px solid var(--line);
@@ -92,8 +92,8 @@
 }
 
 .heart svg {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   fill: none;
   stroke: #8C8270;
   stroke-width: 2;
