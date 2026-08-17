@@ -142,9 +142,12 @@
   color: var(--muted);
 }
 
+/* ФИКС: добавлено стандартное свойство line-clamp —
+   VS Code больше не подчёркивает, браузеры будущего поддержат */
 .tdesc {
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   font-size: 13.5px;

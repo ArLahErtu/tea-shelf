@@ -3,6 +3,11 @@
    Стили личной полки
    ============================================================ */
 
+/* Страховка от горизонтального скролла страницы */
+body.page-shelf {
+  overflow-x: clip;
+}
+
 /* ------------------------------------------------------------
    Stats
    ------------------------------------------------------------ */
@@ -18,6 +23,7 @@
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: var(--space-3) var(--space-4);
+  min-width: 0;
 }
 
 .stat .num {
@@ -35,12 +41,17 @@
 
 /* ------------------------------------------------------------
    Shelf layout
+   minmax(0, 1fr) позволяет колонкам сжиматься вместо распирания
    ------------------------------------------------------------ */
 .shelf-layout {
   display: grid;
-  grid-template-columns: 340px 1fr;
+  grid-template-columns: 340px minmax(0, 1fr);
   align-items: start;
   gap: var(--space-4);
+}
+
+.shelf-layout > * {
+  min-width: 0;
 }
 
 /* ------------------------------------------------------------
@@ -427,6 +438,7 @@
 
 .jbody {
   flex: 1;
+  min-width: 0;
 }
 
 .jbody b {
@@ -520,7 +532,7 @@
    ------------------------------------------------------------ */
 @media (max-width: 960px) {
   .shelf-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .stats {
@@ -529,6 +541,26 @@
 }
 
 @media (max-width: 640px) {
+  /* Тулбар в колонку: табы и селекты во всю ширину,
+     лента табов скроллится внутри, не распирая страницу */
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .tabs {
+    width: 100%;
+  }
+
+  .shelf-layout .sel {
+    width: 100%;
+  }
+
+  /* Сетка карточек: колонка не шире экрана даже на узких */
+  #shelfGrid {
+    grid-template-columns: repeat(auto-fill, minmax(min(290px, 100%), 1fr));
+  }
+
   .card-actions .btn {
     flex: 1;
     justify-content: center;

@@ -67,7 +67,6 @@ export async function initAuth() {
     $('#authTitle').textContent = m === 'login' ? 'Вход' : 'Регистрация';
     $('#authSubmit').textContent = m === 'login' ? 'Войти' : 'Создать аккаунт';
     $('#authPassword').autocomplete = m === 'login' ? 'current-password' : 'new-password';
-    // Ошибку скрываем только при ПЕРЕКЛЮЧЕНИИ табов, не в finally
     $('#authError').classList.remove('show');
   }
 
@@ -136,6 +135,17 @@ export async function initAuth() {
           options: { data: { name } },
         });
         if (error) throw error;
+
+        // Supabase НЕ возвращает ошибку для уже занятого email
+        // (защита от перебора адресов). Признак дубля — пустой
+        // массив identities в ответе.
+        if (Array.isArray(data.identities) && data.identities.length === 0) {
+          const box = $('#authError');
+          box.textContent = 'Этот email уже зарегистрирован. Попробуйте войти.';
+          box.classList.add('show');
+          return; // модалку не закрываем, форму не сбрасываем
+        }
+
         closeOverlay(overlay);
         showToast(data.session
           ? 'Аккаунт создан. Добро пожаловать!'
@@ -148,8 +158,7 @@ export async function initAuth() {
       box.classList.add('show');
     } finally {
       btn.disabled = false;
-      // ФИКС: не вызываем setMode() — она скрывает ошибку.
-      // Просто возвращаем текст кнопки.
+      // Не вызываем setMode() — она скрывает плашку ошибки.
       btn.textContent = mode === 'login' ? 'Войти' : 'Создать аккаунт';
     }
   });
