@@ -6,14 +6,12 @@
 
   <!-- ============================================================
        SEO / META
-       ============================================================ -->
+  ============================================================ -->
   <title>Каталог чаёв — Чайная полка</title>
-
   <meta
     name="description"
     content="Общий каталог чаёв: описания, параметры заваривания, популярные чаи. Предложите свой чай — заявка попадёт на модерацию."
   >
-
   <link rel="canonical" href="https://tea-shelf.vercel.app/catalog.html">
 
   <!-- Open Graph -->
@@ -34,7 +32,7 @@
 
   <!-- ============================================================
        PWA / Favicon
-       ============================================================ -->
+  ============================================================ -->
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="img/icon-192.png">
@@ -44,7 +42,7 @@
 
   <!-- ============================================================
        Fonts
-       ============================================================ -->
+  ============================================================ -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -54,15 +52,15 @@
 
   <!-- ============================================================
        Styles
-       ============================================================ -->
+  ============================================================ -->
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/pages/catalog.css">
   <link rel="stylesheet" href="css/chatbot.css">
-  
+
   <!-- ============================================================
-  Vercel Analytics + Speed Insights (статический сайт)
-  Работает только на боевом домене, локально просто не мешает
+       Vercel Analytics + Speed Insights (статический сайт)
+       Работает только на боевом домене, локально просто не мешает
   ============================================================ -->
   <script>
     window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
@@ -70,12 +68,12 @@
   <script defer src="/_vercel/insights/script.js"></script>
   <script defer src="/_vercel/speed-insights/script.js"></script>
 </head>
-</head>
 
 <body class="page-catalog" data-page="catalog">
 
   <header class="topbar">
     <div class="wrap topbar-in">
+
       <a class="brand" href="index.html" aria-label="Чайная полка — на главную">
         <span class="logo" aria-hidden="true">
           <svg viewBox="0 0 24 24"><path d="M5 20c0-8 5-13 14-15-1 9-6 14-14 15Z"/></svg>
@@ -97,13 +95,20 @@
         <button class="btn btn-outline btn-sm" id="authOpen" type="button">Вход</button>
 
         <div class="avatar-btn hidden" id="userArea">
-          <button class="avatar" id="avatarBtn" type="button" aria-haspopup="true"
-                  aria-expanded="false" aria-label="Меню пользователя">
+          <button
+            class="avatar"
+            id="avatarBtn"
+            type="button"
+            aria-haspopup="true"
+            aria-expanded="false"
+            aria-label="Меню пользователя"
+          >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/>
               <path d="M4 20c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5"/>
             </svg>
           </button>
+
           <div class="user-menu hidden" id="userMenu">
             <p class="um-mail" id="userEmail">user@example.com</p>
             <a href="shelf.html">Моя полка</a>
@@ -139,8 +144,13 @@
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>
           </svg>
-          <input id="catalogSearch" type="search" placeholder="Поиск по названию…"
-                 aria-label="Поиск по каталогу" autocomplete="off">
+          <input
+            id="catalogSearch"
+            type="search"
+            placeholder="Поиск по названию…"
+            aria-label="Поиск по каталогу"
+            autocomplete="off"
+          >
         </div>
         <select class="sel" id="catalogSort" aria-label="Сортировка каталога">
           <option value="popular">По популярности</option>
@@ -206,7 +216,7 @@
       <div class="modal-foot">
         <button class="btn btn-outline" id="wishlistBtn" type="button">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10Z"/></svg>
-          Хочу попробовать
+          <span id="wishlistBtnText">В избранное</span>
         </button>
         <button class="btn btn-primary" id="addToShelfBtn" type="button">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
@@ -225,7 +235,6 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
         </button>
       </div>
-
       <p class="modal-sub" id="amountTeaName">—</p>
 
       <form id="amountForm" novalidate>
@@ -274,14 +283,15 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
         </button>
       </div>
-
       <p class="modal-sub">Заявка попадёт на модерацию. До одобрения она видна только вам.</p>
 
       <form id="proposeForm" novalidate>
         <div class="field">
           <label for="proposeName">Название <span class="req">*</span></label>
-          <input id="proposeName" name="name" type="text" required maxlength="120"
-                 placeholder="Например, Те Гуань Инь" autocomplete="off">
+          <input
+            id="proposeName" name="name" type="text" required maxlength="120"
+            placeholder="Например, Те Гуань Инь" autocomplete="off"
+          >
           <p class="err">Укажите название чая</p>
         </div>
 
@@ -303,17 +313,20 @@
           </div>
           <div class="field">
             <label for="proposeOrigin">Страна или регион</label>
-            <input id="proposeOrigin" name="origin" type="text" maxlength="120"
-                   placeholder="Например, Китай · Аньси" autocomplete="off">
+            <input
+              id="proposeOrigin" name="origin" type="text" maxlength="120"
+              placeholder="Например, Китай · Аньси" autocomplete="off"
+            >
           </div>
         </div>
 
         <div class="field">
           <label for="proposeDescription">Описание</label>
-          <textarea id="proposeDescription" name="description" rows="4" maxlength="800"
-                    placeholder="Вкус, аромат, как заваривать…"></textarea>
+          <textarea
+            id="proposeDescription" name="description" rows="4" maxlength="800"
+            placeholder="Вкус, аромат, как заваривать…"
+          ></textarea>
         </div>
-
         <p class="hint">Фото и точные параметры заваривания добавит модератор после одобрения.</p>
 
         <div class="modal-foot">
@@ -347,18 +360,25 @@
           <input id="authName" name="name" type="text" autocomplete="name" placeholder="Укажите имя">
           <p class="err">Укажите имя</p>
         </div>
+
         <div class="field" id="fieldEmail">
           <label for="authEmail">Email <span class="req">*</span></label>
-          <input id="authEmail" name="email" type="email" required autocomplete="email"
-                 placeholder="Укажите корректный email">
+          <input
+            id="authEmail" name="email" type="email" required autocomplete="email"
+            placeholder="Укажите корректный email"
+          >
           <p class="err">Укажите корректный email</p>
         </div>
+
         <div class="field" id="fieldPassword">
           <label for="authPassword">Пароль <span class="req">*</span></label>
-          <input id="authPassword" name="password" type="password" required minlength="6"
-                 autocomplete="current-password" placeholder="Пароль — минимум 6 символов">
+          <input
+            id="authPassword" name="password" type="password" required minlength="6"
+            autocomplete="current-password" placeholder="Пароль — минимум 6 символов"
+          >
           <p class="err">Пароль — минимум 6 символов</p>
         </div>
+
         <button class="btn btn-primary" id="authSubmit" type="submit">Войти</button>
       </form>
     </div>
@@ -368,16 +388,28 @@
 
   <!-- Чат-бот -->
   <div id="chatbot-root">
-    <button class="chatbot-fab" id="chatbotToggle" type="button" aria-label="Открыть чат-помощник"
-            aria-expanded="false" aria-controls="chatbotWindow">
+    <button
+      class="chatbot-fab"
+      id="chatbotToggle"
+      type="button"
+      aria-label="Открыть чат-помощник"
+      aria-expanded="false"
+      aria-controls="chatbotWindow"
+    >
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M5 20c0-8 5-13 14-15-1 9-6 14-14 15Z"/>
         <path d="M5 20c3-6 7-10 12-13"/>
       </svg>
     </button>
 
-    <section class="chatbot-window" id="chatbotWindow" role="dialog" aria-modal="true"
-             aria-label="Чат-помощник" hidden>
+    <section
+      class="chatbot-window"
+      id="chatbotWindow"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Чат-помощник"
+      hidden
+    >
       <div class="chatbot-header">
         <div class="chatbot-title">
           <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -404,8 +436,14 @@
       </div>
 
       <form class="chatbot-form" id="chatbotForm" autocomplete="off">
-        <input class="chatbot-input" id="chatbotInput" name="message" type="text"
-               placeholder="Напишите вопрос…" aria-label="Сообщение для чат-помощника">
+        <input
+          class="chatbot-input"
+          id="chatbotInput"
+          name="message"
+          type="text"
+          placeholder="Напишите вопрос…"
+          aria-label="Сообщение для чат-помощника"
+        >
         <button class="chatbot-send" type="submit" aria-label="Отправить сообщение">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M4 12l16-7-4 14-4-5-8-2Z"/><path d="M12 14l8-9"/>
@@ -425,8 +463,10 @@
         <img class="hidden" alt="" loading="lazy" decoding="async">
         <div class="media-top">
           <span class="typechip">Тип</span>
-          <button class="heart" type="button" aria-label="Добавить в избранное"
-                  aria-pressed="false" data-action="toggle-favorite">
+          <button
+            class="heart" type="button" aria-label="Добавить в избранное"
+            aria-pressed="false" data-action="toggle-favorite"
+          >
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10Z"/></svg>
           </button>
         </div>

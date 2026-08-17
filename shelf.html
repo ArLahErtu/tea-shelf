@@ -6,14 +6,12 @@
 
   <!-- ============================================================
        SEO / META
-       ============================================================ -->
+  ============================================================ -->
   <title>Моя чайная полка — Чайная полка</title>
-
   <meta
     name="description"
     content="Личная полка: остатки, журнал завариваний с оценками, список покупок. Данные привязаны к вашему аккаунту."
   >
-
   <link rel="canonical" href="https://tea-shelf.vercel.app/shelf.html">
 
   <!-- Open Graph -->
@@ -34,7 +32,7 @@
 
   <!-- ============================================================
        PWA / Favicon
-       ============================================================ -->
+  ============================================================ -->
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="img/icon-192.png">
@@ -44,7 +42,7 @@
 
   <!-- ============================================================
        Fonts
-       ============================================================ -->
+  ============================================================ -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -54,15 +52,15 @@
 
   <!-- ============================================================
        Styles
-       ============================================================ -->
+  ============================================================ -->
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/pages/shelf.css">
   <link rel="stylesheet" href="css/chatbot.css">
-  
+
   <!-- ============================================================
-  Vercel Analytics + Speed Insights (статический сайт)
-  Работает только на боевом домене, локально просто не мешает
+       Vercel Analytics + Speed Insights (статический сайт)
+       Работает только на боевом домене, локально просто не мешает
   ============================================================ -->
   <script>
     window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
@@ -75,6 +73,7 @@
 
   <header class="topbar">
     <div class="wrap topbar-in">
+
       <a class="brand" href="index.html" aria-label="Чайная полка — на главную">
         <span class="logo" aria-hidden="true">
           <svg viewBox="0 0 24 24"><path d="M5 20c0-8 5-13 14-15-1 9-6 14-14 15Z"/></svg>
@@ -96,13 +95,20 @@
         <button class="btn btn-outline btn-sm" id="authOpen" type="button">Вход</button>
 
         <div class="avatar-btn hidden" id="userArea">
-          <button class="avatar" id="avatarBtn" type="button" aria-haspopup="true"
-                  aria-expanded="false" aria-label="Меню пользователя">
+          <button
+            class="avatar"
+            id="avatarBtn"
+            type="button"
+            aria-haspopup="true"
+            aria-expanded="false"
+            aria-label="Меню пользователя"
+          >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/>
               <path d="M4 20c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5"/>
             </svg>
           </button>
+
           <div class="user-menu hidden" id="userMenu">
             <p class="um-mail" id="userEmail">user@example.com</p>
             <a href="shelf.html">Моя полка</a>
@@ -150,8 +156,8 @@
       </div>
 
       <div class="shelf-layout">
-
         <aside aria-label="Списки полки">
+
           <section class="panel" aria-labelledby="shoppingTitle">
             <h3 id="shoppingTitle">Что докупить <span class="cnt" id="shoppingCount">0</span></h3>
             <p class="psub">Собирается из «мало» и закончившихся. Поправьте количество и пополните одной кнопкой.</p>
@@ -167,11 +173,12 @@
             </div>
           </section>
 
-          <section class="panel" aria-labelledby="wishlistTitle">
-            <h3 id="wishlistTitle">Из хотелок</h3>
-            <p class="psub">Чаем из списка «хочу попробовать» удобно дополнить закупку.</p>
-            <div id="wishlistList">
-              <p class="hint">Пока пусто. Отмечайте чаи сердцем в каталоге.</p>
+          <!-- Блок B: «Из хотелок» → «Избранное» -->
+          <section class="panel" aria-labelledby="favoritesTitle">
+            <h3 id="favoritesTitle">Избранное <span class="cnt" id="favoritesCount">0</span></h3>
+            <p class="psub">Чаи, отмеченные сердцем в каталоге или на полке. Удобно дополнить закупку.</p>
+            <div id="favoritesList">
+              <p class="hint">Пока пусто. Отмечайте чаи сердцем в каталоге или на полке.</p>
             </div>
           </section>
 
@@ -183,6 +190,7 @@
             </div>
             <p class="mini-note">О результате модерации придёт уведомление при следующем входе.</p>
           </section>
+
         </aside>
 
         <div>
@@ -225,8 +233,8 @@
             </div>
           </section>
         </div>
-
       </div>
+
     </div>
   </main>
 
@@ -243,7 +251,6 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
         </button>
       </div>
-
       <p class="modal-sub" id="brewTeaName">Название чая появится здесь.</p>
 
       <form id="brewForm" novalidate>
@@ -252,8 +259,10 @@
         <div class="row2">
           <div class="field">
             <label for="brewAmount">Количество</label>
-            <input id="brewAmount" name="amount" type="number" inputmode="decimal"
-                   min="1" step="1" value="7" required>
+            <input
+              id="brewAmount" name="amount" type="number" inputmode="decimal"
+              min="1" step="1" value="7" required
+            >
             <p class="err">Укажите количество</p>
           </div>
           <div class="field">
@@ -279,8 +288,10 @@
 
         <div class="field">
           <label for="brewNote">Заметка</label>
-          <textarea id="brewNote" name="note" rows="3" maxlength="500"
-                    placeholder="Вкус, аромат, впечатления…"></textarea>
+          <textarea
+            id="brewNote" name="note" rows="3" maxlength="500"
+            placeholder="Вкус, аромат, впечатления…"
+          ></textarea>
         </div>
 
         <div class="field">
@@ -343,7 +354,7 @@
       <div class="modal-foot">
         <button class="btn btn-outline" id="wishlistBtn" type="button">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10Z"/></svg>
-          В избранное
+          <span id="wishlistBtnText">В избранное</span>
         </button>
         <button class="btn btn-primary" id="addToShelfBtn" type="button">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
@@ -362,7 +373,6 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
         </button>
       </div>
-
       <p class="modal-sub" id="amountTeaName">—</p>
 
       <form id="amountForm" novalidate>
@@ -425,18 +435,25 @@
           <input id="authName" name="name" type="text" autocomplete="name" placeholder="Укажите имя">
           <p class="err">Укажите имя</p>
         </div>
+
         <div class="field" id="fieldEmail">
           <label for="authEmail">Email <span class="req">*</span></label>
-          <input id="authEmail" name="email" type="email" required autocomplete="email"
-                 placeholder="Укажите корректный email">
+          <input
+            id="authEmail" name="email" type="email" required autocomplete="email"
+            placeholder="Укажите корректный email"
+          >
           <p class="err">Укажите корректный email</p>
         </div>
+
         <div class="field" id="fieldPassword">
           <label for="authPassword">Пароль <span class="req">*</span></label>
-          <input id="authPassword" name="password" type="password" required minlength="6"
-                 autocomplete="current-password" placeholder="Пароль — минимум 6 символов">
+          <input
+            id="authPassword" name="password" type="password" required minlength="6"
+            autocomplete="current-password" placeholder="Пароль — минимум 6 символов"
+          >
           <p class="err">Пароль — минимум 6 символов</p>
         </div>
+
         <button class="btn btn-primary" id="authSubmit" type="submit">Войти</button>
       </form>
     </div>
@@ -446,16 +463,28 @@
 
   <!-- Чат-бот -->
   <div id="chatbot-root">
-    <button class="chatbot-fab" id="chatbotToggle" type="button" aria-label="Открыть чат-помощник"
-            aria-expanded="false" aria-controls="chatbotWindow">
+    <button
+      class="chatbot-fab"
+      id="chatbotToggle"
+      type="button"
+      aria-label="Открыть чат-помощник"
+      aria-expanded="false"
+      aria-controls="chatbotWindow"
+    >
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M5 20c0-8 5-13 14-15-1 9-6 14-14 15Z"/>
         <path d="M5 20c3-6 7-10 12-13"/>
       </svg>
     </button>
 
-    <section class="chatbot-window" id="chatbotWindow" role="dialog" aria-modal="true"
-             aria-label="Чат-помощник" hidden>
+    <section
+      class="chatbot-window"
+      id="chatbotWindow"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Чат-помощник"
+      hidden
+    >
       <div class="chatbot-header">
         <div class="chatbot-title">
           <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -482,8 +511,14 @@
       </div>
 
       <form class="chatbot-form" id="chatbotForm" autocomplete="off">
-        <input class="chatbot-input" id="chatbotInput" name="message" type="text"
-               placeholder="Напишите вопрос…" aria-label="Сообщение для чат-помощника">
+        <input
+          class="chatbot-input"
+          id="chatbotInput"
+          name="message"
+          type="text"
+          placeholder="Напишите вопрос…"
+          aria-label="Сообщение для чат-помощника"
+        >
         <button class="chatbot-send" type="submit" aria-label="Отправить сообщение">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M4 12l16-7-4 14-4-5-8-2Z"/><path d="M12 14l8-9"/>
@@ -501,13 +536,17 @@
         <span class="typechip tc-green">Тип</span>
         <span class="rate-badge hidden">★ –</span>
         <div class="card-tools">
-          <button class="icon-btn fav-btn" type="button" data-action="toggle-favorite"
-                  aria-label="Добавить в избранное" aria-pressed="false">
+          <button
+            class="icon-btn fav-btn" type="button" data-action="toggle-favorite"
+            aria-label="Добавить в избранное" aria-pressed="false"
+          >
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10Z"/></svg>
           </button>
           <div class="menu-wrap">
-            <button class="icon-btn" type="button" data-action="open-menu"
-                    aria-label="Действия с чаем" aria-haspopup="true" aria-expanded="false">
+            <button
+              class="icon-btn" type="button" data-action="open-menu"
+              aria-label="Действия с чаем" aria-haspopup="true" aria-expanded="false"
+            >
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg>
             </button>
             <div class="menu hidden">
@@ -527,16 +566,12 @@
           </div>
         </div>
       </div>
-
       <h3 class="card-name">Название чая</h3>
-
       <div class="qty-row">
         <div class="qty">0<span> г</span></div>
         <div class="brews">0 завариваний</div>
       </div>
-
       <div class="bar" aria-hidden="true"><div class="bar-fill bar-active"></div></div>
-
       <div class="card-actions">
         <button class="btn btn-primary btn-sm" type="button" data-action="brew">Заварил</button>
         <button class="btn btn-outline btn-sm" type="button" data-action="restock">Пополнить</button>
@@ -561,14 +596,14 @@
     </div>
   </template>
 
-  <!-- Шаблон строки хотелок -->
-  <template id="wishlistRowTemplate">
+  <!-- Шаблон строки избранного (Блок B) -->
+  <template id="favoritesRowTemplate">
     <div class="wrow" data-tea-id="">
       <div class="wn">
         <b>Название чая</b>
-        <span>Хочу попробовать</span>
+        <span>Избранное</span>
       </div>
-      <button class="btn btn-outline btn-sm" type="button" data-action="add-from-wishlist">На полку</button>
+      <button class="btn btn-outline btn-sm" type="button" data-action="add-from-favorites">На полку</button>
     </div>
   </template>
 

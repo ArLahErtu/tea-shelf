@@ -2,7 +2,9 @@
 // catalog.js — логика страницы catalog.html
 // Словарь БД: status='published', автор — author_id,
 // типы по-русски, region/temp/time — text, tags — text
-// Блок 3: обработка unique_violation (23505) при добавлении на полку.
+// Блок B: «Избранное» вместо «хотелок»: сердце на карточке и
+// кнопка в модалке пишут в таблицу wishlist (единый список
+// избранного). Починена мёртвая кнопка «Хочу попробовать».
 // ============================================================
 import { initCommon } from './common.js';
 import { supabase } from './supabaseClient.js';
@@ -49,6 +51,7 @@ async function load() {
   if (published === null) {
     throw new Error('Нет соединения с базой. Проверь сеть/блокировщики и нажми «Повторить».');
   }
+
   let pending = [];
   const user = getUser();
   if (user) {
@@ -58,7 +61,7 @@ async function load() {
       safeFetch(() => supabase.from(TABLES.shelf).select('tea_id')
         .eq('user_id', user.id), 'shelf ids'),
       safeFetch(() => supabase.from(TABLES.wishlist).select('tea_id')
-        .eq('user_id', user.id), 'wishlist ids'),
+        .eq('user_id', user.id), 'favorites ids'),
     ]);
     pending = p || [];
     myShelf = new Set((sh || []).map((r) => r.tea_id));
@@ -127,6 +130,7 @@ function cardNode(tea) {
   node.querySelector('.onshelf').classList.toggle('hidden', !onShelf);
   node.querySelector('[data-action="add-to-shelf"]')
     .classList.toggle('hidden', onShelf || tea.status === 'pending');
+
   node.querySelector('.heart').classList.toggle('on', favorites.has(tea.id));
   return node;
 }
@@ -135,12 +139,43 @@ function render() {
   const grid = $('#catalogGrid');
   grid.setAttribute('aria-busy', 'false');
   grid.innerHTML = '';
+
   const list = applyFilters();
   if (!list.length) {
-    grid.innerHTML = `<div class="empty grid-col-span"> <h3>Ничего не найдено</h3> <p>Попробуйте изменить запрос или сортировку.</p> </div>`;
+    grid.innerHTML = `<div class="empty grid-col-span">
+      <h3>Ничего не найдено</h3>
+      <p>Попробуйте изменить запрос или сортировку.</p>
+    </div>`;
     return;
   }
   list.forEach((t) => grid.appendChild(cardNode(t)));
+}
+
+// ---------- Избранное (Блок B) ----------
+function syncFavBtn(tea) {
+  const label = $('#wishlistBtnText');
+  if (!label || !tea) return;
+  label.textContent = favorites.has(tea.id) ? 'В избранном ✓' : 'В избранное';
+}
+
+async function toggleFavorite(tea) {
+  const user = getUser();
+  if (!user) { showToast('Сначала войдите', 'warn'); return; }
+
+  if (favorites.has(tea.id)) {
+    await supabase.from(TABLES.wishlist).delete()
+      .eq('user_id', user.id).eq('tea_id', tea.id);
+    favorites.delete(tea.id);
+    showToast(`«${tea.name}» убран из избранного`);
+  } else {
+    const { error } = await supabase.from(TABLES.wishlist)
+      .insert({ user_id: user.id, tea_id: tea.id });
+    if (error) return showToast('Не удалось добавить: ' + error.message, 'warn');
+    favorites.add(tea.id);
+    showToast(`«${tea.name}» — в избранном`);
+  }
+  syncFavBtn(tea);
+  render();
 }
 
 // ---------- Действия ----------
@@ -165,7 +200,6 @@ async function addToShelf(tea, payload) {
     }
     return showToast('Не удалось добавить: ' + error.message, 'warn');
   }
-
   myShelf.add(tea.id);
   showToast(`«${tea.name}» добавлен на полку`);
   $('#addToShelfBtn')?.classList.add('hidden'); // чай уже на полке — кнопка модалки гаснет
@@ -179,21 +213,6 @@ function requestAdd(tea) {
     teaName: tea.name,
     onSubmit: (p) => addToShelf(tea, p),
   });
-}
-
-async function toggleFavorite(tea) {
-  const user = getUser();
-  if (!user) { showToast('Сначала войдите', 'warn'); return; }
-  if (favorites.has(tea.id)) {
-    await supabase.from(TABLES.wishlist).delete()
-      .eq('user_id', user.id).eq('tea_id', tea.id);
-    favorites.delete(tea.id);
-  } else {
-    await supabase.from(TABLES.wishlist).insert({ user_id: user.id, tea_id: tea.id });
-    favorites.add(tea.id);
-    showToast(`«${tea.name}» — в хотелках`);
-  }
-  render();
 }
 
 // ---------- Предложить чай ----------
@@ -214,6 +233,7 @@ function initPropose() {
 
     const name = $('#proposeName').value.trim();
     const type = $('#proposeType').value;
+
     let ok = true;
     ok = setInvalid($('#proposeName').closest('.field'), !name) && ok;
     ok = setInvalid($('#proposeType').closest('.field'), !type) && ok;
@@ -246,6 +266,7 @@ async function init() {
     state.q = e.target.value.trim().toLowerCase();
     render();
   });
+
   $('#catalogSort').addEventListener('change', (e) => {
     state.sort = e.target.value;
     render();
@@ -257,10 +278,13 @@ async function init() {
     if (!card) return;
     const tea = teas.find((t) => String(t.id) === card.dataset.teaId);
     if (!tea) return;
+
     if (e.target.closest('[data-action="add-to-shelf"]')) return requestAdd(tea);
     if (e.target.closest('.heart')) return toggleFavorite(tea);
+
     currentTea = tea;
     openTeaModal(tea, teas);
+    syncFavBtn(tea);
     // кнопка «На полку» в модалке: скрыта, если чай уже на полке или pending
     $('#addToShelfBtn')?.classList.toggle('hidden',
       myShelf.has(tea.id) || tea.status === 'pending');
@@ -271,6 +295,11 @@ async function init() {
     if (currentTea) requestAdd(currentTea);
   });
 
+  // Кнопка избранного внутри карточки чая (Блок B: раньше была мёртвой)
+  $('#wishlistBtn')?.addEventListener('click', () => {
+    if (currentTea) toggleFavorite(currentTea);
+  });
+
   initPropose();
 
   try {
@@ -278,7 +307,13 @@ async function init() {
     render();
   } catch (err) {
     grid.setAttribute('aria-busy', 'false');
-    grid.innerHTML = `<div class="empty grid-col-span"> <h3>Не удалось загрузить каталог</h3> <p>${escapeHtml(err.message || 'Проверьте подключение и ключи Supabase.')}</p> <button class="btn btn-primary" type="button" onclick="location.reload()"> Повторить </button> </div>`;
+    grid.innerHTML = `<div class="empty grid-col-span">
+      <h3>Не удалось загрузить каталог</h3>
+      <p>${escapeHtml(err.message || 'Проверьте подключение и ключи Supabase.')}</p>
+      <button class="btn btn-primary" type="button" onclick="location.reload()">
+        Повторить
+      </button>
+    </div>`;
   }
 }
 

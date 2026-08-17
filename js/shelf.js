@@ -4,6 +4,9 @@
 // типы по-русски, регион — region, время журнала — created_at
 // Блок 3: заваривание через RPC brew_tea (атомарно, +popularity),
 // дубли полки обрабатываются по коду 23505.
+// Блок B: «Избранное» вместо «хотелок» — сердце на карточке полки
+// и кнопка в модалке пишут в таблицу wishlist; секция «Избранное»
+// заменяет «Из хотелок». Колонка user_shelf.favorite не используется.
 // ============================================================
 import { initCommon } from './common.js';
 import { supabase } from './supabaseClient.js';
@@ -20,7 +23,7 @@ import { initAmountModal, openAmountModal } from './amountModal.js';
 let shelf = [];        // строки user_shelf + .tea
 let journal = [];
 let requests = [];
-let wishlist = [];     // tea_id из таблицы wishlist
+let favorites = [];    // tea_id из таблицы wishlist (избранное)
 let catalogAll = [];
 let brewRow = null;
 let brewRating = 0;
@@ -35,9 +38,9 @@ const statusOf = (r) =>
 // ---------- Загрузка ----------
 async function load() {
   const user = getUser();
-  if (!user) { shelf = []; journal = []; requests = []; wishlist = []; return; }
+  if (!user) { shelf = []; journal = []; requests = []; favorites = []; return; }
 
-  const [sh, j, rq, cat, wl] = await Promise.all([
+  const [sh, j, rq, cat, fav] = await Promise.all([
     supabase.from(TABLES.shelf).select('*').eq('user_id', user.id),
     supabase.from(TABLES.journal).select('*').eq('user_id', user.id)
       .order('created_at', { ascending: false }),
@@ -59,7 +62,7 @@ async function load() {
   }));
   journal = j.data || [];
   requests = rq.data || [];
-  wishlist = (wl.data || []).map((r) => r.tea_id);
+  favorites = (fav.data || []).map((r) => r.tea_id);
 }
 
 // ---------- Статистика ----------
@@ -80,36 +83,53 @@ function renderShopping() {
   const rows = shelf.filter((r) => statusOf(r) !== 'available');
   $('#shoppingCount').textContent = rows.length;
   box.innerHTML = '';
+
   if (!rows.length) {
     box.innerHTML = '<p class="hint">Список пуст. Когда чай закончится или его станет мало, он появится здесь.</p>';
     $('#restockSelectedBtn').disabled = true;
     return;
   }
+
   rows.forEach((r) => {
     const node = document.createElement('div');
     node.className = 'buyrow';
     node.dataset.shelfId = r.id;
-    node.innerHTML = `<label class="buy-check"> <input type="checkbox" checked aria-label="Выбрать к закупке"> </label> <div class="buy-info"> <b>${escapeHtml(r.tea.name)}</b> <span class="${statusOf(r) === 'low' ? 'st-low' : 'st-fin'}"> ${statusOf(r) === 'low' ? 'Мало' : 'Закончился'} · осталось ${r.amount} ${UNIT_LABELS[r.unit] || 'г'} </span> </div> <div class="buy-amt"> <input type="number" min="1" step="1" value="50" inputmode="numeric" aria-label="Количество к дозакупке"> <em>${UNIT_LABELS[r.unit] || 'г'}</em> </div>`;
+    node.innerHTML = `<label class="buy-check">
+        <input type="checkbox" checked aria-label="Выбрать к закупке">
+      </label>
+      <div class="buy-info">
+        <b>${escapeHtml(r.tea.name)}</b>
+        <span class="${statusOf(r) === 'low' ? 'st-low' : 'st-fin'}">
+          ${statusOf(r) === 'low' ? 'Мало' : 'Закончился'} · осталось ${r.amount} ${UNIT_LABELS[r.unit] || 'г'}
+        </span>
+      </div>
+      <div class="buy-amt">
+        <input type="number" min="1" step="1" value="50" inputmode="numeric" aria-label="Количество к дозакупке">
+        <em>${UNIT_LABELS[r.unit] || 'г'}</em>
+      </div>`;
     box.appendChild(node);
   });
   $('#restockSelectedBtn').disabled = false;
 }
 
-// ---------- Хотелки ----------
-function renderWishlist() {
-  const box = $('#wishlistList');
+// ---------- Избранное (Блок B) ----------
+function renderFavorites() {
+  const box = $('#favoritesList');
   box.innerHTML = '';
-  const teas = catalogAll.filter((t) => wishlist.includes(t.id));
+  const teas = catalogAll.filter((t) => favorites.includes(t.id));
+  $('#favoritesCount').textContent = teas.length;
+
   if (!teas.length) {
-    box.innerHTML = '<p class="hint">Пока пусто. Отмечайте чаи сердцем в каталоге.</p>';
+    box.innerHTML = '<p class="hint">Пока пусто. Отмечайте чаи сердцем в каталоге или на полке.</p>';
     return;
   }
-  const tpl = $('#wishlistRowTemplate');
+
+  const tpl = $('#favoritesRowTemplate');
   teas.forEach((t) => {
     const node = tpl.content.firstElementChild.cloneNode(true);
     node.dataset.teaId = t.id;
     node.querySelector('b').textContent = t.name;
-    node.querySelector('span').textContent = t.region || 'Хочу попробовать';
+    node.querySelector('span').textContent = t.region || 'Избранное';
     box.appendChild(node);
   });
 }
@@ -119,10 +139,12 @@ function renderModeration() {
   const box = $('#moderationList');
   $('#moderationCount').textContent = requests.length;
   box.innerHTML = '';
+
   if (!requests.length) {
     box.innerHTML = '<p class="hint">Заявок пока нет.</p>';
     return;
   }
+
   const tpl = $('#moderationRowTemplate');
   requests.forEach((r) => {
     const node = tpl.content.firstElementChild.cloneNode(true);
@@ -138,18 +160,28 @@ function renderGrid() {
   const grid = $('#shelfGrid');
   grid.setAttribute('aria-busy', 'false');
   grid.innerHTML = '';
+
   const user = getUser();
   if (!user) {
-    grid.innerHTML = `<div class="empty grid-col-span"> <h3>Полка доступна после входа</h3> <p>Остатки и журнал привязаны к аккаунту.</p> <button class="btn btn-primary" type="button" data-auth-required="true">Войти</button> </div>`;
+    grid.innerHTML = `<div class="empty grid-col-span">
+      <h3>Полка доступна после входа</h3>
+      <p>Остатки и журнал привязаны к аккаунту.</p>
+      <button class="btn btn-primary" type="button" data-auth-required="true">Войти</button>
+    </div>`;
     return;
   }
+
   $('#countAll').textContent = shelf.length;
   $('#countAvailable').textContent = shelf.filter((r) => statusOf(r) === 'available').length;
   $('#countLow').textContent = shelf.filter((r) => statusOf(r) === 'low').length;
   $('#countFinished').textContent = shelf.filter((r) => statusOf(r) === 'finished').length;
 
   if (!shelf.length) {
-    grid.innerHTML = `<div class="empty grid-col-span"> <h3>Полка пока пуста</h3> <p>Добавьте первый чай из каталога — остатки и заваривания будут привязаны к вашему аккаунту.</p> <a class="btn btn-primary" href="catalog.html">Добавить из каталога</a> </div>`;
+    grid.innerHTML = `<div class="empty grid-col-span">
+      <h3>Полка пока пуста</h3>
+      <p>Добавьте первый чай из каталога — остатки и заваривания будут привязаны к вашему аккаунту.</p>
+      <a class="btn btn-primary" href="catalog.html">Добавить из каталога</a>
+    </div>`;
     return;
   }
 
@@ -164,9 +196,13 @@ function renderGrid() {
     });
 
   if (!list.length) {
-    grid.innerHTML = `<div class="empty grid-col-span"> <h3>Ничего не найдено</h3> <p>Попробуйте другой фильтр.</p> </div>`;
+    grid.innerHTML = `<div class="empty grid-col-span">
+      <h3>Ничего не найдено</h3>
+      <p>Попробуйте другой фильтр.</p>
+    </div>`;
     return;
   }
+
   list.forEach((r) => grid.appendChild(cardNode(r)));
 }
 
@@ -202,7 +238,8 @@ function cardNode(r) {
   fill.className = 'bar-fill ' + { available: 'bar-active', low: 'bar-low', finished: 'bar-finished' }[st];
   fill.style.width = Math.max(4, Math.min(100, (r.amount / 150) * 100)) + '%';
 
-  node.querySelector('.fav-btn').classList.toggle('on', !!r.favorite);
+  // Блок B: избранное — по таблице wishlist, не по user_shelf.favorite
+  node.querySelector('.fav-btn').classList.toggle('on', favorites.includes(r.tea_id));
   node.classList.toggle('low-ring', st === 'low');
   return node;
 }
@@ -211,16 +248,24 @@ function cardNode(r) {
 function renderJournal() {
   const box = $('#journalList');
   box.innerHTML = '';
+
   if (!journal.length) {
     box.innerHTML = '<p class="hint">Записи появятся после первого заваривания.</p>';
     return;
   }
+
   const teaById = new Map(catalogAll.map((t) => [t.id, t]));
   journal.slice(0, 20).forEach((j) => {
     const node = document.createElement('div');
     node.className = 'jentry';
-    node.innerHTML =
-      `<div class="jdate">${j.created_at ? formatDate(j.created_at) : '—'}</div> <div class="jbody"> <b>${escapeHtml(teaById.get(j.tea_id)?.name || 'Чай')}</b> <div class="jm">${j.amount} ${UNIT_LABELS[j.unit] || 'г'}</div> ${j.note ? `<div class="jnote">${escapeHtml(j.note)}</div>` : ''} ${j.rating ? `<div class="jstars">${'★'.repeat(j.rating)}${'☆'.repeat(5 - j.rating)}</div>` : ''} </div>`;
+    node.innerHTML = `
+      <div class="jdate">${j.created_at ? formatDate(j.created_at) : '—'}</div>
+      <div class="jbody">
+        <b>${escapeHtml(teaById.get(j.tea_id)?.name || 'Чай')}</b>
+        <div class="jm">${j.amount} ${UNIT_LABELS[j.unit] || 'г'}</div>
+        ${j.note ? `<div class="jnote">${escapeHtml(j.note)}</div>` : ''}
+        ${j.rating ? `<div class="jstars">${'★'.repeat(j.rating)}${'☆'.repeat(5 - j.rating)}</div>` : ''}
+      </div>`;
     box.appendChild(node);
   });
 }
@@ -228,10 +273,11 @@ function renderJournal() {
 function renderAll() {
   renderStats();
   renderShopping();
-  renderWishlist();
+  renderFavorites();
   renderModeration();
   renderGrid();
   renderJournal();
+
   const low = shelf.filter((r) => statusOf(r) !== 'available').length;
   $('#shelfBanner').classList.toggle('hidden', !low);
   if (low) {
@@ -353,23 +399,49 @@ async function removeRow(row) {
     okLabel: 'Убрать',
   });
   if (!ok) return;
+
   await supabase.from(TABLES.shelf).delete().eq('id', row.id);
   showToast('Чай убран с полки');
   await load(); renderAll();
 }
 
-async function toggleFav(row) {
-  await supabase.from(TABLES.shelf).update({ favorite: !row.favorite }).eq('id', row.id);
-  await load(); renderAll();
+// ---------- Избранное (Блок B): переключение ----------
+function syncFavBtn(teaId) {
+  const label = $('#wishlistBtnText');
+  if (!label || teaId == null) return;
+  label.textContent = favorites.includes(teaId) ? 'В избранном ✓' : 'В избранное';
 }
 
-// Хотелка → полка: количество и порог выбирает пользователь
-function addFromWishlist(teaId) {
+async function toggleFav(row) {
+  const user = getUser();
+  if (!user) { showToast('Сначала войдите', 'warn'); return; }
+  const id = row.tea_id;
+
+  if (favorites.includes(id)) {
+    await supabase.from(TABLES.wishlist).delete()
+      .eq('user_id', user.id).eq('tea_id', id);
+    favorites = favorites.filter((x) => x !== id);
+    showToast(`«${row.tea.name}» убран из избранного`);
+  } else {
+    const { error } = await supabase.from(TABLES.wishlist)
+      .insert({ user_id: user.id, tea_id: id });
+    if (error) return showToast('Не удалось добавить: ' + error.message, 'warn');
+    favorites.push(id);
+    showToast(`«${row.tea.name}» — в избранном`);
+  }
+  syncFavBtn(id);
+  renderGrid();
+  renderFavorites();
+}
+
+// Избранное → полка: количество и порог выбирает пользователь
+function addFromFavorites(teaId) {
   const tea = catalogAll.find((t) => String(t.id) === String(teaId));
   if (!tea) return;
   if (shelf.some((r) => r.tea_id === tea.id)) {
     return showToast('Этот чай уже на полке', 'warn');
   }
+
   openAmountModal({
     mode: 'add',
     teaName: tea.name,
@@ -387,8 +459,7 @@ function addFromWishlist(teaId) {
         if (error.code === '23505') return showToast('Этот чай уже на полке', 'warn');
         return showToast('Не удалось добавить: ' + error.message, 'warn');
       }
-      await supabase.from(TABLES.wishlist).delete()
-        .eq('user_id', user.id).eq('tea_id', tea.id);
+      // Избранное НЕ снимаем: это постоянная метка, убирается сердцем
       showToast(`«${tea.name}» добавлен на полку`);
       await load(); renderAll();
     },
@@ -409,6 +480,7 @@ function initRestock() {
       }
     });
     if (!jobs.length) return showToast('Отметьте хотя бы одну позицию', 'warn');
+
     await Promise.all(jobs);
     $('#shoppingSuccess').classList.remove('hidden');
     setTimeout(() => $('#shoppingSuccess').classList.add('hidden'), 3000);
@@ -417,13 +489,13 @@ function initRestock() {
   });
 }
 
-// ---------- Хотелки: клики ----------
-function initWishlist() {
-  $('#wishlistList').addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-action="add-from-wishlist"]');
+// ---------- Избранное: клики по списку ----------
+function initFavorites() {
+  $('#favoritesList').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action="add-from-favorites"]');
     if (!btn) return;
     const row = btn.closest('.wrow');
-    addFromWishlist(row.dataset.teaId);
+    addFromFavorites(row.dataset.teaId);
   });
 }
 
@@ -441,6 +513,7 @@ function initFilters() {
       renderGrid();
     });
   });
+
   $('#shelfTypeFilter').addEventListener('change', (e) => { filters.type = e.target.value; renderGrid(); });
   $('#shelfSort').addEventListener('change', (e) => { filters.sort = e.target.value; renderGrid(); });
 }
@@ -452,7 +525,7 @@ async function init() {
   initFilters();
   initBrew();
   initRestock();
-  initWishlist();
+  initFavorites();
 
   // Кнопки каталожной модалки на странице полки
   $('#addToShelfBtn')?.addEventListener('click', () => {
@@ -467,6 +540,7 @@ async function init() {
     if (!card) return;
     const row = shelf.find((r) => String(r.id) === card.dataset.shelfId);
     if (!row) return;
+
     if (e.target.closest('[data-action="brew"]'))            return openBrew(row);
     if (e.target.closest('[data-action="restock"]'))         return restockRow(row);
     if (e.target.closest('[data-action="edit"]'))            return editAmount(row);
@@ -478,8 +552,10 @@ async function init() {
       menu.classList.toggle('hidden');
       return;
     }
+
     currentRow = row;
     openTeaModal(row.tea, catalogAll);
+    syncFavBtn(row.tea_id);
   });
 
   document.addEventListener('click', (e) => {
@@ -495,7 +571,10 @@ async function init() {
     renderAll();
   } catch (err) {
     $('#shelfGrid').setAttribute('aria-busy', 'false');
-    $('#shelfGrid').innerHTML = `<div class="empty grid-col-span"> <h3>Не удалось загрузить полку</h3> <p>${escapeHtml(err.message || 'Проверьте подключение и ключи Supabase.')}</p> </div>`;
+    $('#shelfGrid').innerHTML = `<div class="empty grid-col-span">
+      <h3>Не удалось загрузить полку</h3>
+      <p>${escapeHtml(err.message || 'Проверьте подключение и ключи Supabase.')}</p>
+    </div>`;
   }
 }
 
