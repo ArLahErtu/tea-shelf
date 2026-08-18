@@ -9,8 +9,7 @@ export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // НЕДЕЛЯ 4 (Блок D): выключено перед публичным запуском.
 export const SHOW_DEMO_ACCOUNTS = false;
 
-// ---------- Обратная связь (Неделя 4, Блок F) ----------
-// Ссылка на Google Form. Пока пустая — ссылка в футере не появляется.
+// ---------- Обратная связь ----------
 export const FEEDBACK_URL = ''; 'https://forms.gle/rCcAXQ7kSTANzhqm7'
 
 // ---------- Аналитика: Яндекс Метрика ----------
