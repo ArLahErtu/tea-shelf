@@ -1,8 +1,9 @@
 // ============================================================
 // auth.js — вход, регистрация, выход, состояние шапки
+// Неделя 4, Блок E: события Vercel Analytics signup / login.
 // ============================================================
 import { supabase, isConfigured } from './supabaseClient.js';
-import { $, openOverlay, closeOverlay, wireOverlay, showToast, setInvalid, isValidEmail, escapeHtml } from './ui.js';
+import { $, openOverlay, closeOverlay, wireOverlay, showToast, setInvalid, isValidEmail, trackEvent } from './ui.js';
 import { SHOW_DEMO_ACCOUNTS } from './config.js';
 
 let currentUser = null;
@@ -126,6 +127,7 @@ export async function initAuth() {
       if (mode === 'login') {
         const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
         if (error) throw error;
+        trackEvent('login');
         closeOverlay(overlay);
         showToast('С возвращением!');
       } else {
@@ -146,6 +148,7 @@ export async function initAuth() {
           return; // модалку не закрываем, форму не сбрасываем
         }
 
+        trackEvent('signup');
         closeOverlay(overlay);
         showToast(data.session
           ? 'Аккаунт создан. Добро пожаловать!'

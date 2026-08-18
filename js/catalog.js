@@ -2,18 +2,18 @@
 // catalog.js — логика страницы catalog.html
 // Словарь БД: status='published', автор — author_id,
 // типы по-русски, region/temp/time — text, tags — text
-// Блок B: «Избранное» вместо «хотелок»: сердце на карточке и
-// кнопка в модалке пишут в таблицу wishlist (единый список
-// избранного). Починена мёртвая кнопка «Хочу попробовать».
-// Блок C: серверная пагинация — по 20 карточек за запрос,
-// поиск и сортировка на сервере, кнопка «Показать ещё».
+// Блок B: «Избранное» вместо «хотелок» (таблица wishlist).
+// Блок C: серверная пагинация по 20 + «Показать ещё».
+// Неделя 4: серверный фильтр по типу чая; события Vercel
+// Analytics: tea_card_opened / tea_added_to_shelf / tea_proposed /
+// favorite_toggled.
 // ============================================================
 import { initCommon } from './common.js';
 import { supabase } from './supabaseClient.js';
 import { TABLES } from './config.js';
 import {
   $, showToast, openOverlay, closeOverlay, wireOverlay,
-  setInvalid, escapeHtml, plural, typeClass, TYPE_TO_DB, toTags,
+  setInvalid, escapeHtml, plural, typeClass, TYPE_TO_DB, toTags, trackEvent,
 } from './ui.js';
 import { getUser } from './auth.js';
 import { openTeaModal } from './teaModal.js';
@@ -32,7 +32,7 @@ let loadedCount = 0;  // сколько published загружено в теку
 let canMore = false;  // возможно, в базе есть ещё
 let loading = false;
 
-const state = { q: '', sort: 'popular' };
+const state = { q: '', sort: 'popular', type: 'all' };
 
 // ---------- Устойчивость к сети ----------
 async function safeFetch(build, label = '') {
@@ -52,10 +52,13 @@ async function safeFetch(build, label = '') {
   return null;
 }
 
-// ---------- Серверный запрос: поиск + сортировка + страница ----------
+// ---------- Серверный запрос: поиск + тип + сортировка + страница ----------
 function pageQuery(offset) {
   let q = supabase.from(TABLES.catalog).select('*')
     .eq('status', 'published');
+  if (state.type !== 'all') {
+    q = q.eq('type', state.type);
+  }
   if (state.q) {
     q = q.or(`name.ilike.%${state.q}%,region.ilike.%${state.q}%`);
   }
@@ -103,7 +106,7 @@ async function load() {
   renderMore();
 }
 
-// ---------- Поиск / сортировка: перезагрузка первой страницы ----------
+// ---------- Поиск / тип / сортировка: перезагрузка первой страницы ----------
 async function refresh() {
   const first = await loadPublished(0);
   if (first === null) return showToast('Не удалось обновить список', 'warn');
@@ -210,7 +213,7 @@ function render() {
   list.forEach((t) => grid.appendChild(cardNode(t)));
 }
 
-// ---------- Избранное (Блок B) ----------
+// ---------- Избранное ----------
 function syncFavBtn(tea) {
   const label = $('#wishlistBtnText');
   if (!label || !tea) return;
@@ -226,12 +229,14 @@ async function toggleFavorite(tea) {
       .eq('user_id', user.id).eq('tea_id', tea.id);
     favorites.delete(tea.id);
     showToast(`«${tea.name}» убран из избранного`);
+    trackEvent('favorite_toggled', { tea_id: tea.id, added: false });
   } else {
     const { error } = await supabase.from(TABLES.wishlist)
       .insert({ user_id: user.id, tea_id: tea.id });
     if (error) return showToast('Не удалось добавить: ' + error.message, 'warn');
     favorites.add(tea.id);
     showToast(`«${tea.name}» — в избранном`);
+    trackEvent('favorite_toggled', { tea_id: tea.id, added: true });
   }
   syncFavBtn(tea);
   render();
@@ -261,6 +266,7 @@ async function addToShelf(tea, payload) {
   }
   myShelf.add(tea.id);
   showToast(`«${tea.name}» добавлен на полку`);
+  trackEvent('tea_added_to_shelf', { tea_id: tea.id, tea_name: tea.name, unit: payload.unit });
   $('#addToShelfBtn')?.classList.add('hidden'); // чай уже на полке — кнопка модалки гаснет
   render();
 }
@@ -311,6 +317,7 @@ function initPropose() {
     closeOverlay(ov);
     e.target.reset();
     showToast('Заявка отправлена на модерацию');
+    trackEvent('tea_proposed', { tea_name: name, type: TYPE_TO_DB[type] || type });
     await load();
   });
 }
@@ -326,6 +333,12 @@ async function init() {
     state.q = e.target.value.trim().toLowerCase();
     clearTimeout(searchTimer);
     searchTimer = setTimeout(refresh, 350);
+  });
+
+  // Неделя 4: фильтр по типу
+  $('#catalogTypeFilter')?.addEventListener('change', (e) => {
+    state.type = e.target.value;
+    refresh();
   });
 
   $('#catalogSort').addEventListener('change', (e) => {
@@ -347,6 +360,7 @@ async function init() {
 
     currentTea = tea;
     openTeaModal(tea, teas);
+    trackEvent('tea_card_opened', { tea_id: tea.id, tea_name: tea.name });
     syncFavBtn(tea);
     // кнопка «На полку» в модалке: скрыта, если чай уже на полке или pending
     $('#addToShelfBtn')?.classList.toggle('hidden',
@@ -358,7 +372,7 @@ async function init() {
     if (currentTea) requestAdd(currentTea);
   });
 
-  // Кнопка избранного внутри карточки чая (Блок B)
+  // Кнопка избранного внутри карточки чая
   $('#wishlistBtn')?.addEventListener('click', () => {
     if (currentTea) toggleFavorite(currentTea);
   });

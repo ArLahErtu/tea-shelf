@@ -139,7 +139,7 @@
         </div>
       </div>
 
-      <div class="toolbar" role="search" aria-label="Поиск и сортировка каталога">
+      <div class="toolbar" role="search" aria-label="Поиск и фильтры каталога">
         <div class="search-wrap">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>
@@ -152,6 +152,23 @@
             autocomplete="off"
           >
         </div>
+        <!-- Неделя 4: фильтр по типу чая (значения = как в БД) -->
+        <select class="sel" id="catalogTypeFilter" aria-label="Фильтр по типу чая">
+          <option value="all">Все типы</option>
+          <option value="улун">Улун</option>
+          <option value="зелёный">Зелёный</option>
+          <option value="пуэр">Пуэр</option>
+          <option value="белый">Белый</option>
+          <option value="красный">Красный</option>
+          <option value="жёлтый">Жёлтый</option>
+          <option value="матте">Матте</option>
+          <option value="цветочный">Цветочный</option>
+          <option value="матча">Матча</option>
+          <option value="хэй ча">Хэй ча</option>
+          <option value="чёрный">Чёрный</option>
+          <option value="травяной">Травяной</option>
+          <option value="смесь">Смесь / купаж</option>
+        </select>
         <select class="sel" id="catalogSort" aria-label="Сортировка каталога">
           <option value="popular">По популярности</option>
           <option value="name">По названию, А–Я</option>
@@ -303,14 +320,20 @@
         <div class="row2">
           <div class="field">
             <label for="proposeType">Тип <span class="req">*</span></label>
+            <!-- Неделя 4: расширен список типов (реальные типы БД) -->
             <select id="proposeType" name="type" required>
               <option value="">Выберите тип</option>
               <option value="black">Чёрный</option>
               <option value="green">Зелёный</option>
               <option value="white">Белый</option>
+              <option value="yellow">Жёлтый</option>
               <option value="oolong">Улун</option>
+              <option value="red">Красный</option>
               <option value="puerh">Пуэр</option>
-              <option value="dark">Хэйча</option>
+              <option value="dark">Хэй ча</option>
+              <option value="floral">Цветочный</option>
+              <option value="matte">Матте</option>
+              <option value="matcha">Матча</option>
               <option value="herbal">Травяной</option>
               <option value="blend">Смесь / купаж</option>
             </select>

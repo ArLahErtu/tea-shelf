@@ -429,6 +429,7 @@ Chips / tabs
 
 /* ------------------------------------------------------------
 Tea type chips / tags
+Неделя 4: добавлены чипы реальных типов БД
 ------------------------------------------------------------ */
 .typechip {
   font-size: 11.5px;
@@ -444,6 +445,11 @@ Tea type chips / tags
 .tc-herbal { background: #E7EFD8; color: #55742F; }
 .tc-dark { background: #E4D9CE; color: #5B4632; }
 .tc-blend { background: #F2E3EE; color: #8A4E7F; }
+.tc-yellow { background: #F6EBC8; color: #8A6A16; }
+.tc-red { background: #F3DDD3; color: #8C4A2F; }
+.tc-floral { background: #EFE3F0; color: #7C4E80; }
+.tc-matte { background: #E4EAD8; color: #5A7031; }
+.tc-matcha { background: #DDEBD8; color: #3F7040; }
 .tagrow {
   display: flex;
   flex-wrap: wrap;

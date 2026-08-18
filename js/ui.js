@@ -1,6 +1,9 @@
 // ============================================================
 // ui.js — общие UI-хелперы и справочники
 // Используется всеми страницами: тосты, модалки, формы, словари
+// Неделя 4: словари типов приведены к реальным значениям БД
+// (жёлтый, красный, цветочный, матте, матча, «хэй ча» с пробелом);
+// добавлена обёртка trackEvent для Vercel Web Analytics.
 // ============================================================
 
 // ---------- DOM ----------
@@ -26,10 +29,12 @@ export function openOverlay(ov) {
   ov.hidden = false;
   requestAnimationFrame(() => ov.classList.add('show'));
 }
+
 export function closeOverlay(ov) {
   ov.classList.remove('show');
   setTimeout(() => { ov.hidden = true; }, 200);
 }
+
 // Закрытие по клику в подложку
 export function wireOverlay(ov) {
   ov.addEventListener('click', (e) => {
@@ -74,8 +79,6 @@ export function askConfirm({ title = 'Вы уверены?', text = '', okLabel 
 
   return new Promise((resolve) => {
     let settled = false;
-    // Любое закрытие оверлея (Esc из common.js, подложка, «Отмена»)
-    // снимаем класс .show → считаем отказом.
     const mo = new MutationObserver(() => {
       if (!ov.classList.contains('show')) settle(false);
     });
@@ -103,6 +106,7 @@ export function setInvalid(fieldEl, invalid) {
   fieldEl.classList.toggle('invalid', invalid);
   return !invalid;
 }
+
 export function isValidEmail(v) {
   return /^\S+@\S+\.\S+$/.test(String(v || '').trim());
 }
@@ -115,6 +119,7 @@ export function escapeHtml(str) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;');
 }
+
 // plural(3, ['заваривание','заваривания','завариваний'])
 export function plural(n, forms) {
   const n10 = n % 10;
@@ -123,6 +128,7 @@ export function plural(n, forms) {
   if (n10 >= 2 && n10 <= 4 && (n100 < 10 || n100 >= 20)) return forms[1];
   return forms[2];
 }
+
 export function formatDate(iso) {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString('ru-RU', {
@@ -130,6 +136,7 @@ export function formatDate(iso) {
     month: '2-digit',
   });
 }
+
 // Приводит теги из БД к массиву:
 // массив, Postgres-литерал '{a,b}', JSON '[...]' или строка через запятую
 export function toTags(v) {
@@ -138,7 +145,6 @@ export function toTags(v) {
   if (typeof v === 'string') {
     const s = v.trim();
     if (!s) return [];
-    // Postgres array literal: {a,b,"c d"}
     if (s.startsWith('{') && s.endsWith('}')) {
       const inner = s.slice(1, -1).trim();
       if (!inner) return [];
@@ -147,7 +153,6 @@ export function toTags(v) {
         .map((x) => x.trim().replace(/^"|"$/g, ''))
         .filter(Boolean);
     }
-    // JSON-массив
     if (s.startsWith('[')) {
       try {
         const p = JSON.parse(s);
@@ -156,35 +161,60 @@ export function toTags(v) {
         // падаем в вариант с запятыми
       }
     }
-    // строка через запятую
     return s.split(',').map((x) => x.trim()).filter(Boolean);
   }
   return [];
 }
 
+// ---------- Аналитика (Vercel Web Analytics, custom events) ----------
+// Неделя 4, Блок E. Vanilla-сигнатура из исходников @vercel/analytics:
+//   window.va('event', { name, data })
+// data — только плоские примитивы (string/number/boolean/null).
+// Аналитика не должна ломать приложение — всё в try/catch.
+export function trackEvent(name, props) {
+  try {
+    if (typeof window.va === 'function') {
+      window.va('event', props ? { name, data: props } : { name });
+    }
+  } catch (e) { /* ignore */ }
+}
+
 // ---------- Справочники чая ----------
-// value из HTML-селектов и форм → значение, как хранится в БД (по-русски)
+// value из HTML-селектов и форм → значение, как хранится в БД (по-русски).
+// Неделя 4: дополнено реальными типами из боевой БД.
 export const TYPE_TO_DB = {
   black:  'чёрный',
   green:  'зелёный',
   white:  'белый',
+  yellow: 'жёлтый',
   oolong: 'улун',
+  red:    'красный',
   puerh:  'пуэр',
-  dark:   'хэйча',
+  dark:   'хэй ча',
+  floral: 'цветочный',
+  matte:  'матте',
+  matcha: 'матча',
   herbal: 'травяной',
   blend:  'смесь',
 };
+
 // ключ → человекочитаемая метка (для подсказок и селектов)
 export const TYPE_LABELS = {
   black:  'Чёрный',
   green:  'Зелёный',
   white:  'Белый',
+  yellow: 'Жёлтый',
   oolong: 'Улун',
+  red:    'Красный',
   puerh:  'Пуэр',
-  dark:   'Хэйча',
+  dark:   'Хэй ча',
+  floral: 'Цветочный',
+  matte:  'Матте',
+  matcha: 'Матча',
   herbal: 'Травяной',
   blend:  'Смесь',
 };
+
 // значение type из БД (нижний регистр) → CSS-класс чипа
 export const TYPE_CLASS = {
   'чёрный':   'tc-black',
@@ -192,18 +222,26 @@ export const TYPE_CLASS = {
   'зелёный':  'tc-green',
   'зеленый':  'tc-green',
   'белый':    'tc-white',
+  'жёлтый':   'tc-yellow',
+  'желтый':   'tc-yellow',
   'улун':     'tc-oolong',
+  'красный':  'tc-red',
   'пуэр':     'tc-puerh',
   'хэйча':    'tc-dark',
+  'хэй ча':   'tc-dark',
+  'цветочный':'tc-floral',
+  'матте':    'tc-matte',
+  'матча':    'tc-matcha',
   'травяной': 'tc-herbal',
   'смесь':    'tc-blend',
   'купаж':    'tc-blend',
 };
+
 export function typeClass(type) {
   return TYPE_CLASS[String(type || '').toLowerCase()] || 'tc-blend';
 }
-// Алиас для старых импортов (teaModal.js и пр.) — не даёт коду упасть,
-// если где-то ещё остался typeChipClass
+
+// Алиас для старых импортов — не даёт коду упасть
 export const typeChipClass = typeClass;
 
 // ---------- Единицы измерения ----------
