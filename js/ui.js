@@ -1,7 +1,7 @@
 // ============================================================
 // ui.js — общие UI-хелперы и справочники
-// Неделя 4: trackEvent шлёт события в Яндекс Метрику
-// (PostHog не работает в РФ).
+// Неделя 4: trackEvent шлёт события в Яндекс Метрику;
+// словари типов приведены к реальным значениям БД.
 // ============================================================
 import { METRIKA_ID } from './config.js';
 
@@ -161,9 +161,7 @@ export function toTags(v) {
 
 // ---------- Аналитика: Яндекс Метрика ----------
 // События: signup / login / tea_card_opened / tea_added_to_shelf /
-// tea_proposed / favorite_toggled. В кабинете Метрики создай
-// цели типа «JavaScript-событие» с этими именами (или смотри
-// отчёт «События» — reachGoal попадает туда и без предсоздания).
+// tea_proposed / favorite_toggled. Попадают в отчёт «События».
 export function trackEvent(name, props) {
   try {
     if (METRIKA_ID && typeof window.ym === 'function') {
