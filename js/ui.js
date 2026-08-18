@@ -1,9 +1,9 @@
 // ============================================================
 // ui.js — общие UI-хелперы и справочники
-// Используется всеми страницами: тосты, модалки, формы, словари
-// Неделя 4: словари типов приведены к реальным значениям БД;
-// trackEvent шлёт продуктовые события в PostHog.
+// Неделя 4: trackEvent шлёт события в Яндекс Метрику
+// (PostHog не работает в РФ).
 // ============================================================
+import { METRIKA_ID } from './config.js';
 
 // ---------- DOM ----------
 export const $  = (s, r = document) => r.querySelector(s);
@@ -34,14 +34,13 @@ export function closeOverlay(ov) {
   setTimeout(() => { ov.hidden = true; }, 200);
 }
 
-// Закрытие по клику в подложку
 export function wireOverlay(ov) {
   ov.addEventListener('click', (e) => {
     if (e.target === ov) closeOverlay(ov);
   });
 }
 
-// ---------- Подтверждение действий (вместо native confirm) ----------
+// ---------- Подтверждение действий ----------
 let confirmOv = null;
 
 function buildConfirmOverlay() {
@@ -67,8 +66,6 @@ function buildConfirmOverlay() {
   return ov;
 }
 
-// Возвращает Promise<boolean>.
-// Esc / клик в подложку / «Отмена» → false, красная кнопка → true.
 export function askConfirm({ title = 'Вы уверены?', text = '', okLabel = 'Убрать' } = {}) {
   if (!confirmOv) confirmOv = buildConfirmOverlay();
   const ov = confirmOv;
@@ -119,7 +116,6 @@ export function escapeHtml(str) {
     .replaceAll('"', '&quot;');
 }
 
-// plural(3, ['заваривание','заваривания','завариваний'])
 export function plural(n, forms) {
   const n10 = n % 10;
   const n100 = n % 100;
@@ -136,8 +132,6 @@ export function formatDate(iso) {
   });
 }
 
-// Приводит теги из БД к массиву:
-// массив, Postgres-литерал '{a,b}', JSON '[...]' или строка через запятую
 export function toTags(v) {
   if (!v) return [];
   if (Array.isArray(v)) return v;
@@ -165,23 +159,20 @@ export function toTags(v) {
   return [];
 }
 
-// ---------- Аналитика (PostHog) ----------
-// Неделя 4, Блок E. События: signup / login / tea_card_opened /
-// tea_added_to_shelf / tea_proposed / favorite_toggled.
-// Сниппет в common.js создаёт window.posthog; до загрузки SDK
-// вызовы capture попадают в его очередь. Аналитика не должна
-// ломать приложение — всё в try/catch.
+// ---------- Аналитика: Яндекс Метрика ----------
+// События: signup / login / tea_card_opened / tea_added_to_shelf /
+// tea_proposed / favorite_toggled. В кабинете Метрики создай
+// цели типа «JavaScript-событие» с этими именами (или смотри
+// отчёт «События» — reachGoal попадает туда и без предсоздания).
 export function trackEvent(name, props) {
   try {
-    if (window.posthog?.capture) {
-      window.posthog.capture(name, props || {});
+    if (METRIKA_ID && typeof window.ym === 'function') {
+      window.ym(METRIKA_ID, 'reachGoal', name, props || {});
     }
-  } catch (e) { /* ignore */ }
+  } catch (e) { /* аналитика не должна ломать приложение */ }
 }
 
 // ---------- Справочники чая ----------
-// value из HTML-селектов и форм → значение, как хранится в БД (по-русски).
-// Неделя 4: дополнено реальными типами из боевой БД.
 export const TYPE_TO_DB = {
   black:  'чёрный',
   green:  'зелёный',
@@ -198,7 +189,6 @@ export const TYPE_TO_DB = {
   blend:  'смесь',
 };
 
-// ключ → человекочитаемая метка (для подсказок и селектов)
 export const TYPE_LABELS = {
   black:  'Чёрный',
   green:  'Зелёный',
@@ -215,7 +205,6 @@ export const TYPE_LABELS = {
   blend:  'Смесь',
 };
 
-// значение type из БД (нижний регистр) → CSS-класс чипа
 export const TYPE_CLASS = {
   'чёрный':   'tc-black',
   'черный':   'tc-black',
@@ -241,7 +230,6 @@ export function typeClass(type) {
   return TYPE_CLASS[String(type || '').toLowerCase()] || 'tc-blend';
 }
 
-// Алиас для старых импортов — не даёт коду упасть
 export const typeChipClass = typeClass;
 
 // ---------- Единицы измерения ----------

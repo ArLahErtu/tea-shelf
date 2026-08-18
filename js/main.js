@@ -1,8 +1,9 @@
 // ============================================================
 // main.js — точка входа для главной страницы
-// Блок 4 (переделан): «Библиотека» оживает БЕЗ правки index.html —
-// скрипт сам находит .tea-grid и подставляет топ-6 по popularity.
-// Статичные карточки в HTML остаются фолбэком при ошибке сети/БД.
+// «Библиотека» оживает без правки index.html (топ-6 по popularity,
+// статика в HTML — фолбэк).
+// Неделя 4: карусель «Возможности» на мобильном — автопрокрутка
+// с паузой при взаимодействии пользователя.
 // ============================================================
 import { initCommon } from './common.js';
 import { supabase, isConfigured } from './supabaseClient.js';
@@ -12,7 +13,6 @@ import { $, escapeHtml } from './ui.js';
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
 async function loadLibrary() {
-  // На главной ровно одна сетка мини-карточек каталога
   const grid = $('.tea-grid');
   if (!grid || !isConfigured()) return;
 
@@ -24,7 +24,6 @@ async function loadLibrary() {
     .order('id', { ascending: true })
     .limit(6);
 
-  // Ошибка или пусто — молча оставляем статичный фолбэк
   if (error || !data?.length) {
     console.warn('[library]', error?.message || 'каталог пуст');
     return;
@@ -50,8 +49,53 @@ async function loadLibrary() {
   });
 }
 
+// ---------- Карусель «Возможности» (только мобильные) ----------
+function initFeatCarousel() {
+  const grid = $('.feat-grid');
+  if (!grid) return;
+
+  const mq = window.matchMedia('(max-width: 640px)');
+  let timer = null;
+  let pauseUntil = 0;
+
+  const cardStep = () => {
+    const card = grid.querySelector('.feat');
+    if (!card) return 280;
+    return card.getBoundingClientRect().width + 12; // ширина + gap
+  };
+
+  function tick() {
+    if (Date.now() < pauseUntil) return;      // пользователь трогал — ждём
+    const max = grid.scrollWidth - grid.clientWidth - 4;
+    if (grid.scrollLeft >= max) {
+      grid.scrollTo({ left: 0, behavior: 'smooth' });   // зацикливаем
+    } else {
+      grid.scrollBy({ left: cardStep(), behavior: 'smooth' });
+    }
+  }
+
+  function start() {
+    stop();
+    if (mq.matches) timer = setInterval(tick, 4000);
+  }
+  function stop() {
+    if (timer) clearInterval(timer);
+    timer = null;
+  }
+
+  // Любое касание — пауза автопрокрутки на 8 секунд
+  const pause = () => { pauseUntil = Date.now() + 8000; };
+  grid.addEventListener('touchstart', pause, { passive: true });
+  grid.addEventListener('pointerdown', pause);
+  grid.addEventListener('wheel', pause, { passive: true });
+
+  if (mq.addEventListener) mq.addEventListener('change', start);
+  start();
+}
+
 async function init() {
   await initCommon();
+  initFeatCarousel();
   try {
     await loadLibrary();
   } catch (e) {

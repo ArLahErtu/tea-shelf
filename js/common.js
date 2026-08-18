@@ -1,8 +1,7 @@
 // ============================================================
 // common.js — инициализация общих блоков на всех страницах
-// Неделя 4, Блок D: уведомление о модерации при входе.
-// Неделя 4, Блок E: PostHog — место для сниппета из дашборда.
-// Неделя 4, Блок F: ссылка «Обратная связь» в футере.
+// Неделя 4: уведомление о модерации, ссылка обратной связи,
+// аналитика — Яндекс Метрика (вместо PostHog: не работает в РФ).
 // ============================================================
 import { initDbStatus, supabase } from './supabaseClient.js';
 import { initAuth, getUser } from './auth.js';
@@ -14,7 +13,6 @@ export async function initCommon() {
   initDbStatus();          // чип статуса БД (скрыт в CSS)
   await initAuth();        // шапка + модалка входа
   initChatbot();           // FAB + окно бота
-  initAnalytics();         // PostHog (если вставлен сниппет)
   initFeedbackLink();      // ссылка на Google Form в футере
   notifyModeration();      // тост об одобренных заявках
 
@@ -26,22 +24,26 @@ export async function initCommon() {
   });
 }
 
-// ============================================================
-// Аналитика PostHog
-// ------------------------------------------------------------
-// 1) Зарегистрируйся на posthog.com и создай проект.
-// 2) Project Settings → Web snippet → скопируй JS МЕЖДУ тегами
-//    <script> и </script>.
-// 3) Вставь его целиком между маркерами ниже.
-// Сниппет сам создаст window.posthog и начнёт грузить SDK;
-// все вызовы trackEvent() до загрузки попадут в очередь.
-// Пока маркеры пустые — аналитика просто отключена.
-// ============================================================
 function initAnalytics() {
-  // >>> POSTHOG SNIPPET START — вставь сюда код из дашборда <<<
+  // >>> METRIKA SNIPPET START <<<
+  (function(m,e,t,r,i,k,a){
+    m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();
+    for (var j = 0; j < document.scripts.length; j++) {
+      if (document.scripts[j].src === r) { return; }
+    }
+    k=e.createElement(t),a=e.getElementsByTagName(t)[0],
+    k.async=1,k.src=r,a.parentNode.insertBefore(k,a);
+  })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=111729275', 'ym');
 
-  // >>> POSTHOG SNIPPET END <<<
+  ym(111729275, 'init', {
+    ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer",
+    referrer: document.referrer, url: location.href,
+    accurateTrackBounce:true, trackLinks:true
+  });
+  // >>> METRIKA SNIPPET END <<<
 }
+initAnalytics();
 
 // ---------- Обратная связь: ссылка в футере ----------
 function initFeedbackLink() {
@@ -58,9 +60,6 @@ function initFeedbackLink() {
 }
 
 // ---------- Уведомление о модерации ----------
-// Запоминаем id чаёв пользователя, которые он уже видел
-// опубликованными. Чай, перешедший pending → published,
-// попадает в тост при следующем входе.
 async function notifyModeration() {
   const user = getUser();
   if (!user) return;

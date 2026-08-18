@@ -4,9 +4,6 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- ============================================================
-       SEO / META
-  ============================================================ -->
   <title>Чайная полка — умный учёт вашего чая</title>
 
   <meta
@@ -32,9 +29,7 @@
   <!-- Theme -->
   <meta name="theme-color" content="#2F5D3C">
 
-  <!-- ============================================================
-       PWA / Favicon
-  ============================================================ -->
+  <!-- PWA / Favicon -->
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="img/icon-192.png">
@@ -42,9 +37,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Чайная полка">
 
-  <!-- ============================================================
-       Fonts
-  ============================================================ -->
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -52,28 +45,20 @@
     rel="stylesheet"
   >
 
-  <!-- ============================================================
-       Styles
-       Порядок важен: base → components → page → chatbot
-  ============================================================ -->
+  <!-- Styles -->
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/pages/index.css">
   <link rel="stylesheet" href="css/chatbot.css">
 
-  <!-- ============================================================
-       Vercel Analytics + Speed Insights (статический сайт)
-       Работает только на боевом домене, локально просто не мешает
-  ============================================================ -->
+  <!-- Vercel Analytics + Speed Insights -->
   <script>
     window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
   </script>
   <script defer src="/_vercel/insights/script.js"></script>
   <script defer src="/_vercel/speed-insights/script.js"></script>
 
-  <!-- ============================================================
-       Structured data
-  ============================================================ -->
+  <!-- Structured data -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -94,9 +79,6 @@
 
 <body class="page-index">
 
-  <!-- ============================================================
-       HEADER
-  ============================================================ -->
   <header class="topbar">
     <div class="wrap topbar-in">
 
@@ -152,30 +134,25 @@
     </div>
   </header>
 
-  <!-- ============================================================
-       MAIN
-  ============================================================ -->
   <main id="main">
 
     <!-- ==========================================================
-         HERO
-         Неделя 4: убрана плашка «Прототип · личная полка · …»
+         HERO — отцентрован, 4 УТП сеткой
     ============================================================ -->
     <section class="hero" aria-labelledby="hero-title">
       <div class="wrap">
 
         <h1 id="hero-title">
-          Умный учёт вашего чая
+          Ваш чай всегда под рукой
         </h1>
 
         <p class="lead">
-          Остатки, журнал завариваний и список покупок — в одном месте.
-          Добавляйте чай из каталога, отмечайте заваривания одним тапом
-          и получайте напоминание, когда пора докупить любимый сорт.
+          «Чайная полка» — личный дневник чая: остатки, журнал завариваний
+          с оценками и список покупок, который собирается сам.
         </p>
 
         <div class="hero-cta">
-          <a class="btn btn-primary btn-lg" href="shelf.html">
+          <a class="btn btn-primary btn-lg" href="shelf.html" data-auth-required="true">
             Начать вести полку
           </a>
 
@@ -184,52 +161,61 @@
           </a>
         </div>
 
-        <div class="hero-checks" aria-label="Преимущества сервиса">
-          <span>
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path d="M4 10l4 4 10-9"/>
-            </svg>
-            Данные только ваши
-          </span>
+        <div class="usp-grid" aria-label="Преимущества сервиса">
 
-          <span>
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path d="M4 10l4 4 10-9"/>
-            </svg>
-            Настройка за две минуты
-          </span>
-
-          <span>
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path d="M4 10l4 4 10-9"/>
-            </svg>
-            Учёт в один тап
-          </span>
-        </div>
-
-        <div class="hero-stats" aria-label="Быстрая статистика">
-          <div class="hstat">
-            <div class="v">20+</div>
-            <div class="l">чаёв в каталоге</div>
+          <div class="usp">
+            <div class="ic g" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path d="M4 8h12v6a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V8Z"/>
+                <path d="M16 9h2a2 2 0 1 1 0 4h-2"/>
+                <path d="M7 4c0 1 1 1 1 2M11 4c0 1 1 1 1 2"/>
+              </svg>
+            </div>
+            <b>Учёт в один тап</b>
+            <span>Нажмите «Заварил» — сервис сам спишет остаток и запишет в журнал.</span>
           </div>
 
-          <div class="hstat">
-            <div class="v">1 тап</div>
-            <div class="l">кнопка «Заварил»</div>
+          <div class="usp">
+            <div class="ic a" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path d="M6 8h12l-1 12H7L6 8Z"/>
+                <path d="M9 8a3 3 0 0 1 6 0"/>
+              </svg>
+            </div>
+            <b>Покупки под контролем</b>
+            <span>Полка сама напомнит, когда любимый чай заканчивается.</span>
           </div>
 
-          <div class="hstat">
-            <div class="v">3 шага</div>
-            <div class="l">до первой чашки</div>
+          <div class="usp">
+            <div class="ic r" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3Z"/>
+                <path d="M9 11l2 2 4-4"/>
+              </svg>
+            </div>
+            <b>Данные только ваши</b>
+            <span>Полка и журнал привязаны к аккаунту и видны только вам.</span>
           </div>
+
+          <div class="usp">
+            <div class="ic b" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path d="M6 4h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/>
+                <path d="M9 8h6M9 12h6M9 16h4"/>
+              </svg>
+            </div>
+            <b>Общий каталог</b>
+            <span>60+ чаёв с описаниями. Предложите свой — его увидят все.</span>
+          </div>
+
         </div>
 
       </div>
     </section>
 
     <!-- ==========================================================
-         FEATURES
-    ========================================================== -->
+         FEATURES (на мобильном — карусель, см. main.js + index.css)
+    ============================================================ -->
     <section class="sec" id="features" aria-labelledby="features-title">
       <div class="wrap">
 
@@ -310,7 +296,7 @@
 
     <!-- ==========================================================
          STEPS
-    ========================================================== -->
+    ============================================================ -->
     <section class="sec" id="steps" aria-labelledby="steps-title">
       <div class="wrap">
 
@@ -359,9 +345,8 @@
     </section>
 
     <!-- ==========================================================
-         POPULAR TEAS / CATALOG TEASER
-         Заполняется из Supabase через js/main.js
-    ========================================================== -->
+         LIBRARY (заполняется из Supabase через js/main.js)
+    ============================================================ -->
     <section class="sec" id="library" aria-labelledby="library-title">
       <div class="wrap">
 
@@ -473,9 +458,8 @@
     </section>
 
     <!-- ==========================================================
-         ROADMAP / PROJECT STATUS
-         Неделя 4: переписано простым языком для пользователей
-    ========================================================== -->
+         ROADMAP — простым языком
+    ============================================================ -->
     <section class="sec" id="status" aria-labelledby="status-title">
       <div class="wrap">
 
@@ -549,7 +533,7 @@
 
     <!-- ==========================================================
          CTA
-    ========================================================== -->
+    ============================================================ -->
     <section class="sec" aria-label="Начать пользоваться сервисом">
       <div class="wrap">
 
@@ -572,7 +556,7 @@
               </p>
             </div>
 
-            <a class="btn btn-outline btn-lg" href="shelf.html">
+            <a class="btn btn-outline btn-lg" href="shelf.html" data-auth-required="true">
               Начать вести полку
             </a>
           </div>
@@ -583,18 +567,13 @@
 
   </main>
 
-  <!-- ============================================================
-       FOOTER
-  ============================================================ -->
   <footer>
     <div class="wrap">
       © 2026 «Чайная полка» · Прототип: Supabase + RLS · Неделя 2 закрыта
     </div>
   </footer>
 
-  <!-- ============================================================
-       AUTH MODAL
-  ============================================================ -->
+  <!-- AUTH MODAL -->
   <div class="overlay" id="authOverlay" hidden>
     <div
       class="modal narrow"
@@ -682,14 +661,9 @@
     </div>
   </div>
 
-  <!-- ============================================================
-       TOASTS
-  ============================================================ -->
   <div id="toasts" aria-live="polite"></div>
 
-  <!-- ============================================================
-       CHATBOT
-  ============================================================ -->
+  <!-- CHATBOT -->
   <div id="chatbot-root">
 
     <button
@@ -780,9 +754,6 @@
 
   </div>
 
-  <!-- ============================================================
-       SCRIPTS
-  ============================================================ -->
   <script type="module" src="js/main.js"></script>
   <script type="module" src="js/chatbot.js"></script>
 

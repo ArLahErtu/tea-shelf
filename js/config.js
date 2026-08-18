@@ -11,12 +11,13 @@ export const SHOW_DEMO_ACCOUNTS = false;
 
 // ---------- Обратная связь (Неделя 4, Блок F) ----------
 // Ссылка на Google Form. Пока пустая — ссылка в футере не появляется.
-export const FEEDBACK_URL = ''; // 'https://forms.gle/rCcAXQ7kSTANzhqm7'
+export const FEEDBACK_URL = ''; 'https://forms.gle/rCcAXQ7kSTANzhqm7'
 
-// ---------- Аналитика ----------
-// PostHog подключается сниппетом из дашборда в js/common.js
-// (маркеры POSTHOG SNIPPET). Ключ живёт там, здесь его дублировать
-// не нужно. Vercel Analytics остаётся на pageviews (бесплатно).
+// ---------- Аналитика: Яндекс Метрика ----------
+// Номер счётчика (число из кода счётчика, например 12345678).
+// Сам код счётчика вставляется в js/common.js между маркерами
+// METRIKA SNIPPET. Пока 0 — события не отправляются.
+export const METRIKA_ID = 0;
 
 // Имена таблиц — поправь, если у тебя другие
 export const TABLES = {
@@ -27,3 +28,5 @@ export const TABLES = {
   journal:  'brew_journal',  // id, user_id, tea_id, amount, unit, rating, note, created_at
   wishlist: 'wishlist',      // user_id, tea_id  (сейчас = «избранное»)
 };
+
+export const METRIKA_ID = 111729275

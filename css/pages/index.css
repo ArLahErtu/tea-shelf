@@ -1,50 +1,28 @@
 /* ============================================================
    pages/index.css
    Стили главной страницы
+   Неделя 4: центрированный hero, сетка 4 УТП, CTA в одну строку
+   на мобильном, карусель «Возможности» на мобильном.
    ============================================================ */
 
 /* ------------------------------------------------------------
-   Hero
+   Hero (центрирован)
    ------------------------------------------------------------ */
 .hero {
   padding: var(--space-9) 0 var(--space-7);
-  text-align: left;
-}
-
-.badge-h {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  background: var(--green-soft);
-  border: 1px solid #C7D8BE;
-  color: var(--green-d);
-  border-radius: var(--radius-xs);
-  padding: 6px var(--space-3);
-  margin-bottom: var(--space-5);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
-}
-
-.badge-h i {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--green);
-  animation: pulse 2s infinite;
+  text-align: center;
 }
 
 .hero h1 {
   max-width: 640px;
-  margin-bottom: var(--space-3);
+  margin: 0 auto var(--space-3);
   font-size: clamp(30px, 4.6vw, 48px);
   line-height: 1.12;
 }
 
 .hero .lead {
   max-width: 560px;
-  margin-bottom: var(--space-6);
+  margin: 0 auto var(--space-6);
   font-size: 16.5px;
   line-height: 1.6;
   color: var(--muted);
@@ -54,58 +32,57 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-3);
-  margin-bottom: var(--space-5);
-}
-
-.hero-checks {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-4);
+  justify-content: center;
   margin-bottom: var(--space-6);
 }
 
-.hero-checks span {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 13px;
-  font-weight: 700;
-  color: #5C543F;
+/* ------------------------------------------------------------
+   УТП: сетка 4 карточек (2×2 на мобильном)
+   ------------------------------------------------------------ */
+.usp-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-3);
+  text-align: center;
 }
 
-.hero-checks svg {
-  width: 15px;
-  height: 15px;
-  stroke: var(--green);
+.usp {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: var(--space-5) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.usp .ic {
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  display: grid;
+  place-items: center;
+}
+
+.usp .ic svg {
+  width: 21px;
+  height: 21px;
   fill: none;
-  stroke-width: 2.4;
+  stroke: currentColor;
+  stroke-width: 1.9;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
-.hero-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
+.usp b {
+  font-size: 14.5px;
 }
 
-.hstat {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  box-shadow: var(--shadow);
-  padding: var(--space-3) 18px;
-}
-
-.hstat .v {
-  font-family: 'Prata', serif;
-  font-size: 22px;
-}
-
-.hstat .l {
-  margin-top: var(--space-1);
-  font-size: 12px;
-  font-weight: 700;
+.usp span {
+  font-size: 12.5px;
+  line-height: 1.5;
   color: var(--muted);
 }
 
@@ -419,6 +396,10 @@
   .road {
     grid-template-columns: 1fr;
   }
+
+  .usp-grid {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 @media (max-width: 640px) {
@@ -428,5 +409,37 @@
 
   .steps {
     grid-template-columns: 1fr;
+  }
+
+  /* CTA-кнопки в одну строку */
+  .hero-cta {
+    flex-wrap: nowrap;
+  }
+
+  .hero-cta .btn {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 12px 8px;
+    font-size: 13.5px;
+  }
+
+  /* «Возможности» — карусель */
+  .feat-grid {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    gap: var(--space-3);
+    padding: var(--space-1) var(--space-1) 10px;
+    scrollbar-width: none;
+  }
+
+  .feat-grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .feat {
+    flex: 0 0 82%;
+    scroll-snap-align: center;
   }
 }

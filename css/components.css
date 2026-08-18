@@ -1,6 +1,8 @@
 /* ============================================================
 components.css
 Общие компоненты: topbar, кнопки, формы, модалки, тосты
+Неделя 4: кнопки модалок (modal-foot) прижаты к низу окна —
+sticky, видны без прокрутки.
 ============================================================ */
 
 /* ------------------------------------------------------------
@@ -429,7 +431,6 @@ Chips / tabs
 
 /* ------------------------------------------------------------
 Tea type chips / tags
-Неделя 4: добавлены чипы реальных типов БД
 ------------------------------------------------------------ */
 .typechip {
   font-size: 11.5px;
@@ -660,7 +661,7 @@ Forms
 }
 
 /* ------------------------------------------------------------
-Presets (модалки количества и заваривания)
+Presets
 ------------------------------------------------------------ */
 .presets {
   display: flex;
@@ -727,6 +728,7 @@ Auth tabs / global error
 
 /* ------------------------------------------------------------
 Overlay / modal
+--mpad — переменная отступа модалки, нужна sticky-футеру
 ------------------------------------------------------------ */
 .overlay {
   position: fixed;
@@ -744,6 +746,7 @@ Overlay / modal
   opacity: 1;
 }
 .modal {
+  --mpad: var(--space-5);
   width: 100%;
   max-width: 600px;
   max-height: 90vh;
@@ -753,7 +756,7 @@ Overlay / modal
   border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: 0 30px 70px -30px rgba(0, 0, 0, 0.45);
-  padding: var(--space-5);
+  padding: var(--mpad);
   transform: translateY(14px) scale(0.98);
   transition: transform 0.2s;
 }
@@ -781,12 +784,20 @@ Overlay / modal
   font-size: 14px;
   color: var(--muted);
 }
+/* Кнопки модалки: sticky — всегда видны внизу окна */
 .modal-foot {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
   display: flex;
   justify-content: flex-end;
   gap: var(--space-2);
   flex-wrap: wrap;
-  margin-top: var(--space-4);
+  margin: var(--space-4) calc(-1 * var(--mpad)) calc(-1 * var(--mpad));
+  padding: var(--space-3) var(--mpad);
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  border-radius: 0 0 var(--radius) var(--radius);
 }
 
 /* ------------------------------------------------------------
@@ -993,6 +1004,6 @@ Components responsive
     padding-top: var(--space-6);
   }
   .modal {
-    padding: var(--space-4);
+    --mpad: var(--space-4);
   }
 }
