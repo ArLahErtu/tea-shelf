@@ -1,9 +1,8 @@
 // ============================================================
 // ui.js — общие UI-хелперы и справочники
 // Используется всеми страницами: тосты, модалки, формы, словари
-// Неделя 4: словари типов приведены к реальным значениям БД
-// (жёлтый, красный, цветочный, матте, матча, «хэй ча» с пробелом);
-// добавлена обёртка trackEvent для Vercel Web Analytics.
+// Неделя 4: словари типов приведены к реальным значениям БД;
+// trackEvent шлёт продуктовые события в PostHog.
 // ============================================================
 
 // ---------- DOM ----------
@@ -166,15 +165,16 @@ export function toTags(v) {
   return [];
 }
 
-// ---------- Аналитика (Vercel Web Analytics, custom events) ----------
-// Неделя 4, Блок E. Vanilla-сигнатура из исходников @vercel/analytics:
-//   window.va('event', { name, data })
-// data — только плоские примитивы (string/number/boolean/null).
-// Аналитика не должна ломать приложение — всё в try/catch.
+// ---------- Аналитика (PostHog) ----------
+// Неделя 4, Блок E. События: signup / login / tea_card_opened /
+// tea_added_to_shelf / tea_proposed / favorite_toggled.
+// Сниппет в common.js создаёт window.posthog; до загрузки SDK
+// вызовы capture попадают в его очередь. Аналитика не должна
+// ломать приложение — всё в try/catch.
 export function trackEvent(name, props) {
   try {
-    if (typeof window.va === 'function') {
-      window.va('event', props ? { name, data: props } : { name });
+    if (window.posthog?.capture) {
+      window.posthog.capture(name, props || {});
     }
   } catch (e) { /* ignore */ }
 }
