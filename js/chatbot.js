@@ -166,7 +166,7 @@ async function handleBrew(match) {
     $('#brewAmount').dispatchEvent(new Event('input'));
   }, 100);
 
-  return `☕ **Заваривание «${row.tea.name}»:**\nКоличество: ${amount}г\nОсталось после: ${row.amount - amount}г\n\nМодалка открыта — поставь оценку и нажми «Сохранить».`;
+  return ` **Заваривание «${row.tea.name}»:**\nКоличество: ${amount}г\nОсталось после: ${row.amount - amount}г\n\nМодалка открыта — поставь оценку и нажми «Сохранить».`;
 }
 
 async function handleRemove(match) {
@@ -178,7 +178,7 @@ async function handleRemove(match) {
   }
 
   return {
-    text: ` **Убрать «${row.tea.name}» с полки?**\nОстаток: ${row.amount}г`,
+    text: `❓ **Убрать «${row.tea.name}» с полки?**\nОстаток: ${row.amount}г`,
     actions: [
       { label: 'Да, убрать', action: 'confirm-remove', data: row.id },
       { label: 'Отмена', action: 'cancel' },
@@ -361,8 +361,6 @@ async function findAnswer(text) {
 }
 
 async function askAI(text) {
-  // TODO: здесь будет вызов Edge Function с Qwen
-  // const response = await fetch('/api/ask-ai', { method: 'POST', body: JSON.stringify({ question: text }) });
   return '🤖 ИИ-ассистент пока в разработке. Скоро я смогу отвечать на любые вопросы о чае, подбирать сорта под настроение и давать рекомендации по завариванию!';
 }
 
@@ -420,7 +418,7 @@ function switchMode(mode) {
   });
 
   const hint = mode === 'ai'
-    ? ' ИИ-режим (пока заглушка)'
+    ? '🤖 ИИ-режим (пока заглушка)'
     : '💬 Обычный чат-бот с командами';
   showToast(hint);
 }
@@ -485,14 +483,12 @@ export function initChatbot() {
     if (btn) send(btn.textContent);
   });
 
-  // Переключатель режимов
   $('#chatbotModeSwitch')?.addEventListener('click', (e) => {
     const btn = e.target.closest('.chatbot-mode-btn');
-    if (!btn || btn.disabled) return; // игнорируем клики по disabled кнопкам
+    if (!btn || btn.disabled) return;
     switchMode(btn.dataset.mode);
   });
 
-  // Клик по disabled кнопке "ИИ" — показываем тост
   const aiBtn = document.querySelector('.chatbot-mode-btn[data-mode="ai"]');
   if (aiBtn) {
     aiBtn.addEventListener('click', (e) => {
