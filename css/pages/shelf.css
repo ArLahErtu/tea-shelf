@@ -1,6 +1,8 @@
 /* ============================================================
    pages/shelf.css
    Стили личной полки
+   Блок А: qty-row переделан (кол-во / ~заваривания),
+   добавлена иконка журнала и модалка журнала чая.
    ============================================================ */
 
 /* Страховка от горизонтального скролла страницы */
@@ -197,7 +199,8 @@ body.page-shelf {
 }
 
 /* ------------------------------------------------------------
-   Quantity / progress
+   Quantity / progress — Блок А
+   Одинаковый вес: «100 г / ~14 завариваний»
    ------------------------------------------------------------ */
 .card-name {
   overflow: hidden;
@@ -213,26 +216,53 @@ body.page-shelf {
 .qty-row {
   display: flex;
   align-items: baseline;
-  flex-wrap: wrap;
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
 
-.qty {
-  font-size: 26px;
+.qty-val {
+  font-size: 20px;
   font-weight: 800;
   letter-spacing: -0.3px;
+  white-space: nowrap;
 }
 
-.qty span {
-  font-size: 14px;
+.qty-val em {
+  font-style: normal;
+  font-size: 13px;
   font-weight: 700;
   color: var(--muted);
 }
 
-.brews {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--muted);
+.qty-sep {
+  font-size: 16px;
+  font-weight: 300;
+  color: #C9BEA6;
+  user-select: none;
+}
+
+/* Иконка журнала на карточке */
+.journal-btn {
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  padding: 3px;
+  margin-left: 2px;
+  align-self: center;
+  color: #C9BEA6;
+  transition: color 0.15s, transform 0.15s;
+}
+
+.journal-btn:hover {
+  color: var(--green-d);
+  transform: scale(1.12);
+}
+
+.journal-btn svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .bar {
@@ -266,6 +296,14 @@ body.page-shelf {
   gap: var(--space-2);
   margin-top: auto;
   padding-top: var(--space-1);
+}
+
+/* ------------------------------------------------------------
+   Модалка журнала конкретного чая — Блок А
+   ------------------------------------------------------------ */
+.journal-tea-list {
+  max-height: 420px;
+  overflow-y: auto;
 }
 
 /* ------------------------------------------------------------
@@ -541,8 +579,6 @@ body.page-shelf {
 }
 
 @media (max-width: 640px) {
-  /* Тулбар в колонку: табы и селекты во всю ширину,
-     лента табов скроллится внутри, не распирая страницу */
   .toolbar {
     flex-direction: column;
     align-items: stretch;
@@ -556,7 +592,6 @@ body.page-shelf {
     width: 100%;
   }
 
-  /* Сетка карточек: колонка не шире экрана даже на узких */
   #shelfGrid {
     grid-template-columns: repeat(auto-fill, minmax(min(290px, 100%), 1fr));
   }

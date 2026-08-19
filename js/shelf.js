@@ -1,12 +1,8 @@
 // ============================================================
 // shelf.js — логика страницы shelf.html
-// Словарь БД: status='published', автор — author_id,
-// типы по-русски, регион — region, время журнала — created_at
-// Блок 3: заваривание через RPC brew_tea (атомарно, +popularity),
-// дубли полки обрабатываются по коду 23505.
-// Блок B: «Избранное» вместо «хотелок» — сердце на карточке полки
-// и кнопка в модалке пишут в таблицу wishlist; секция «Избранное»
-// заменяет «Из хотелок». Колонка user_shelf.favorite не используется.
+// Блок А: карточка показывает «кол-во / ~заваривания»,
+// иконка журнала → модалка истории конкретного чая,
+// форма заваривания корректно закрывается и сбрасывается.
 // ============================================================
 import { initCommon } from './common.js';
 import { supabase } from './supabaseClient.js';
@@ -20,14 +16,14 @@ import { getUser, onAuthChange } from './auth.js';
 import { openTeaModal } from './teaModal.js';
 import { initAmountModal, openAmountModal } from './amountModal.js';
 
-let shelf = [];        // строки user_shelf + .tea
+let shelf = [];
 let journal = [];
 let requests = [];
-let favorites = [];    // tea_id из таблицы wishlist (избранное)
+let favorites = [];
 let catalogAll = [];
 let brewRow = null;
 let brewRating = 0;
-let currentRow = null; // строка полки, открытая в каталожной модалке
+let currentRow = null;
 
 const filters = { status: 'all', type: 'all', sort: 'ending' };
 
@@ -50,7 +46,6 @@ async function load() {
     supabase.from(TABLES.wishlist).select('tea_id').eq('user_id', user.id),
   ]);
 
-  // Клиентский фильтр: чужие pending-заявки не должны попадать в полку/модалки
   const uid = user.id;
   catalogAll = (cat.data || [])
     .filter((t) => t.status === 'published' || t.author_id === uid);
@@ -112,7 +107,7 @@ function renderShopping() {
   $('#restockSelectedBtn').disabled = false;
 }
 
-// ---------- Избранное (Блок B) ----------
+// ---------- Избранное ----------
 function renderFavorites() {
   const box = $('#favoritesList');
   box.innerHTML = '';
@@ -206,6 +201,7 @@ function renderGrid() {
   list.forEach((r) => grid.appendChild(cardNode(r)));
 }
 
+// ---------- Карточка полки (Блок А) ----------
 function cardNode(r) {
   const node = $('#shelfCardTemplate').content.firstElementChild.cloneNode(true);
   node.dataset.shelfId = r.id;
@@ -220,6 +216,7 @@ function cardNode(r) {
   chip.textContent = r.tea.type || '—';
   chip.className = 'typechip ' + typeClass(r.tea.type);
 
+  // Журнал для этого чая
   const brews = journal.filter((j) => j.tea_id === r.tea_id);
   const rated = brews.filter((j) => j.rating);
   const rate = node.querySelector('.rate-badge');
@@ -229,22 +226,42 @@ function cardNode(r) {
   }
 
   node.querySelector('.card-name').textContent = r.tea.name;
-  node.querySelector('.qty').innerHTML =
-    `${r.amount}<span> ${UNIT_LABELS[r.unit] || 'г'}</span>`;
-  node.querySelector('.brews').textContent =
-    `${brews.length} ${plural(brews.length, ['заваривание', 'заваривания', 'завариваний'])}`;
 
+  // --- Количество / доступные заваривания (Блок А) ---
+  const qtyVals = node.querySelectorAll('.qty-val');
+  const qtySep  = node.querySelector('.qty-sep');
+
+  // Первое число — остаток
+  qtyVals[0].innerHTML = `${r.amount} <em>${UNIT_LABELS[r.unit] || 'г'}</em>`;
+
+  // Второе число — примерные заваривания (только для грамм с дозой)
+  const dose = r.tea.grams ? Number(r.tea.grams) : 0;
+  if (r.unit === 'g' && dose > 0 && r.amount > 0) {
+    const approx = Math.floor(r.amount / dose);
+    qtySep.classList.remove('hidden');
+    qtyVals[1].classList.remove('hidden');
+    qtyVals[1].innerHTML =
+      `~${approx} <em>${plural(approx, ['заваривание', 'заваривания', 'завариваний'])}</em>`;
+  } else {
+    qtySep.classList.add('hidden');
+    qtyVals[1].classList.add('hidden');
+  }
+
+  // Иконка журнала — видна только если есть записи
+  node.querySelector('.journal-btn')
+    .classList.toggle('hidden', brews.length === 0);
+
+  // Прогресс-бар
   const fill = node.querySelector('.bar-fill');
   fill.className = 'bar-fill ' + { available: 'bar-active', low: 'bar-low', finished: 'bar-finished' }[st];
   fill.style.width = Math.max(4, Math.min(100, (r.amount / 150) * 100)) + '%';
 
-  // Блок B: избранное — по таблице wishlist, не по user_shelf.favorite
   node.querySelector('.fav-btn').classList.toggle('on', favorites.includes(r.tea_id));
   node.classList.toggle('low-ring', st === 'low');
   return node;
 }
 
-// ---------- Журнал ----------
+// ---------- Журнал (общий, на странице) ----------
 function renderJournal() {
   const box = $('#journalList');
   box.innerHTML = '';
@@ -284,6 +301,40 @@ function renderAll() {
     $('#shelfBannerText').textContent =
       `${low} ${plural(low, ['чай заканчивается', 'чая заканчиваются', 'чаёв заканчиваются'])}.`;
   }
+}
+
+// ---------- Журнал конкретного чая (Блок А) ----------
+function initJournalOverlay() {
+  const ov = $('#journalOverlay');
+  if (!ov) return;
+  wireOverlay(ov);
+  $('#journalOvClose')?.addEventListener('click', () => closeOverlay(ov));
+}
+
+function openTeaJournal(teaId, teaName) {
+  const entries = journal.filter((j) => j.tea_id === teaId);
+  $('#journalOvTeaName').textContent = teaName;
+  const list = $('#journalOvList');
+  list.innerHTML = '';
+
+  if (!entries.length) {
+    list.innerHTML = '<p class="hint">Нет записей.</p>';
+  } else {
+    entries.forEach((j) => {
+      const node = document.createElement('div');
+      node.className = 'jentry';
+      node.innerHTML = `
+        <div class="jdate">${j.created_at ? formatDate(j.created_at) : '—'}</div>
+        <div class="jbody">
+          <div class="jm">${j.amount} ${UNIT_LABELS[j.unit] || 'г'}</div>
+          ${j.note ? `<div class="jnote">${escapeHtml(j.note)}</div>` : ''}
+          ${j.rating ? `<div class="jstars">${'★'.repeat(j.rating)}${'☆'.repeat(5 - j.rating)}</div>` : ''}
+        </div>`;
+      list.appendChild(node);
+    });
+  }
+
+  openOverlay($('#journalOverlay'));
 }
 
 // ---------- Заваривание (RPC brew_tea) ----------
@@ -327,7 +378,8 @@ function initBrew() {
     if (!used || used <= 0) return showToast('Укажите количество', 'warn');
     if (used > brewRow.amount) return showToast('На полке меньше этого количества', 'warn');
 
-    // Одна транзакция на сервере: списание + журнал + popularity
+    const unit = brewRow.unit; // сохраняем до сброса
+
     const { data, error } = await supabase.rpc('brew_tea', {
       p_shelf_id: brewRow.id,
       p_amount: used,
@@ -336,8 +388,18 @@ function initBrew() {
     });
     if (error) return showToast('Ошибка: ' + error.message, 'warn');
 
+    // Закрываем и сбрасываем форму (Блок А)
     closeOverlay(ov);
-    showToast(`Заваривание записано ☕ Осталось ${data} ${UNIT_LABELS[brewRow.unit] || 'г'}`);
+    $('#brewForm').reset();
+    brewRow = null;
+    brewRating = 0;
+    $$('#brewStars .star-btn').forEach((s) => {
+      s.classList.remove('on');
+      s.setAttribute('aria-checked', 'false');
+    });
+    $$('#brewPresets .preset').forEach((p) => p.classList.remove('sel'));
+
+    showToast(`Заваривание записано ☕ Осталось ${data} ${UNIT_LABELS[unit] || 'г'}`);
     await load();
     renderAll();
   });
@@ -359,8 +421,7 @@ function openBrew(row) {
   $('#brewAmount').dispatchEvent(new Event('input'));
 }
 
-// ---------- Операции с количеством (amountModal) ----------
-// Пополнение: добавка к текущему остатку
+// ---------- Операции с количеством ----------
 function restockRow(row) {
   openAmountModal({
     mode: 'restock',
@@ -375,7 +436,6 @@ function restockRow(row) {
   });
 }
 
-// Точная установка остатка
 function editAmount(row) {
   openAmountModal({
     mode: 'set',
@@ -391,7 +451,6 @@ function editAmount(row) {
   });
 }
 
-// Удаление с полки — через фирменную модалку подтверждения
 async function removeRow(row) {
   const ok = await askConfirm({
     title: 'Убрать с полки',
@@ -405,7 +464,7 @@ async function removeRow(row) {
   await load(); renderAll();
 }
 
-// ---------- Избранное (Блок B): переключение ----------
+// ---------- Избранное ----------
 function syncFavBtn(teaId) {
   const label = $('#wishlistBtnText');
   if (!label || teaId == null) return;
@@ -434,7 +493,6 @@ async function toggleFav(row) {
   renderFavorites();
 }
 
-// Избранное → полка: количество и порог выбирает пользователь
 function addFromFavorites(teaId) {
   const tea = catalogAll.find((t) => String(t.id) === String(teaId));
   if (!tea) return;
@@ -455,11 +513,9 @@ function addFromFavorites(teaId) {
         low_threshold: p.threshold,
       });
       if (error) {
-        // 23505 = unique_violation: чай уже на полке
         if (error.code === '23505') return showToast('Этот чай уже на полке', 'warn');
         return showToast('Не удалось добавить: ' + error.message, 'warn');
       }
-      // Избранное НЕ снимаем: это постоянная метка, убирается сердцем
       showToast(`«${tea.name}» добавлен на полку`);
       await load(); renderAll();
     },
@@ -526,10 +582,10 @@ async function init() {
   initBrew();
   initRestock();
   initFavorites();
+  initJournalOverlay(); // Блок А
 
-  // Кнопки каталожной модалки на странице полки
   $('#addToShelfBtn')?.addEventListener('click', () => {
-    if (currentRow) restockRow(currentRow); // «Пополнить» из модалки
+    if (currentRow) restockRow(currentRow);
   });
   $('#wishlistBtn')?.addEventListener('click', async () => {
     if (currentRow) await toggleFav(currentRow);
@@ -546,6 +602,7 @@ async function init() {
     if (e.target.closest('[data-action="edit"]'))            return editAmount(row);
     if (e.target.closest('[data-action="remove"]'))          return removeRow(row);
     if (e.target.closest('[data-action="toggle-favorite"]')) return toggleFav(row);
+    if (e.target.closest('[data-action="open-journal"]'))    return openTeaJournal(row.tea_id, row.tea.name); // Блок А
     if (e.target.closest('[data-action="open-menu"]')) {
       const menu = e.target.closest('.menu-wrap').querySelector('.menu');
       $$('#shelfGrid .menu').forEach((m) => m !== menu && m.classList.add('hidden'));

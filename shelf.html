@@ -4,9 +4,6 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- ============================================================
-       SEO / META
-  ============================================================ -->
   <title>Моя чайная полка — Чайная полка</title>
   <meta
     name="description"
@@ -14,25 +11,15 @@
   >
   <link rel="canonical" href="https://tea-shelf.vercel.app/shelf.html">
 
-  <!-- Open Graph -->
   <meta property="og:type" content="website">
   <meta property="og:title" content="Моя чайная полка — Чайная полка">
-  <meta
-    property="og:description"
-    content="Личная полка: остатки, журнал, список покупок."
-  >
+  <meta property="og:description" content="Личная полка: остатки, журнал, список покупок.">
   <meta property="og:url" content="https://tea-shelf.vercel.app/shelf.html">
   <meta property="og:image" content="https://tea-shelf.vercel.app/img/icon-512.png">
 
-  <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image">
-
-  <!-- Theme -->
   <meta name="theme-color" content="#2F5D3C">
 
-  <!-- ============================================================
-       PWA / Favicon
-  ============================================================ -->
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="img/icon-192.png">
@@ -40,9 +27,6 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Чайная полка">
 
-  <!-- ============================================================
-       Fonts
-  ============================================================ -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -50,18 +34,11 @@
     rel="stylesheet"
   >
 
-  <!-- ============================================================
-       Styles
-  ============================================================ -->
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/pages/shelf.css">
   <link rel="stylesheet" href="css/chatbot.css">
 
-  <!-- ============================================================
-       Vercel Analytics + Speed Insights (статический сайт)
-       Работает только на боевом домене, локально просто не мешает
-  ============================================================ -->
   <script>
     window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
   </script>
@@ -173,7 +150,6 @@
             </div>
           </section>
 
-          <!-- Блок B: «Из хотелок» → «Избранное» -->
           <section class="panel" aria-labelledby="favoritesTitle">
             <h3 id="favoritesTitle">Избранное <span class="cnt" id="favoritesCount">0</span></h3>
             <p class="psub">Чаи, отмеченные сердцем в каталоге или на полке. Удобно дополнить закупку.</p>
@@ -313,8 +289,7 @@
     </div>
   </div>
 
-  <!-- Карточка чая (клик по карточке полки).
-       «На полку» здесь работает как «Пополнить» -->
+  <!-- Карточка чая -->
   <div class="overlay" id="teaOverlay" hidden>
     <div class="modal wide" role="dialog" aria-modal="true" aria-labelledby="teaTitle">
       <div class="modal-head">
@@ -361,6 +336,20 @@
           Пополнить
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- Журнал завариваний конкретного чая (Блок А) -->
+  <div class="overlay" id="journalOverlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="journalOvTitle">
+      <div class="modal-head">
+        <h2 id="journalOvTitle">Журнал завариваний</h2>
+        <button class="icon-btn" id="journalOvClose" type="button" aria-label="Закрыть журнал">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <p class="modal-sub" id="journalOvTeaName">—</p>
+      <div id="journalOvList" class="journal-tea-list"></div>
     </div>
   </div>
 
@@ -461,9 +450,74 @@
 
   <div id="toasts" aria-live="polite"></div>
 
-  <!-- CHATBOT: HTML генерируется автоматически через js/chatbotHTML.js -->
+  <!-- Чат-бот -->
+  <div id="chatbot-root">
+    <button
+      class="chatbot-fab"
+      id="chatbotToggle"
+      type="button"
+      aria-label="Открыть чат-помощник"
+      aria-expanded="false"
+      aria-controls="chatbotWindow"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M5 20c0-8 5-13 14-15-1 9-6 14-14 15Z"/>
+        <path d="M5 20c3-6 7-10 12-13"/>
+      </svg>
+    </button>
 
-  <!-- Шаблон карточки полки -->
+    <section
+      class="chatbot-window"
+      id="chatbotWindow"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Чат-помощник"
+      hidden
+    >
+      <div class="chatbot-header">
+        <div class="chatbot-title">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 20c0-8 5-13 14-15-1 9-6 14-14 15Z"/>
+            <path d="M5 20c3-6 7-10 12-13"/>
+          </svg>
+          Чайный помощник
+        </div>
+        <button class="chatbot-close" id="chatbotClose" type="button" aria-label="Закрыть чат">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+
+      <div class="chatbot-messages" id="chatbotMessages">
+        <div class="chatbot-message is-bot">
+          Привет! Помогу с полкой: подскажу, что докупить, как отметить заваривание и где посмотреть журнал.
+        </div>
+      </div>
+
+      <div class="chatbot-suggestions" id="chatbotSuggestions">
+        <button class="chatbot-suggestion" type="button">Что докупить?</button>
+        <button class="chatbot-suggestion" type="button">Как заварить чай?</button>
+        <button class="chatbot-suggestion" type="button">Где журнал завариваний?</button>
+      </div>
+
+      <form class="chatbot-form" id="chatbotForm" autocomplete="off">
+        <input
+          class="chatbot-input"
+          id="chatbotInput"
+          name="message"
+          type="text"
+          placeholder="Напишите вопрос…"
+          aria-label="Сообщение для чат-помощника"
+        >
+        <button class="chatbot-send" type="submit" aria-label="Отправить сообщение">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 12l16-7-4 14-4-5-8-2Z"/><path d="M12 14l8-9"/>
+          </svg>
+        </button>
+      </form>
+    </section>
+  </div>
+
+  <!-- Шаблон карточки полки (Блок А: qty-row + иконка журнала) -->
   <template id="shelfCardTemplate">
     <article class="card" tabindex="0" data-shelf-id="" data-tea-id="">
       <div class="card-top">
@@ -503,8 +557,18 @@
       </div>
       <h3 class="card-name">Название чая</h3>
       <div class="qty-row">
-        <div class="qty">0<span> г</span></div>
-        <div class="brews">0 завариваний</div>
+        <span class="qty-val">0 <em>г</em></span>
+        <span class="qty-sep hidden">/</span>
+        <span class="qty-val qty-brews hidden">~0 <em>завариваний</em></span>
+        <button
+          class="icon-btn journal-btn hidden" type="button" data-action="open-journal"
+          aria-label="Журнал завариваний этого чая" title="Журнал завариваний"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+          </svg>
+        </button>
       </div>
       <div class="bar" aria-hidden="true"><div class="bar-fill bar-active"></div></div>
       <div class="card-actions">
@@ -531,7 +595,7 @@
     </div>
   </template>
 
-  <!-- Шаблон строки избранного (Блок B) -->
+  <!-- Шаблон строки избранного -->
   <template id="favoritesRowTemplate">
     <div class="wrow" data-tea-id="">
       <div class="wn">
