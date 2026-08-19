@@ -1,38 +1,64 @@
 // ============================================================
-// supabaseClient.js — клиент Supabase + статус подключения
+// supabaseClient.js — клиент Supabase
+// CDN: jsDelivr (стабильно работает в РФ, в отличие от esm.sh)
 // ============================================================
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { SUPABASE_URL, SUPABASE_ANON_KEY, TABLES } from './config.js';
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let client = null;
+let configured = false;
 
 export function isConfigured() {
-  return (
-    !SUPABASE_URL.includes('YOUR_PROJECT') &&
-    !SUPABASE_ANON_KEY.includes('YOUR_ANON')
-  );
+  return configured;
 }
 
-function setChip(cls, text) {
+export function getSupabaseClient() {
+  if (!client && SUPABASE_URL && SUPABASE_ANON_KEY) {
+    try {
+      client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: {
+          autoRefreshToken: true,
+          persistSession: true,
+          detectSessionInUrl: true,
+        },
+        global: {
+          headers: { 'Content-Type': 'application/json' },
+        },
+      });
+      configured = true;
+      console.log('[Supabase] клиент инициализирован через jsDelivr');
+    } catch (e) {
+      console.error('[Supabase] ошибка инициализации:', e.message);
+      configured = false;
+    }
+  }
+  return client;
+}
+
+export const supabase = getSupabaseClient();
+
+// Индикатор статуса БД (скрыт в CSS .db-chip{display:none})
+export function initDbStatus() {
   const chip = document.getElementById('dbStatus');
   if (!chip) return;
-  chip.className = 'db-chip ' + cls;
-  chip.innerHTML = '<i aria-hidden="true"></i>' + text;
-}
 
-// Вешается на все страницы: зелёный «ок» или янтарный «демо»
-export async function initDbStatus() {
-  if (!isConfigured()) {
-    setChip('demo', 'ключи не заданы');
-    return;
-  }
-  try {
-    const { error } = await supabase
-      .from(TABLES.catalog)
-      .select('id', { count: 'exact', head: true });
-    if (error) throw error;
-    setChip('ok', 'база подключена');
-  } catch {
-    setChip('demo', 'нет соединения');
-  }
+  const check = async () => {
+    if (!configured) {
+      chip.textContent = 'БД: не подключено';
+      chip.style.background = '#f44336';
+      return;
+    }
+    try {
+      const { error } = await supabase.from('tea_catalog').select('id').limit(1);
+      if (error) throw error;
+      chip.textContent = 'БД: OK';
+      chip.style.background = '#4caf50';
+    } catch (e) {
+      chip.textContent = 'БД: ошибка';
+      chip.style.background = '#f44336';
+    }
+  };
+
+  check();
+  setInterval(check, 30000);
 }
