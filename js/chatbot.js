@@ -166,7 +166,7 @@ async function handleBrew(match) {
     $('#brewAmount').dispatchEvent(new Event('input'));
   }, 100);
 
-  return ` **Заваривание «${row.tea.name}»:**\nКоличество: ${amount}г\nОсталось после: ${row.amount - amount}г\n\nМодалка открыта — поставь оценку и нажми «Сохранить».`;
+  return `☕ **Заваривание «${row.tea.name}»:**\nКоличество: ${amount}г\nОсталось после: ${row.amount - amount}г\n\nМодалка открыта — поставь оценку и нажми «Сохранить».`;
 }
 
 async function handleRemove(match) {
@@ -205,7 +205,7 @@ async function handleCheck(match) {
     answer += ` · Рейтинг: ${'★'.repeat(Math.round(avgRating))}${'☆'.repeat(5 - Math.round(avgRating))} (${avgRating})`;
   }
   if (row.amount <= (row.low_threshold || 0)) {
-    answer += `\n⚠️ **Заканчивается!**`;
+    answer += `\n️ **Заканчивается!**`;
   }
 
   return answer;
@@ -213,6 +213,10 @@ async function handleCheck(match) {
 
 async function handleShopping() {
   await loadShelfCache();
+  if (!shelfCache || shelfCache.length === 0) {
+    return 'ℹ️ На полке пока нет чаёв. Добавь первый чай из каталога.';
+  }
+  
   const low = shelfCache.filter(r => r.amount > 0 && r.amount <= (r.low_threshold || 0));
   const finished = shelfCache.filter(r => r.amount <= 0);
 
@@ -222,10 +226,12 @@ async function handleShopping() {
 
   let answer = '🛒 **Нужно докупить:**\n';
   finished.forEach(r => {
-    answer += `❌ **«${r.tea.name}»** — закончился\n`;
+    const teaName = r.tea?.name || 'Чай';
+    answer += `❌ **«${teaName}»** — закончился\n`;
   });
   low.forEach(r => {
-    answer += `⚠️ **«${r.tea.name}»** — осталось ${r.amount}${r.unit === 'g' ? 'г' : r.unit}\n`;
+    const teaName = r.tea?.name || 'Чай';
+    answer += `⚠️ **«${teaName}»** — осталось ${r.amount}${r.unit === 'g' ? 'г' : r.unit}\n`;
   });
 
   return answer;
@@ -234,6 +240,10 @@ async function handleShopping() {
 async function handleStats() {
   await loadShelfCache();
   await loadJournalCache();
+
+  if (!shelfCache || shelfCache.length === 0) {
+    return 'ℹ️ На полке пока нет чаёв. Добавь первый чай из каталога.';
+  }
 
   const rated = journalCache.filter(j => j.rating);
   const avgRating = rated.length ? (rated.reduce((s, j) => s + j.rating, 0) / rated.length).toFixed(1) : '–';
@@ -267,6 +277,9 @@ async function handleHelp() {
 
 async function findTeaInCatalog(name) {
   await loadCatalogCache();
+  if (!catalogCache || catalogCache.length === 0) {
+    return null;
+  }
   const lower = name.toLowerCase();
   return catalogCache.find(t =>
     t.name.toLowerCase().includes(lower) ||
@@ -276,15 +289,21 @@ async function findTeaInCatalog(name) {
 
 async function findTeaOnShelf(name) {
   await loadShelfCache();
+  if (!shelfCache || shelfCache.length === 0) {
+    return null;
+  }
   const lower = name.toLowerCase();
   return shelfCache.find(r =>
-    r.tea.name.toLowerCase().includes(lower) ||
-    lower.includes(r.tea.name.toLowerCase())
+    r.tea?.name.toLowerCase().includes(lower) ||
+    lower.includes(r.tea?.name.toLowerCase())
   );
 }
 
 async function isTeaOnShelf(teaId) {
   await loadShelfCache();
+  if (!shelfCache || shelfCache.length === 0) {
+    return null;
+  }
   return shelfCache.find(r => r.tea_id === teaId);
 }
 
@@ -292,10 +311,16 @@ async function loadShelfCache() {
   const user = getUser();
   if (!user || shelfCache) return;
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from(TABLES.shelf)
     .select('*')
     .eq('user_id', user.id);
+
+  if (error) {
+    console.error('[loadShelfCache] ошибка:', error);
+    shelfCache = [];
+    return;
+  }
 
   shelfCache = data || [];
 }
@@ -303,10 +328,16 @@ async function loadShelfCache() {
 async function loadCatalogCache() {
   if (catalogCache) return;
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from(TABLES.catalog)
     .select('*')
     .eq('status', 'published');
+
+  if (error) {
+    console.error('[loadCatalogCache] ошибка:', error);
+    catalogCache = [];
+    return;
+  }
 
   catalogCache = data || [];
 }
@@ -315,21 +346,32 @@ async function loadJournalCache() {
   const user = getUser();
   if (!user || journalCache) return;
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from(TABLES.journal)
     .select('*')
     .eq('user_id', user.id);
+
+  if (error) {
+    console.error('[loadJournalCache] ошибка:', error);
+    journalCache = [];
+    return;
+  }
 
   journalCache = data || [];
 }
 
 async function getTeaBrews(teaId) {
   const user = getUser();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from(TABLES.journal)
     .select('*')
     .eq('user_id', user.id)
     .eq('tea_id', teaId);
+
+  if (error) {
+    console.error('[getTeaBrews] ошибка:', error);
+    return [];
+  }
 
   return data || [];
 }
@@ -418,7 +460,7 @@ function switchMode(mode) {
   });
 
   const hint = mode === 'ai'
-    ? '🤖 ИИ-режим (пока заглушка)'
+    ? ' ИИ-режим (пока заглушка)'
     : '💬 Обычный чат-бот с командами';
   showToast(hint);
 }
@@ -429,6 +471,8 @@ export function initChatbot() {
   const close  = $('#chatbotClose');
   const form   = $('#chatbotForm');
   const input  = $('#chatbotInput');
+  const suggestions = $('#chatbotSuggestions');
+  
   if (!fab || !win) return;
 
   function setOpen(open) {
@@ -477,6 +521,29 @@ export function initChatbot() {
     send(input.value);
     input.value = '';
   });
+
+  // Показываем/скрываем подсказки при фокусе
+  if (suggestions) {
+    input?.addEventListener('focus', () => {
+      if (input.value.trim() === '') {
+        suggestions.classList.remove('hidden');
+      }
+    });
+
+    input?.addEventListener('blur', () => {
+      setTimeout(() => {
+        suggestions.classList.add('hidden');
+      }, 200);
+    });
+
+    input?.addEventListener('input', (e) => {
+      if (e.target.value.trim() === '') {
+        suggestions.classList.remove('hidden');
+      } else {
+        suggestions.classList.add('hidden');
+      }
+    });
+  }
 
   $('#chatbotSuggestions')?.addEventListener('click', (e) => {
     const btn = e.target.closest('.chatbot-suggestion');

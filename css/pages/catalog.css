@@ -214,3 +214,45 @@
   justify-content: center;
   padding: 0 0 var(--space-6);
 }
+
+/* ------------------------------------------------------------
+   Подсказки (компактные, одна строка)
+   ------------------------------------------------------------ */
+.chatbot-suggestions {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+  flex-shrink: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.chatbot-suggestions::-webkit-scrollbar {
+  display: none;
+}
+
+.chatbot-suggestion {
+  border: 1px solid var(--line);
+  background: var(--surface2);
+  border-radius: var(--radius-xs);
+  padding: 6px 12px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink);
+  transition: 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.chatbot-suggestion:hover {
+  border-color: var(--green);
+  background: var(--green-soft);
+  color: var(--green-d);
+}
+
+/* Скрываем подсказки по умолчанию (показываются при фокусе) */
+.chatbot-suggestions.hidden {
+  display: none;
+}
