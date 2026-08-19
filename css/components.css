@@ -1007,3 +1007,58 @@ Components responsive
     --mpad: var(--space-4);
   }
 }
+/* ============================================================
+   Блок 1: стили для ролей в dropdown меню
+   ============================================================ */
+.um-role {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 10px;
+  margin: 0 0 8px 0;
+  border-radius: var(--radius-xs);
+  text-align: center;
+}
+
+.um-role.role-user {
+  background: var(--surface2);
+  color: var(--muted);
+}
+
+.um-role.role-moderator {
+  background: #E8F0E4;
+  color: var(--green-d);
+  border: 1px solid var(--green);
+}
+
+.um-role.role-admin {
+  background: #FFE5E5;
+  color: #C62828;
+  border: 1px solid #EF5350;
+}
+
+.user-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.user-menu button:hover {
+  background: var(--surface2);
+}
+
+.user-menu button.danger {
+  color: var(--red);
+}
+
+.user-menu button.danger:hover {
+  background: #FFE5E5;
+}
