@@ -1,11 +1,10 @@
 // ============================================================
 // chatbot.js — умный чат с командами + режим ИИ (заглушка)
 // + история диалогов (7 дней в localStorage)
+// Блок В: уведомления о модерации заявок
 // ============================================================
-
 // ВАЖНО: сначала вставляем HTML, потом инициализируем логику
 import './chatbotHTML.js';
-
 import { $, $$, showToast, openOverlay } from './ui.js';
 import { getUser } from './auth.js';
 import { supabase } from './supabaseClient.js';
@@ -16,6 +15,7 @@ let currentMode = 'bot'; // 'bot' или 'ai'
 let shelfCache = null;
 let catalogCache = null;
 let journalCache = null;
+let moderationChecked = false; // Блок В: проверяем один раз за сессию
 
 // ---------- История диалогов ----------
 const HISTORY_KEY = 'chatbot_history';
@@ -43,32 +43,82 @@ function renderHistory() {
   const history = loadHistory();
   const box = $('#chatbotMessages');
   if (!box) return;
-
   box.innerHTML = '';
-
   if (history.length === 0) {
     addMessage('Привет! Я помощник «Чайной полки». Напиши «Что ты можешь» — покажу все команды.', 'bot');
     return;
   }
-
   history.forEach(msg => {
     const m = document.createElement('div');
     m.className = 'chatbot-message ' + (msg.who === 'user' ? 'is-user' : 'is-bot');
     m.innerHTML = msg.text.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
     box.appendChild(m);
   });
-
   box.scrollTop = box.scrollHeight;
+}
+
+// ---------- Блок В: уведомления о модерации ----------
+const MODERATION_KEY = 'tea_shelf_moderation_status';
+
+function loadModerationStatus() {
+  try {
+    const raw = localStorage.getItem(MODERATION_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+
+function saveModerationStatus(status) {
+  localStorage.setItem(MODERATION_KEY, JSON.stringify(status));
+}
+
+async function checkModerationNotifications() {
+  const user = getUser();
+  if (!user) return;
+
+  try {
+    // Загружаем ВСЕ чаи автора (pending + published)
+    const { data, error } = await supabase
+      .from(TABLES.catalog)
+      .select('id, name, status')
+      .eq('author_id', user.id);
+
+    if (error || !data || data.length === 0) return;
+
+    const prevStatus = loadModerationStatus();
+    const newStatus = {};
+    const approved = [];
+
+    data.forEach(tea => {
+      newStatus[tea.id] = tea.status;
+      // Раньше был pending, теперь published → одобрено!
+      if (prevStatus[tea.id] === 'pending' && tea.status === 'published') {
+        approved.push(tea);
+      }
+    });
+
+    saveModerationStatus(newStatus);
+
+    // Показываем уведомления для одобренных
+    approved.forEach(tea => {
+      addMessage(
+        `✅ **Ваша заявка «${tea.name}» одобрена!**\nЧай добавлен в общий каталог. Теперь его можно добавить на полку.`,
+        'bot',
+        [{ label: '📥 Добавить на полку', action: 'add-approved-tea', data: String(tea.id) }]
+      );
+    });
+  } catch (e) {
+    console.error('[checkModerationNotifications] ошибка:', e);
+  }
 }
 
 // ---------- Парсер команд ----------
 const COMMANDS = {
   add: {
-    patterns: [/добавь\s+(.+?)\s+(\d+)\s*г/i, /положи\s+(.+?)\s+(\d+)\s*г/i],
+    patterns: [/добавь\s+(.+?)\s+(\d+)\sг/i, /положи\s+(.+?)\s+(\d+)\sг/i],
     handler: handleAdd,
   },
   brew: {
-    patterns: [/заварил\s+(.+?)\s+(\d+)\s*г/i, /заварива[юю]\s+(.+?)\s+(\d+)\s*г/i],
+    patterns: [/заварил\s+(.+?)\s+(\d+)\sг/i, /заварива[юю]\s+(.+?)\s+(\d+)\sг/i],
     handler: handleBrew,
   },
   remove: {
@@ -94,21 +144,17 @@ const COMMANDS = {
 };
 
 // ---------- Обработчики команд ----------
-
 async function handleAdd(match) {
   const teaName = match[1].trim();
   const amount = parseInt(match[2]);
-
   const tea = await findTeaInCatalog(teaName);
   if (!tea) {
     return `❌ Чай «${teaName}» не найден в каталоге. Попробуй добавить его через каталог или предложи новый чай.`;
   }
-
   const onShelf = await isTeaOnShelf(tea.id);
   if (onShelf) {
     return `⚠️ «${tea.name}» уже на полке (${onShelf.amount}г). Используй «Пополни ${tea.name} ${amount}г»`;
   }
-
   setTimeout(() => {
     openAmountModal({
       mode: 'add',
@@ -128,31 +174,26 @@ async function handleAdd(match) {
           return;
         }
         showToast(`✅ «${tea.name}» добавлен на полку`);
-        shelfCache = null; // сброс кэша для обновления
+        shelfCache = null;
       },
     });
   }, 100);
-
   return `📝 **Добавить «${tea.name}»:**\nКоличество: ${amount}г\nПорог "мало": 20г\n\nМодалка открыта — подтверди добавление.`;
 }
 
 async function handleBrew(match) {
   const teaName = match[1].trim();
   const amount = parseInt(match[2]);
-
   const row = await findTeaOnShelf(teaName);
   if (!row) {
     return `❌ «${teaName}» нет на полке. Сначала добавь чай.`;
   }
-
   if (row.amount < amount) {
     return `⚠️ Недостаточно чая: осталось ${row.amount}г, а ты хочешь ${amount}г.`;
   }
-
   setTimeout(() => {
     const ov = $('#brewOverlay');
     if (!ov) return;
-
     $('#brewTeaName').textContent = row.tea.name;
     $('#brewTeaId').value = row.tea_id;
     $('#brewAmount').value = amount;
@@ -161,22 +202,18 @@ async function handleBrew(match) {
       s.classList.remove('on');
       s.setAttribute('aria-checked', 'false');
     });
-
     openOverlay(ov);
     $('#brewAmount').dispatchEvent(new Event('input'));
   }, 100);
-
   return `☕ **Заваривание «${row.tea.name}»:**\nКоличество: ${amount}г\nОсталось после: ${row.amount - amount}г\n\nМодалка открыта — поставь оценку и нажми «Сохранить».`;
 }
 
 async function handleRemove(match) {
   const teaName = match[1].trim();
-
   const row = await findTeaOnShelf(teaName);
   if (!row) {
-    return ` «${teaName}» нет на полке.`;
+    return `«${teaName}» нет на полке.`;
   }
-
   return {
     text: `❓ **Убрать «${row.tea.name}» с полки?**\nОстаток: ${row.amount}г`,
     actions: [
@@ -188,26 +225,22 @@ async function handleRemove(match) {
 
 async function handleCheck(match) {
   const teaName = match[1].trim();
-
   const row = await findTeaOnShelf(teaName);
   if (!row) {
     return `❌ «${teaName}» нет на полке.`;
   }
-
   const brews = await getTeaBrews(row.tea_id);
   const rated = brews.filter(b => b.rating);
   const avgRating = rated.length ? (rated.reduce((s, b) => s + b.rating, 0) / rated.length).toFixed(1) : null;
-
   let answer = `📊 **«${row.tea.name}»**\n`;
   answer += `Осталось: **${row.amount}${row.unit === 'g' ? 'г' : row.unit}**\n`;
   answer += `Завариваний: ${brews.length}`;
   if (avgRating) {
-    answer += ` · Рейтинг: ${'★'.repeat(Math.round(avgRating))}${'☆'.repeat(5 - Math.round(avgRating))} (${avgRating})`;
+    answer += `· Рейтинг: ${'★'.repeat(Math.round(avgRating))}${'☆'.repeat(5 - Math.round(avgRating))} (${avgRating})`;
   }
   if (row.amount <= (row.low_threshold || 0)) {
     answer += `\n⚠️ **Заканчивается!**`;
   }
-
   return answer;
 }
 
@@ -216,15 +249,12 @@ async function handleShopping() {
   if (!shelfCache || shelfCache.length === 0) {
     return 'ℹ️ На полке пока нет чаёв. Добавь первый чай из каталога.';
   }
-  
   const low = shelfCache.filter(r => r.amount > 0 && r.amount <= (r.low_threshold || 0));
   const finished = shelfCache.filter(r => r.amount <= 0);
-
   if (!low.length && !finished.length) {
     return '✅ Всё хорошо! Ничего не нужно докупать.';
   }
-
-  let answer = '🛒 **Нужно докупить:**\n';
+  let answer = '🛒 Нужно докупить:\n';
   finished.forEach(r => {
     const teaName = r.tea?.name || 'Чай';
     answer += `❌ **«${teaName}»** — закончился\n`;
@@ -233,27 +263,22 @@ async function handleShopping() {
     const teaName = r.tea?.name || 'Чай';
     answer += `⚠️ **«${teaName}»** — осталось ${r.amount}${r.unit === 'g' ? 'г' : r.unit}\n`;
   });
-
   return answer;
 }
 
 async function handleStats() {
   await loadShelfCache();
   await loadJournalCache();
-
   if (!shelfCache || shelfCache.length === 0) {
     return 'ℹ️ На полке пока нет чаёв. Добавь первый чай из каталога.';
   }
-
   const rated = journalCache.filter(j => j.rating);
   const avgRating = rated.length ? (rated.reduce((s, j) => s + j.rating, 0) / rated.length).toFixed(1) : '–';
-
-  let answer = '📊 **Твоя чайная статистика:**\n';
+  let answer = '📊 Твоя чайная статистика:\n';
   answer += `Чай на полке: **${shelfCache.length}**\n`;
   answer += `Завариваний: **${journalCache.length}**\n`;
   answer += `Средний рейтинг: **${avgRating}**\n`;
   answer += `Заканчивается: **${shelfCache.filter(r => r.amount <= (r.low_threshold || 0)).length}**`;
-
   return answer;
 }
 
@@ -274,12 +299,9 @@ async function handleHelp() {
 }
 
 // ---------- Вспомогательные функции ----------
-
 async function findTeaInCatalog(name) {
   await loadCatalogCache();
-  if (!catalogCache || catalogCache.length === 0) {
-    return null;
-  }
+  if (!catalogCache || catalogCache.length === 0) return null;
   const lower = name.toLowerCase();
   return catalogCache.find(t =>
     t.name.toLowerCase().includes(lower) ||
@@ -287,11 +309,16 @@ async function findTeaInCatalog(name) {
   );
 }
 
+// Блок В: поиск чая по id (для уведомлений о модерации)
+async function findTeaById(teaId) {
+  await loadCatalogCache();
+  if (!catalogCache) return null;
+  return catalogCache.find(t => String(t.id) === String(teaId));
+}
+
 async function findTeaOnShelf(name) {
   await loadShelfCache();
-  if (!shelfCache || shelfCache.length === 0) {
-    return null;
-  }
+  if (!shelfCache || shelfCache.length === 0) return null;
   const lower = name.toLowerCase();
   return shelfCache.find(r =>
     r.tea?.name.toLowerCase().includes(lower) ||
@@ -301,62 +328,51 @@ async function findTeaOnShelf(name) {
 
 async function isTeaOnShelf(teaId) {
   await loadShelfCache();
-  if (!shelfCache || shelfCache.length === 0) {
-    return null;
-  }
+  if (!shelfCache || shelfCache.length === 0) return null;
   return shelfCache.find(r => r.tea_id === teaId);
 }
 
 async function loadShelfCache() {
   const user = getUser();
   if (!user || shelfCache) return;
-
   const { data, error } = await supabase
     .from(TABLES.shelf)
     .select('*, tea:tea_id(*)')
     .eq('user_id', user.id);
-
   if (error) {
     console.error('[loadShelfCache] ошибка:', error);
     shelfCache = [];
     return;
   }
-
   shelfCache = data || [];
 }
 
 async function loadCatalogCache() {
   if (catalogCache) return;
-
   const { data, error } = await supabase
     .from(TABLES.catalog)
     .select('*')
     .eq('status', 'published');
-
   if (error) {
     console.error('[loadCatalogCache] ошибка:', error);
     catalogCache = [];
     return;
   }
-
   catalogCache = data || [];
 }
 
 async function loadJournalCache() {
   const user = getUser();
   if (!user || journalCache) return;
-
   const { data, error } = await supabase
     .from(TABLES.journal)
     .select('*')
     .eq('user_id', user.id);
-
   if (error) {
     console.error('[loadJournalCache] ошибка:', error);
     journalCache = [];
     return;
   }
-
   journalCache = data || [];
 }
 
@@ -367,17 +383,14 @@ async function getTeaBrews(teaId) {
     .select('*')
     .eq('user_id', user.id)
     .eq('tea_id', teaId);
-
   if (error) {
     console.error('[getTeaBrews] ошибка:', error);
     return [];
   }
-
   return data || [];
 }
 
 // ---------- Основная логика ----------
-
 const FALLBACK = 'Не понимаю команду. Напиши «Что ты можешь» — покажу все доступные действия.';
 
 async function findAnswer(text) {
@@ -389,14 +402,12 @@ async function findAnswer(text) {
       }
     }
   }
-
   const RULES = [
     { keys: ['привет', 'здравств', 'hi'],
       answer: 'Привет! Я помощник «Чайной полки». Напиши «Что ты можешь» — покажу все команды.' },
     { keys: ['спасибо', 'благодар'],
       answer: 'Пожалуйста! Обращайся, если что-то нужно.' },
   ];
-
   const t = text.toLowerCase();
   const hit = RULES.find((r) => r.keys.some((k) => t.includes(k)));
   return hit ? hit.answer : FALLBACK;
@@ -409,12 +420,9 @@ async function askAI(text) {
 function addMessage(text, who, actions = null) {
   const box = $('#chatbotMessages');
   if (!box) return;
-
   const m = document.createElement('div');
   m.className = 'chatbot-message ' + (who === 'user' ? 'is-user' : 'is-bot');
-
   let html = text.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
-
   if (actions && actions.length > 0) {
     html += '<div class="chatbot-actions">';
     actions.forEach(action => {
@@ -422,11 +430,9 @@ function addMessage(text, who, actions = null) {
     });
     html += '</div>';
   }
-
   m.innerHTML = html;
   box.appendChild(m);
   box.scrollTop = box.scrollHeight;
-
   saveHistory({ text, who, actions });
 
   if (actions) {
@@ -445,6 +451,38 @@ function addMessage(text, who, actions = null) {
           shelfCache = null;
         } else if (action === 'cancel') {
           addMessage('Отменено', 'bot');
+        } else if (action === 'add-approved-tea') {
+          // Блок В: добавляем одобренный чай на полку
+          const tea = await findTeaById(data);
+          if (!tea) {
+            addMessage('❌ Чай не найден в каталоге.', 'bot');
+            return;
+          }
+          const onShelf = await isTeaOnShelf(tea.id);
+          if (onShelf) {
+            addMessage(`⚠️ «${tea.name}» уже на полке.`, 'bot');
+            return;
+          }
+          openAmountModal({
+            mode: 'add',
+            teaName: tea.name,
+            onSubmit: async (payload) => {
+              const user = getUser();
+              const { error } = await supabase.from(TABLES.shelf).insert({
+                user_id: user.id,
+                tea_id: tea.id,
+                amount: payload.amount,
+                unit: payload.unit,
+                low_threshold: payload.threshold,
+              });
+              if (error) {
+                showToast('Не удалось добавить: ' + error.message, 'warn');
+                return;
+              }
+              showToast(`✅ «${tea.name}» добавлен на полку`);
+              shelfCache = null;
+            },
+          });
         }
 
         m.querySelector('.chatbot-actions')?.remove();
@@ -458,7 +496,6 @@ function switchMode(mode) {
   $$('.chatbot-mode-btn').forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.mode === mode);
   });
-
   const hint = mode === 'ai'
     ? '🤖 ИИ-режим (пока заглушка)'
     : '💬 Обычный чат-бот с командами';
@@ -479,6 +516,11 @@ export function initChatbot() {
     if (open) {
       input?.focus();
       renderHistory();
+      // Блок В: проверяем уведомления о модерации при первом открытии
+      if (!moderationChecked) {
+        moderationChecked = true;
+        checkModerationNotifications();
+      }
     }
   }
 
@@ -489,23 +531,19 @@ export function initChatbot() {
     const msg = text.trim();
     if (!msg) return;
     addMessage(msg, 'user');
-
     const typingDiv = document.createElement('div');
     typingDiv.className = 'chatbot-message is-bot';
     typingDiv.textContent = 'Печатает...';
     typingDiv.style.opacity = '0.6';
     $('#chatbotMessages').appendChild(typingDiv);
-
     setTimeout(async () => {
       typingDiv.remove();
-
       let answer;
       if (currentMode === 'ai') {
         answer = await askAI(msg);
       } else {
         answer = await findAnswer(msg);
       }
-
       if (typeof answer === 'object' && answer.text) {
         addMessage(answer.text, 'bot', answer.actions);
       } else {
