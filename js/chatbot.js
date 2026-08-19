@@ -1,8 +1,10 @@
 // ============================================================
-// chatbot.js — бот-заглушка: шаблонные ответы по словам-маркерам.
-// Позже заменяется на ИИ (Qwen + RAG) без переделки разметки.
+// chatbot.js — чат-помощник с выбором режима
+// Режимы: 'bot' (обычный чат-бот) / 'ai' (ИИ-ассистент, пока заглушка)
 // ============================================================
-import { $ } from './ui.js';
+import { $, $$, showToast } from './ui.js';
+
+let currentMode = 'bot'; // 'bot' или 'ai'
 
 const RULES = [
   { keys: ['привет', 'здравств', 'hi'],
@@ -19,6 +21,12 @@ const RULES = [
     answer: 'Нажмите «Вход» в шапке: email + пароль (минимум 6 символов). Данные полки и журнала привязаны к аккаунту.' },
   { keys: ['температур', 'время', 'заварить', 'как завар'],
     answer: 'Параметры заваривания указаны в карточке чая: температура, время и пропорция. Откройте чай кликом по карточке.' },
+  { keys: ['избранн', 'избранное', 'сердц', 'wishlist'],
+    answer: 'Избранное — это список чаёв, которые вам понравились. Отмечайте сердечком в каталоге или на полке. Потом можно быстро добавить на полку из раздела «Избранное».' },
+  { keys: ['остаток', 'сколько', 'грамм', 'количеств'],
+    answer: 'Остаток показан на карточке чая на полке. Нажмите «Заварил» — укажите сколько граммов использовали, остаток автоматически уменьшится.' },
+  { keys: ['статистик', 'средн', 'оценк', 'рейтинг'],
+    answer: 'Статистика вверху полки показывает: сколько чаёв на полке, сколько завариваний, средний рейтинг и сколько чаёв нужно докупить.' },
 ];
 
 const FALLBACK = 'Пока я понимаю только простые вопросы про полку, каталог, покупки и журнал. Позже сюда подключится ИИ-ассистент.';
@@ -29,6 +37,11 @@ function findAnswer(text) {
   return hit ? hit.answer : FALLBACK;
 }
 
+// Заглушка для ИИ (пока не подключён Qwen)
+async function askAI(text) {
+  return '🤖 ИИ-ассистент скоро будет доступен! Пока я работаю в режиме обычного чат-бота. Задайте вопрос про полку, каталог или заваривание.';
+}
+
 function addMessage(text, who) {
   const box = $('#chatbotMessages');
   const m = document.createElement('div');
@@ -36,6 +49,19 @@ function addMessage(text, who) {
   m.textContent = text;
   box.appendChild(m);
   box.scrollTop = box.scrollHeight;
+}
+
+// Переключатель режимов
+function switchMode(mode) {
+  currentMode = mode;
+  $$('.chatbot-mode-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.mode === mode);
+  });
+
+  const hint = mode === 'ai'
+    ? '🤖 ИИ-режим (пока заглушка)'
+    : '💬 Обычный чат-бот';
+  showToast(hint);
 }
 
 export function initChatbot() {
@@ -59,7 +85,28 @@ export function initChatbot() {
     const msg = text.trim();
     if (!msg) return;
     addMessage(msg, 'user');
-    setTimeout(() => addMessage(findAnswer(msg), 'bot'), 350);
+
+    // Показываем "печатает..."
+    const typingId = 'typing-' + Date.now();
+    const typingDiv = document.createElement('div');
+    typingDiv.id = typingId;
+    typingDiv.className = 'chatbot-message is-bot';
+    typingDiv.textContent = 'Печатает...';
+    typingDiv.style.opacity = '0.6';
+    $('#chatbotMessages').appendChild(typingDiv);
+
+    setTimeout(async () => {
+      typingDiv.remove();
+
+      let answer;
+      if (currentMode === 'ai') {
+        answer = await askAI(msg);
+      } else {
+        answer = findAnswer(msg);
+      }
+
+      addMessage(answer, 'bot');
+    }, 350);
   }
 
   form?.addEventListener('submit', (e) => {
@@ -71,6 +118,13 @@ export function initChatbot() {
   $('#chatbotSuggestions')?.addEventListener('click', (e) => {
     const btn = e.target.closest('.chatbot-suggestion');
     if (btn) send(btn.textContent);
+  });
+
+  // Переключатель режимов
+  $('#chatbotModeSwitch')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('.chatbot-mode-btn');
+    if (!btn) return;
+    switchMode(btn.dataset.mode);
   });
 
   // Esc закрывает окно

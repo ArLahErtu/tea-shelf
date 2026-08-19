@@ -690,6 +690,16 @@
     >
 
       <div class="chatbot-header">
+        <!-- Переключатель режимов -->
+        <div class="chatbot-mode-switch" id="chatbotModeSwitch">
+          <button class="chatbot-mode-btn active" data-mode="bot" type="button" aria-label="Чат-бот">
+            💬 Чат-бот
+          </button>
+          <button class="chatbot-mode-btn" data-mode="ai" type="button" aria-label="ИИ-ассистент">
+            ИИ <span class="badge-soon">Скоро</span>
+          </button>
+        </div>
+
         <div class="chatbot-title">
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M5 20c0-8 5-13 14-15-1 9-6 14-14 15Z"/>
@@ -698,12 +708,7 @@
           Чайный помощник
         </div>
 
-        <button
-          class="chatbot-close"
-          id="chatbotClose"
-          type="button"
-          aria-label="Закрыть чат"
-        >
+        <button class="chatbot-close" id="chatbotClose" type="button" aria-label="Закрыть чат">
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M6 6l12 12M18 6L6 18"/>
           </svg>
