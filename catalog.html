@@ -132,63 +132,56 @@
           </p>
         </div>
         <div class="head-btns">
-          <button class="btn btn-primary" id="proposeTeaBtn" type="button" data-auth-required="true">
+          <button class="btn btn-primary" id="proposeTeaBtn" type="button">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
             Предложить чай
           </button>
         </div>
       </div>
 
-      <div class="toolbar" role="search" aria-label="Поиск и фильтры каталога">
-        <div class="search-wrap">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>
-          </svg>
+      <div class="toolbar" role="group" aria-label="Фильтры и поиск каталога">
+        <div class="search-field">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 21l-4.35-4.35M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16Z"/></svg>
           <input
-            id="catalogSearch"
             type="search"
-            placeholder="Поиск по названию…"
+            id="catalogSearch"
+            placeholder="Поиск по названию или региону…"
             aria-label="Поиск по каталогу"
-            autocomplete="off"
           >
         </div>
-        <!-- Неделя 4: фильтр по типу чая (значения = как в БД) -->
         <select class="sel" id="catalogTypeFilter" aria-label="Фильтр по типу чая">
           <option value="all">Все типы</option>
-          <option value="улун">Улун</option>
-          <option value="зелёный">Зелёный</option>
-          <option value="пуэр">Пуэр</option>
-          <option value="белый">Белый</option>
-          <option value="красный">Красный</option>
-          <option value="жёлтый">Жёлтый</option>
-          <option value="матте">Матте</option>
-          <option value="цветочный">Цветочный</option>
-          <option value="матча">Матча</option>
-          <option value="хэй ча">Хэй ча</option>
-          <option value="чёрный">Чёрный</option>
-          <option value="травяной">Травяной</option>
-          <option value="смесь">Смесь / купаж</option>
+          <option value="Улун">Улун</option>
+          <option value="Зелёный">Зелёный</option>
+          <option value="Пуэр">Пуэр</option>
+          <option value="Белый">Белый</option>
+          <option value="Красный">Красный</option>
+          <option value="Жёлтый">Жёлтый</option>
+          <option value="Матте">Матте</option>
+          <option value="Цветочный">Цветочный</option>
+          <option value="Матча">Матча</option>
+          <option value="Хэй ча">Хэй ча</option>
+          <option value="Чёрный">Чёрный</option>
+          <option value="Травяной">Травяной</option>
+          <option value="Смесь">Смесь / купаж</option>
         </select>
         <select class="sel" id="catalogSort" aria-label="Сортировка каталога">
           <option value="popular">По популярности</option>
           <option value="name">По названию, А–Я</option>
-          <option value="order">По порядку каталога</option>
+          <option value="newest">По порядку каталога</option>
         </select>
       </div>
 
       <div class="grid" id="catalogGrid" aria-busy="true">
-        <div class="empty grid-col-span" id="catalogEmpty">
+        <div class="empty grid-col-span">
           <h3>Загружаем каталог…</h3>
           <p>Здесь появятся чаи из базы. Хотите добавить свой сорт — отправьте заявку на модерацию.</p>
-          <button class="btn btn-primary" id="emptyProposeBtn" type="button" data-auth-required="true">
-            Предложить чай
-          </button>
+          <button class="btn btn-primary" type="button" id="emptyProposeBtn">Предложить чай</button>
         </div>
       </div>
 
-      <!-- Блок C: подгрузка каталога порциями по 20 -->
       <div class="more-wrap hidden" id="moreWrap">
-        <button class="btn btn-outline" id="moreBtn" type="button">Показать ещё</button>
+        <button class="btn btn-outline" type="button" id="moreBtn">Показать ещё</button>
       </div>
 
     </div>
@@ -213,11 +206,11 @@
           <svg viewBox="0 0 24 24"><path d="M5 20c0-8 5-13 14-15-1 9-6 14-14 15Z"/></svg>
         </div>
         <img id="teaImage" class="hidden" alt="" loading="lazy" decoding="async">
-        <span class="phlabel" id="teaPhotoLabel">Фото добавит модератор</span>
+        <span class="phlabel">Фото модератора</span>
       </div>
 
       <div class="dmeta">
-        <span class="typechip tc-green" id="teaTypeChip">Тип</span>
+        <span class="typechip" id="teaTypeChip">Тип</span>
         <span class="dorigin" id="teaOrigin">Регион</span>
       </div>
 
@@ -227,7 +220,7 @@
         <div class="bcell"><div class="v" id="teaTemp">–</div><div class="l">температура</div></div>
         <div class="bcell"><div class="v" id="teaTime">–</div><div class="l">время</div></div>
         <div class="bcell"><div class="v" id="teaDose">–</div><div class="l">на чашку</div></div>
-        <div class="bcell"><div class="v" id="teaRating">–</div><div class="l">проливы</div></div>
+        <div class="bcell"><div class="v" id="teaSteeps">–</div><div class="l">проливы</div></div>
       </div>
 
       <div class="tagrow" id="teaTags" hidden></div>
@@ -301,7 +294,7 @@
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="proposeTitle">
       <div class="modal-head">
         <h2 id="proposeTitle">Предложить чай</h2>
-        <button class="icon-btn" id="proposeClose" type="button" aria-label="Закрыть форму">
+        <button class="icon-btn" id="proposeClose" type="button" aria-label="Закрыть">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
         </button>
       </div>
@@ -310,55 +303,52 @@
       <form id="proposeForm" novalidate>
         <div class="field">
           <label for="proposeName">Название <span class="req">*</span></label>
-          <input
-            id="proposeName" name="name" type="text" required maxlength="120"
-            placeholder="Например, Те Гуань Инь" autocomplete="off"
-          >
-          <p class="err">Укажите название чая</p>
+          <input id="proposeName" type="text" required placeholder="Укажите название чая">
+          <p class="err">Укажите название</p>
+        </div>
+
+        <div class="field">
+          <label for="proposeType">Тип <span class="req">*</span></label>
+          <select id="proposeType" required>
+            <option value="">Выберите тип</option>
+            <option value="black">Чёрный</option>
+            <option value="green">Зелёный</option>
+            <option value="white">Белый</option>
+            <option value="yellow">Жёлтый</option>
+            <option value="oolong">Улун</option>
+            <option value="red">Красный</option>
+            <option value="puerh">Пуэр</option>
+            <option value="dark">Хэй ча</option>
+            <option value="floral">Цветочный</option>
+            <option value="matte">Матте</option>
+            <option value="matcha">Матча</option>
+            <option value="herbal">Травяной</option>
+            <option value="blend">Смесь / купаж</option>
+          </select>
+          <p class="err">Выберите тип</p>
         </div>
 
         <div class="row2">
           <div class="field">
-            <label for="proposeType">Тип <span class="req">*</span></label>
-            <!-- Неделя 4: расширен список типов (реальные типы БД) -->
-            <select id="proposeType" name="type" required>
-              <option value="">Выберите тип</option>
-              <option value="black">Чёрный</option>
-              <option value="green">Зелёный</option>
-              <option value="white">Белый</option>
-              <option value="yellow">Жёлтый</option>
-              <option value="oolong">Улун</option>
-              <option value="red">Красный</option>
-              <option value="puerh">Пуэр</option>
-              <option value="dark">Хэй ча</option>
-              <option value="floral">Цветочный</option>
-              <option value="matte">Матте</option>
-              <option value="matcha">Матча</option>
-              <option value="herbal">Травяной</option>
-              <option value="blend">Смесь / купаж</option>
-            </select>
-            <p class="err">Выберите тип чая</p>
-          </div>
-          <div class="field">
             <label for="proposeOrigin">Страна или регион</label>
-            <input
-              id="proposeOrigin" name="origin" type="text" maxlength="120"
-              placeholder="Например, Китай · Аньси" autocomplete="off"
-            >
+            <input id="proposeOrigin" type="text" placeholder="Например: Китай, Юньнань">
           </div>
         </div>
 
         <div class="field">
           <label for="proposeDescription">Описание</label>
           <textarea
-            id="proposeDescription" name="description" rows="4" maxlength="800"
-            placeholder="Вкус, аромат, как заваривать…"
+            id="proposeDescription"
+            rows="4"
+            maxlength="1000"
+            placeholder="Расскажите про вкус, аромат, историю чая…"
           ></textarea>
         </div>
+
         <p class="hint">Фото и точные параметры заваривания добавит модератор после одобрения.</p>
 
         <div class="modal-foot">
-          <button class="btn btn-ghost" id="proposeCancel" type="button">Отмена</button>
+          <button class="btn btn-ghost" type="button" id="proposeCancel">Отмена</button>
           <button class="btn btn-primary" type="submit">Отправить на модерацию</button>
         </div>
       </form>
@@ -414,7 +404,7 @@
 
   <div id="toasts" aria-live="polite"></div>
 
-<!-- CHATBOT: HTML генерируется автоматически через js/chatbotHTML.js -->
+  <!-- CHATBOT: HTML генерируется автоматически через js/chatbotHTML.js -->
 
   <!-- Шаблон карточки каталога -->
   <template id="teaCardTemplate">
