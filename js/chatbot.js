@@ -128,7 +128,7 @@ async function handleAdd(match) {
           return;
         }
         showToast(`✅ «${tea.name}» добавлен на полку`);
-        shelfCache = null;
+        shelfCache = null; // сброс кэша для обновления
       },
     });
   }, 100);
@@ -174,7 +174,7 @@ async function handleRemove(match) {
 
   const row = await findTeaOnShelf(teaName);
   if (!row) {
-    return `❌ «${teaName}» нет на полке.`;
+    return ` «${teaName}» нет на полке.`;
   }
 
   return {
@@ -205,7 +205,7 @@ async function handleCheck(match) {
     answer += ` · Рейтинг: ${'★'.repeat(Math.round(avgRating))}${'☆'.repeat(5 - Math.round(avgRating))} (${avgRating})`;
   }
   if (row.amount <= (row.low_threshold || 0)) {
-    answer += `\n️ **Заканчивается!**`;
+    answer += `\n⚠️ **Заканчивается!**`;
   }
 
   return answer;
@@ -313,7 +313,7 @@ async function loadShelfCache() {
 
   const { data, error } = await supabase
     .from(TABLES.shelf)
-    .select('*')
+    .select('*, tea:tea_id(*)')
     .eq('user_id', user.id);
 
   if (error) {
@@ -460,7 +460,7 @@ function switchMode(mode) {
   });
 
   const hint = mode === 'ai'
-    ? ' ИИ-режим (пока заглушка)'
+    ? '🤖 ИИ-режим (пока заглушка)'
     : '💬 Обычный чат-бот с командами';
   showToast(hint);
 }
@@ -471,8 +471,6 @@ export function initChatbot() {
   const close  = $('#chatbotClose');
   const form   = $('#chatbotForm');
   const input  = $('#chatbotInput');
-  const suggestions = $('#chatbotSuggestions');
-  
   if (!fab || !win) return;
 
   function setOpen(open) {
@@ -521,29 +519,6 @@ export function initChatbot() {
     send(input.value);
     input.value = '';
   });
-
-  // Показываем/скрываем подсказки при фокусе
-  if (suggestions) {
-    input?.addEventListener('focus', () => {
-      if (input.value.trim() === '') {
-        suggestions.classList.remove('hidden');
-      }
-    });
-
-    input?.addEventListener('blur', () => {
-      setTimeout(() => {
-        suggestions.classList.add('hidden');
-      }, 200);
-    });
-
-    input?.addEventListener('input', (e) => {
-      if (e.target.value.trim() === '') {
-        suggestions.classList.remove('hidden');
-      } else {
-        suggestions.classList.add('hidden');
-      }
-    });
-  }
 
   $('#chatbotSuggestions')?.addEventListener('click', (e) => {
     const btn = e.target.closest('.chatbot-suggestion');
