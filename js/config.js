@@ -10,7 +10,7 @@ export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 export const SHOW_DEMO_ACCOUNTS = false;
 
 // ---------- Обратная связь ----------
-export const FEEDBACK_URL = ''; 'https://forms.gle/rCcAXQ7kSTANzhqm7'
+export const FEEDBACK_URL = 'https://forms.gle/rCcAXQ7kSTANzhqm7';
 
 // ---------- Аналитика: Яндекс Метрика ----------
 // Номер счётчика; сниппет живёт в js/common.js между маркерами.
