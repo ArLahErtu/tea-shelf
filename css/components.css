@@ -1062,3 +1062,24 @@ Components responsive
 .user-menu button.danger:hover {
   background: #FFE5E5;
 }
+
+/* ============================================================
+   Согласие на обработку персональных данных (форма входа)
+   ============================================================ */
+.consent {
+  margin-top: var(--space-3);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.consent a {
+  color: var(--green-d);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.consent a:hover {
+  color: var(--green);
+}
