@@ -73,6 +73,7 @@
   padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--line);
   background: var(--surface2);
+  flex-shrink: 0;
 }
 
 .chatbot-title {
@@ -119,6 +120,54 @@
 }
 
 /* ------------------------------------------------------------
+   Mode switch (чат-бот / ИИ)
+   ------------------------------------------------------------ */
+.chatbot-mode-switch {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4) 0;
+  background: var(--surface);
+  flex-shrink: 0;
+}
+
+.chatbot-mode-btn {
+  flex: 1;
+  border: 1px solid var(--line);
+  background: var(--surface2);
+  border-radius: var(--radius-xs);
+  padding: 8px 12px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--muted);
+  transition: 0.15s;
+  cursor: pointer;
+}
+
+.chatbot-mode-btn.active {
+  background: var(--green-soft);
+  border-color: var(--green);
+  color: var(--green-d);
+}
+
+.chatbot-mode-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.chatbot-mode-btn .badge-soon {
+  display: inline-block;
+  background: var(--amber-soft);
+  color: #8A5A16;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 9px;
+  font-weight: 800;
+  margin-left: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ------------------------------------------------------------
    Messages
    ------------------------------------------------------------ */
 .chatbot-messages {
@@ -139,6 +188,7 @@
   font-size: 13.5px;
   line-height: 1.5;
   animation: pop 0.18s ease;
+  word-wrap: break-word;
 }
 
 .chatbot-message.is-bot {
@@ -165,6 +215,7 @@
   padding: var(--space-3) var(--space-4);
   border-top: 1px solid var(--line);
   background: var(--surface);
+  flex-shrink: 0;
 }
 
 .chatbot-suggestion {
@@ -193,6 +244,7 @@
   padding: var(--space-3) var(--space-4);
   border-top: 1px solid var(--line);
   background: var(--surface);
+  flex-shrink: 0;
 }
 
 .chatbot-input {
@@ -242,7 +294,46 @@
 }
 
 /* ------------------------------------------------------------
-   Mobile fullscreen (Неделя 4, Блок E)
+   Action buttons (кнопки внутри сообщений)
+   ------------------------------------------------------------ */
+.chatbot-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  border: 1px solid var(--line);
+  background: var(--surface2);
+  border-radius: var(--radius-xs);
+  padding: 8px 14px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink);
+  transition: 0.15s;
+  cursor: pointer;
+}
+
+.action-btn:hover {
+  border-color: var(--green);
+  background: var(--green-soft);
+  color: var(--green-d);
+}
+
+.action-btn[data-action="confirm-remove"] {
+  background: var(--red-soft);
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.action-btn[data-action="confirm-remove"]:hover {
+  background: var(--red);
+  color: #fff;
+}
+
+/* ------------------------------------------------------------
+   Mobile fullscreen
    ------------------------------------------------------------ */
 @media (max-width: 640px) {
   .chatbot-window {
@@ -255,48 +346,4 @@
     right: 0;
     bottom: 0;
   }
-}
-
-/* ------------------------------------------------------------
-   Mode switch (чат-бот / ИИ)
-   ------------------------------------------------------------ */
-.chatbot-mode-switch {
-  display: flex;
-  gap: var(--space-2);
-  margin-bottom: var(--space-3);
-  background: var(--surface2);
-  border-radius: var(--radius-xs);
-  padding: 4px;
-}
-
-.chatbot-mode-btn {
-  flex: 1;
-  border: none;
-  background: transparent;
-  border-radius: var(--radius-xs);
-  padding: 8px 12px;
-  font-size: 12.5px;
-  font-weight: 700;
-  color: var(--muted);
-  transition: 0.15s;
-  cursor: pointer;
-}
-
-.chatbot-mode-btn.active {
-  background: var(--surface);
-  color: var(--green-d);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-}
-
-.chatbot-mode-btn .badge-soon {
-  display: inline-block;
-  background: var(--amber-soft);
-  color: #8A5A16;
-  border-radius: 4px;
-  padding: 1px 5px;
-  font-size: 9px;
-  font-weight: 800;
-  margin-left: 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
 }

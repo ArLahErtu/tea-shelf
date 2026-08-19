@@ -1,57 +1,418 @@
 // ============================================================
-// chatbot.js — чат-помощник с выбором режима
-// Режимы: 'bot' (обычный чат-бот) / 'ai' (ИИ-ассистент, пока заглушка)
+// chatbot.js — умный чат с командами + режим ИИ (заглушка)
+// + история диалогов (7 дней в localStorage)
 // ============================================================
-import { $, $$, showToast } from './ui.js';
+
+// ВАЖНО: сначала вставляем HTML, потом инициализируем логику
+import './chatbotHTML.js';
+
+import { $, $$, showToast, openOverlay } from './ui.js';
+import { getUser } from './auth.js';
+import { supabase } from './supabaseClient.js';
+import { TABLES } from './config.js';
+import { openAmountModal } from './amountModal.js';
 
 let currentMode = 'bot'; // 'bot' или 'ai'
+let shelfCache = null;
+let catalogCache = null;
+let journalCache = null;
 
-const RULES = [
-  { keys: ['привет', 'здравств', 'hi'],
-    answer: 'Привет! Я помощник «Чайной полки». Спросите про полку, покупки, журнал или каталог.' },
-  { keys: ['докупить', 'покупк', 'закончил', 'мало'],
-    answer: 'Список «Что докупить» собирается из чаёв со статусом «Мало» и «Закончился». Поправьте количество и нажмите «Пополнить выбранные» — остаток обновится.' },
-  { keys: ['добавить', 'полк', 'каталог'],
-    answer: 'Откройте «Каталог», выберите чай и нажмите «На полку». Если чая нет в каталоге — кнопка «Предложить чай» отправит заявку на модерацию.' },
-  { keys: ['журнал', 'заварив', 'оценк'],
-    answer: 'Журнал завариваний хранит дату, количество, оценку и заметки. Кнопка «Заварил» на карточке списывает чай и создаёт запись.' },
-  { keys: ['модерац', 'заявк', 'предложить'],
-    answer: 'Заявки в каталог видны только вам до одобрения модератором. Статус можно посмотреть на полке в блоке «Ждёт модерации».' },
-  { keys: ['вход', 'войти', 'пароль', 'регистрац', 'аккаунт'],
-    answer: 'Нажмите «Вход» в шапке: email + пароль (минимум 6 символов). Данные полки и журнала привязаны к аккаунту.' },
-  { keys: ['температур', 'время', 'заварить', 'как завар'],
-    answer: 'Параметры заваривания указаны в карточке чая: температура, время и пропорция. Откройте чай кликом по карточке.' },
-  { keys: ['избранн', 'избранное', 'сердц', 'wishlist'],
-    answer: 'Избранное — это список чаёв, которые вам понравились. Отмечайте сердечком в каталоге или на полке. Потом можно быстро добавить на полку из раздела «Избранное».' },
-  { keys: ['остаток', 'сколько', 'грамм', 'количеств'],
-    answer: 'Остаток показан на карточке чая на полке. Нажмите «Заварил» — укажите сколько граммов использовали, остаток автоматически уменьшится.' },
-  { keys: ['статистик', 'средн', 'оценк', 'рейтинг'],
-    answer: 'Статистика вверху полки показывает: сколько чаёв на полке, сколько завариваний, средний рейтинг и сколько чаёв нужно докупить.' },
-];
+// ---------- История диалогов ----------
+const HISTORY_KEY = 'chatbot_history';
+const HISTORY_DAYS = 7;
 
-const FALLBACK = 'Пока я понимаю только простые вопросы про полку, каталог, покупки и журнал. Позже сюда подключится ИИ-ассистент.';
+function loadHistory() {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    if (!raw) return [];
+    const history = JSON.parse(raw);
+    const weekAgo = Date.now() - HISTORY_DAYS * 24 * 60 * 60 * 1000;
+    return history.filter(msg => msg.timestamp > weekAgo);
+  } catch {
+    return [];
+  }
+}
 
-function findAnswer(text) {
+function saveHistory(msg) {
+  const history = loadHistory();
+  history.push({ ...msg, timestamp: Date.now() });
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+}
+
+function renderHistory() {
+  const history = loadHistory();
+  const box = $('#chatbotMessages');
+  if (!box) return;
+
+  box.innerHTML = '';
+
+  if (history.length === 0) {
+    addMessage('Привет! Я помощник «Чайной полки». Напиши «Что ты можешь» — покажу все команды.', 'bot');
+    return;
+  }
+
+  history.forEach(msg => {
+    const m = document.createElement('div');
+    m.className = 'chatbot-message ' + (msg.who === 'user' ? 'is-user' : 'is-bot');
+    m.innerHTML = msg.text.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
+    box.appendChild(m);
+  });
+
+  box.scrollTop = box.scrollHeight;
+}
+
+// ---------- Парсер команд ----------
+const COMMANDS = {
+  add: {
+    patterns: [/добавь\s+(.+?)\s+(\d+)\s*г/i, /положи\s+(.+?)\s+(\d+)\s*г/i],
+    handler: handleAdd,
+  },
+  brew: {
+    patterns: [/заварил\s+(.+?)\s+(\d+)\s*г/i, /заварива[юю]\s+(.+?)\s+(\d+)\s*г/i],
+    handler: handleBrew,
+  },
+  remove: {
+    patterns: [/удали\s+(.+)/i, /убери\s+(.+)/i, /сними\s+(.+)/i],
+    handler: handleRemove,
+  },
+  check: {
+    patterns: [/сколько\s+(.+?)\s+остал[оось]/i, /остаток\s+(.+)/i, /осталось\s+(.+)/i],
+    handler: handleCheck,
+  },
+  shopping: {
+    patterns: [/что докупить/i, /список покупок/i, /купить/i],
+    handler: handleShopping,
+  },
+  stats: {
+    patterns: [/статистик/i, /сколько ча[её]в/i, /мои чаи/i],
+    handler: handleStats,
+  },
+  help: {
+    patterns: [/что ты можешь/i, /помощь/i, /команды/i, /help/i],
+    handler: handleHelp,
+  },
+};
+
+// ---------- Обработчики команд ----------
+
+async function handleAdd(match) {
+  const teaName = match[1].trim();
+  const amount = parseInt(match[2]);
+
+  const tea = await findTeaInCatalog(teaName);
+  if (!tea) {
+    return `❌ Чай «${teaName}» не найден в каталоге. Попробуй добавить его через каталог или предложи новый чай.`;
+  }
+
+  const onShelf = await isTeaOnShelf(tea.id);
+  if (onShelf) {
+    return `⚠️ «${tea.name}» уже на полке (${onShelf.amount}г). Используй «Пополни ${tea.name} ${amount}г»`;
+  }
+
+  setTimeout(() => {
+    openAmountModal({
+      mode: 'add',
+      teaName: tea.name,
+      amount: amount,
+      onSubmit: async (payload) => {
+        const user = getUser();
+        const { error } = await supabase.from(TABLES.shelf).insert({
+          user_id: user.id,
+          tea_id: tea.id,
+          amount: payload.amount,
+          unit: payload.unit,
+          low_threshold: payload.threshold,
+        });
+        if (error) {
+          showToast('Не удалось добавить: ' + error.message, 'warn');
+          return;
+        }
+        showToast(`✅ «${tea.name}» добавлен на полку`);
+        shelfCache = null;
+      },
+    });
+  }, 100);
+
+  return `📝 **Добавить «${tea.name}»:**\nКоличество: ${amount}г\nПорог "мало": 20г\n\nМодалка открыта — подтверди добавление.`;
+}
+
+async function handleBrew(match) {
+  const teaName = match[1].trim();
+  const amount = parseInt(match[2]);
+
+  const row = await findTeaOnShelf(teaName);
+  if (!row) {
+    return `❌ «${teaName}» нет на полке. Сначала добавь чай.`;
+  }
+
+  if (row.amount < amount) {
+    return `⚠️ Недостаточно чая: осталось ${row.amount}г, а ты хочешь ${amount}г.`;
+  }
+
+  setTimeout(() => {
+    const ov = $('#brewOverlay');
+    if (!ov) return;
+
+    $('#brewTeaName').textContent = row.tea.name;
+    $('#brewTeaId').value = row.tea_id;
+    $('#brewAmount').value = amount;
+    $('#brewNote').value = '';
+    $$('#brewStars .star-btn').forEach((s) => {
+      s.classList.remove('on');
+      s.setAttribute('aria-checked', 'false');
+    });
+
+    openOverlay(ov);
+    $('#brewAmount').dispatchEvent(new Event('input'));
+  }, 100);
+
+  return `☕ **Заваривание «${row.tea.name}»:**\nКоличество: ${amount}г\nОсталось после: ${row.amount - amount}г\n\nМодалка открыта — поставь оценку и нажми «Сохранить».`;
+}
+
+async function handleRemove(match) {
+  const teaName = match[1].trim();
+
+  const row = await findTeaOnShelf(teaName);
+  if (!row) {
+    return `❌ «${teaName}» нет на полке.`;
+  }
+
+  return {
+    text: ` **Убрать «${row.tea.name}» с полки?**\nОстаток: ${row.amount}г`,
+    actions: [
+      { label: 'Да, убрать', action: 'confirm-remove', data: row.id },
+      { label: 'Отмена', action: 'cancel' },
+    ],
+  };
+}
+
+async function handleCheck(match) {
+  const teaName = match[1].trim();
+
+  const row = await findTeaOnShelf(teaName);
+  if (!row) {
+    return `❌ «${teaName}» нет на полке.`;
+  }
+
+  const brews = await getTeaBrews(row.tea_id);
+  const rated = brews.filter(b => b.rating);
+  const avgRating = rated.length ? (rated.reduce((s, b) => s + b.rating, 0) / rated.length).toFixed(1) : null;
+
+  let answer = `📊 **«${row.tea.name}»**\n`;
+  answer += `Осталось: **${row.amount}${row.unit === 'g' ? 'г' : row.unit}**\n`;
+  answer += `Завариваний: ${brews.length}`;
+  if (avgRating) {
+    answer += ` · Рейтинг: ${'★'.repeat(Math.round(avgRating))}${'☆'.repeat(5 - Math.round(avgRating))} (${avgRating})`;
+  }
+  if (row.amount <= (row.low_threshold || 0)) {
+    answer += `\n⚠️ **Заканчивается!**`;
+  }
+
+  return answer;
+}
+
+async function handleShopping() {
+  await loadShelfCache();
+  const low = shelfCache.filter(r => r.amount > 0 && r.amount <= (r.low_threshold || 0));
+  const finished = shelfCache.filter(r => r.amount <= 0);
+
+  if (!low.length && !finished.length) {
+    return '✅ Всё хорошо! Ничего не нужно докупать.';
+  }
+
+  let answer = '🛒 **Нужно докупить:**\n';
+  finished.forEach(r => {
+    answer += `❌ **«${r.tea.name}»** — закончился\n`;
+  });
+  low.forEach(r => {
+    answer += `⚠️ **«${r.tea.name}»** — осталось ${r.amount}${r.unit === 'g' ? 'г' : r.unit}\n`;
+  });
+
+  return answer;
+}
+
+async function handleStats() {
+  await loadShelfCache();
+  await loadJournalCache();
+
+  const rated = journalCache.filter(j => j.rating);
+  const avgRating = rated.length ? (rated.reduce((s, j) => s + j.rating, 0) / rated.length).toFixed(1) : '–';
+
+  let answer = '📊 **Твоя чайная статистика:**\n';
+  answer += `Чай на полке: **${shelfCache.length}**\n`;
+  answer += `Завариваний: **${journalCache.length}**\n`;
+  answer += `Средний рейтинг: **${avgRating}**\n`;
+  answer += `Заканчивается: **${shelfCache.filter(r => r.amount <= (r.low_threshold || 0)).length}**`;
+
+  return answer;
+}
+
+async function handleHelp() {
+  return `📋 **Что я умею:**\n\n` +
+    `🛒 **Управление полкой:**\n` +
+    `• «Добавь [чай] [кол-во]г» — добавить чай на полку\n` +
+    `• «Заварил [чай] [кол-во]г» — записать заваривание\n` +
+    `• «Убери [чай]» — убрать с полки\n` +
+    `• «Сколько [чай] осталось?» — проверить остаток\n\n` +
+    `📊 **Информация:**\n` +
+    `• «Что докупить?» — список покупок\n` +
+    `• «Статистика» — твоя чайная статистика\n\n` +
+    `💡 **Примеры:**\n` +
+    `• «Добавь Да Хун Пао 100г»\n` +
+    `• «Заварил Сенча 5г»\n` +
+    `• «Сколько Пуэр осталось?»`;
+}
+
+// ---------- Вспомогательные функции ----------
+
+async function findTeaInCatalog(name) {
+  await loadCatalogCache();
+  const lower = name.toLowerCase();
+  return catalogCache.find(t =>
+    t.name.toLowerCase().includes(lower) ||
+    lower.includes(t.name.toLowerCase())
+  );
+}
+
+async function findTeaOnShelf(name) {
+  await loadShelfCache();
+  const lower = name.toLowerCase();
+  return shelfCache.find(r =>
+    r.tea.name.toLowerCase().includes(lower) ||
+    lower.includes(r.tea.name.toLowerCase())
+  );
+}
+
+async function isTeaOnShelf(teaId) {
+  await loadShelfCache();
+  return shelfCache.find(r => r.tea_id === teaId);
+}
+
+async function loadShelfCache() {
+  const user = getUser();
+  if (!user || shelfCache) return;
+
+  const { data } = await supabase
+    .from(TABLES.shelf)
+    .select('*')
+    .eq('user_id', user.id);
+
+  shelfCache = data || [];
+}
+
+async function loadCatalogCache() {
+  if (catalogCache) return;
+
+  const { data } = await supabase
+    .from(TABLES.catalog)
+    .select('*')
+    .eq('status', 'published');
+
+  catalogCache = data || [];
+}
+
+async function loadJournalCache() {
+  const user = getUser();
+  if (!user || journalCache) return;
+
+  const { data } = await supabase
+    .from(TABLES.journal)
+    .select('*')
+    .eq('user_id', user.id);
+
+  journalCache = data || [];
+}
+
+async function getTeaBrews(teaId) {
+  const user = getUser();
+  const { data } = await supabase
+    .from(TABLES.journal)
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('tea_id', teaId);
+
+  return data || [];
+}
+
+// ---------- Основная логика ----------
+
+const FALLBACK = 'Не понимаю команду. Напиши «Что ты можешь» — покажу все доступные действия.';
+
+async function findAnswer(text) {
+  for (const [cmdName, cmd] of Object.entries(COMMANDS)) {
+    for (const pattern of cmd.patterns) {
+      const match = text.match(pattern);
+      if (match) {
+        return cmd.handler(match, text);
+      }
+    }
+  }
+
+  const RULES = [
+    { keys: ['привет', 'здравств', 'hi'],
+      answer: 'Привет! Я помощник «Чайной полки». Напиши «Что ты можешь» — покажу все команды.' },
+    { keys: ['спасибо', 'благодар'],
+      answer: 'Пожалуйста! Обращайся, если что-то нужно.' },
+  ];
+
   const t = text.toLowerCase();
   const hit = RULES.find((r) => r.keys.some((k) => t.includes(k)));
   return hit ? hit.answer : FALLBACK;
 }
 
-// Заглушка для ИИ (пока не подключён Qwen)
 async function askAI(text) {
-  return '🤖 ИИ-ассистент скоро будет доступен! Пока я работаю в режиме обычного чат-бота. Задайте вопрос про полку, каталог или заваривание.';
+  // TODO: здесь будет вызов Edge Function с Qwen
+  // const response = await fetch('/api/ask-ai', { method: 'POST', body: JSON.stringify({ question: text }) });
+  return '🤖 ИИ-ассистент пока в разработке. Скоро я смогу отвечать на любые вопросы о чае, подбирать сорта под настроение и давать рекомендации по завариванию!';
 }
 
-function addMessage(text, who) {
+function addMessage(text, who, actions = null) {
   const box = $('#chatbotMessages');
+  if (!box) return;
+
   const m = document.createElement('div');
   m.className = 'chatbot-message ' + (who === 'user' ? 'is-user' : 'is-bot');
-  m.textContent = text;
+
+  let html = text.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
+
+  if (actions && actions.length > 0) {
+    html += '<div class="chatbot-actions">';
+    actions.forEach(action => {
+      html += `<button class="action-btn" data-action="${action.action}" data-data="${action.data || ''}">${action.label}</button>`;
+    });
+    html += '</div>';
+  }
+
+  m.innerHTML = html;
   box.appendChild(m);
   box.scrollTop = box.scrollHeight;
+
+  saveHistory({ text, who, actions });
+
+  if (actions) {
+    m.querySelectorAll('.action-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const action = btn.dataset.action;
+        const data = btn.dataset.data;
+
+        if (action === 'confirm-remove') {
+          const { error } = await supabase.from(TABLES.shelf).delete().eq('id', data);
+          if (error) {
+            showToast('Не удалось удалить: ' + error.message, 'warn');
+            return;
+          }
+          addMessage('✅ Чай убран с полки', 'bot');
+          shelfCache = null;
+        } else if (action === 'cancel') {
+          addMessage('Отменено', 'bot');
+        }
+
+        m.querySelector('.chatbot-actions')?.remove();
+      });
+    });
+  }
 }
 
-// Переключатель режимов
 function switchMode(mode) {
   currentMode = mode;
   $$('.chatbot-mode-btn').forEach((btn) => {
@@ -59,8 +420,8 @@ function switchMode(mode) {
   });
 
   const hint = mode === 'ai'
-    ? '🤖 ИИ-режим (пока заглушка)'
-    : '💬 Обычный чат-бот';
+    ? ' ИИ-режим (пока заглушка)'
+    : '💬 Обычный чат-бот с командами';
   showToast(hint);
 }
 
@@ -75,21 +436,21 @@ export function initChatbot() {
   function setOpen(open) {
     win.hidden = !open;
     fab.setAttribute('aria-expanded', String(open));
-    if (open) input?.focus();
+    if (open) {
+      input?.focus();
+      renderHistory();
+    }
   }
 
   fab.addEventListener('click', () => setOpen(win.hidden));
   close?.addEventListener('click', () => setOpen(false));
 
-  function send(text) {
+  async function send(text) {
     const msg = text.trim();
     if (!msg) return;
     addMessage(msg, 'user');
 
-    // Показываем "печатает..."
-    const typingId = 'typing-' + Date.now();
     const typingDiv = document.createElement('div');
-    typingDiv.id = typingId;
     typingDiv.className = 'chatbot-message is-bot';
     typingDiv.textContent = 'Печатает...';
     typingDiv.style.opacity = '0.6';
@@ -102,10 +463,14 @@ export function initChatbot() {
       if (currentMode === 'ai') {
         answer = await askAI(msg);
       } else {
-        answer = findAnswer(msg);
+        answer = await findAnswer(msg);
       }
 
-      addMessage(answer, 'bot');
+      if (typeof answer === 'object' && answer.text) {
+        addMessage(answer.text, 'bot', answer.actions);
+      } else {
+        addMessage(answer, 'bot');
+      }
     }, 350);
   }
 
@@ -115,7 +480,6 @@ export function initChatbot() {
     input.value = '';
   });
 
-  
   $('#chatbotSuggestions')?.addEventListener('click', (e) => {
     const btn = e.target.closest('.chatbot-suggestion');
     if (btn) send(btn.textContent);
@@ -124,11 +488,19 @@ export function initChatbot() {
   // Переключатель режимов
   $('#chatbotModeSwitch')?.addEventListener('click', (e) => {
     const btn = e.target.closest('.chatbot-mode-btn');
-    if (!btn) return;
+    if (!btn || btn.disabled) return; // игнорируем клики по disabled кнопкам
     switchMode(btn.dataset.mode);
   });
 
-  // Esc закрывает окно
+  // Клик по disabled кнопке "ИИ" — показываем тост
+  const aiBtn = document.querySelector('.chatbot-mode-btn[data-mode="ai"]');
+  if (aiBtn) {
+    aiBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      showToast('🤖 ИИ-ассистент скоро будет доступен!');
+    });
+  }
+
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && !win.hidden) setOpen(false);
   });
