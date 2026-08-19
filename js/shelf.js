@@ -1,8 +1,9 @@
 // ============================================================
 // shelf.js — логика страницы shelf.html
-// Блок А: карточка показывает «кол-во / ~заваривания»,
-// иконка журнала → модалка истории конкретного чая,
-// форма заваривания корректно закрывается и сбрасывается.
+// Блок А: карточка «кол-во / ~заваривания», иконка журнала,
+// фикс формы заваривания.
+// Блок Б: фильтр «В наличии» включает «Мало»;
+// кнопка «Изменить» → режим edit (amount + unit + threshold).
 // ============================================================
 import { initCommon } from './common.js';
 import { supabase } from './supabaseClient.js';
@@ -166,8 +167,9 @@ function renderGrid() {
     return;
   }
 
+  // Блок Б: «В наличии» = available + low (всё кроме finished)
   $('#countAll').textContent = shelf.length;
-  $('#countAvailable').textContent = shelf.filter((r) => statusOf(r) === 'available').length;
+  $('#countAvailable').textContent = shelf.filter((r) => statusOf(r) !== 'finished').length;
   $('#countLow').textContent = shelf.filter((r) => statusOf(r) === 'low').length;
   $('#countFinished').textContent = shelf.filter((r) => statusOf(r) === 'finished').length;
 
@@ -181,9 +183,18 @@ function renderGrid() {
   }
 
   const list = shelf
+    .filter((r) => {
+      // Блок Б: «В наличии» включает available И low
+      if (filters.status === 'available') {
+        return statusOf(r) !== 'finished';
+      }
+      if (filters.status !== 'all') {
+        return statusOf(r) === filters.status;
+      }
+      return true;
+    })
     .filter((r) =>
-      (filters.status === 'all' || statusOf(r) === filters.status) &&
-      (filters.type === 'all' || r.tea.type === TYPE_TO_DB[filters.type]))
+      filters.type === 'all' || r.tea.type === TYPE_TO_DB[filters.type])
     .sort((a, b) => {
       if (filters.sort === 'ending') return a.amount - b.amount;
       if (filters.sort === 'name') return a.tea.name.localeCompare(b.tea.name, 'ru');
@@ -201,7 +212,7 @@ function renderGrid() {
   list.forEach((r) => grid.appendChild(cardNode(r)));
 }
 
-// ---------- Карточка полки (Блок А) ----------
+// ---------- Карточка полки ----------
 function cardNode(r) {
   const node = $('#shelfCardTemplate').content.firstElementChild.cloneNode(true);
   node.dataset.shelfId = r.id;
@@ -216,7 +227,6 @@ function cardNode(r) {
   chip.textContent = r.tea.type || '—';
   chip.className = 'typechip ' + typeClass(r.tea.type);
 
-  // Журнал для этого чая
   const brews = journal.filter((j) => j.tea_id === r.tea_id);
   const rated = brews.filter((j) => j.rating);
   const rate = node.querySelector('.rate-badge');
@@ -231,10 +241,8 @@ function cardNode(r) {
   const qtyVals = node.querySelectorAll('.qty-val');
   const qtySep  = node.querySelector('.qty-sep');
 
-  // Первое число — остаток
   qtyVals[0].innerHTML = `${r.amount} <em>${UNIT_LABELS[r.unit] || 'г'}</em>`;
 
-  // Второе число — примерные заваривания (только для грамм с дозой)
   const dose = r.tea.grams ? Number(r.tea.grams) : 0;
   if (r.unit === 'g' && dose > 0 && r.amount > 0) {
     const approx = Math.floor(r.amount / dose);
@@ -247,11 +255,9 @@ function cardNode(r) {
     qtyVals[1].classList.add('hidden');
   }
 
-  // Иконка журнала — видна только если есть записи
   node.querySelector('.journal-btn')
     .classList.toggle('hidden', brews.length === 0);
 
-  // Прогресс-бар
   const fill = node.querySelector('.bar-fill');
   fill.className = 'bar-fill ' + { available: 'bar-active', low: 'bar-low', finished: 'bar-finished' }[st];
   fill.style.width = Math.max(4, Math.min(100, (r.amount / 150) * 100)) + '%';
@@ -261,7 +267,7 @@ function cardNode(r) {
   return node;
 }
 
-// ---------- Журнал (общий, на странице) ----------
+// ---------- Журнал (общий) ----------
 function renderJournal() {
   const box = $('#journalList');
   box.innerHTML = '';
@@ -378,7 +384,7 @@ function initBrew() {
     if (!used || used <= 0) return showToast('Укажите количество', 'warn');
     if (used > brewRow.amount) return showToast('На полке меньше этого количества', 'warn');
 
-    const unit = brewRow.unit; // сохраняем до сброса
+    const unit = brewRow.unit;
 
     const { data, error } = await supabase.rpc('brew_tea', {
       p_shelf_id: brewRow.id,
@@ -388,7 +394,6 @@ function initBrew() {
     });
     if (error) return showToast('Ошибка: ' + error.message, 'warn');
 
-    // Закрываем и сбрасываем форму (Блок А)
     closeOverlay(ov);
     $('#brewForm').reset();
     brewRow = null;
@@ -436,16 +441,24 @@ function restockRow(row) {
   });
 }
 
+// Блок Б: «Изменить» → режим edit (amount + unit + threshold)
+// История завариваний привязана к tea_id — не теряется
 function editAmount(row) {
   openAmountModal({
-    mode: 'set',
+    mode: 'edit',
     teaName: row.tea.name,
     unit: row.unit,
     amount: row.amount,
+    threshold: row.low_threshold ?? 20,
     onSubmit: async (p) => {
       await supabase.from(TABLES.shelf)
-        .update({ amount: p.amount }).eq('id', row.id);
-      showToast('Остаток обновлён');
+        .update({
+          amount: p.amount,
+          unit: p.unit,
+          low_threshold: p.threshold,
+        })
+        .eq('id', row.id);
+      showToast('Позиция обновлена');
       await load(); renderAll();
     },
   });
@@ -582,7 +595,7 @@ async function init() {
   initBrew();
   initRestock();
   initFavorites();
-  initJournalOverlay(); // Блок А
+  initJournalOverlay();
 
   $('#addToShelfBtn')?.addEventListener('click', () => {
     if (currentRow) restockRow(currentRow);
@@ -602,7 +615,7 @@ async function init() {
     if (e.target.closest('[data-action="edit"]'))            return editAmount(row);
     if (e.target.closest('[data-action="remove"]'))          return removeRow(row);
     if (e.target.closest('[data-action="toggle-favorite"]')) return toggleFav(row);
-    if (e.target.closest('[data-action="open-journal"]'))    return openTeaJournal(row.tea_id, row.tea.name); // Блок А
+    if (e.target.closest('[data-action="open-journal"]'))    return openTeaJournal(row.tea_id, row.tea.name);
     if (e.target.closest('[data-action="open-menu"]')) {
       const menu = e.target.closest('.menu-wrap').querySelector('.menu');
       $$('#shelfGrid .menu').forEach((m) => m !== menu && m.classList.add('hidden'));

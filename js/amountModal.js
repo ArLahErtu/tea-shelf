@@ -3,8 +3,8 @@
 // mode:
 //   'add'     — новое добавление (виден порог «мало», единица выбирается)
 //   'restock' — пополнение запаса (добавка к текущему остатку)
-//   'set'     — точная установка остатка
-// Блок 2: добавлен режим 'set', единица фиксируется для существующих строк.
+//   'set'     — точная установка остатка (порог скрыт, единица фикс.)
+//   'edit'    — редактирование позиции (порог + единица видны) — Блок Б
 // ============================================================
 import { $, $$, openOverlay, closeOverlay, wireOverlay } from './ui.js';
 
@@ -65,20 +65,24 @@ export function openAmountModal({
   currentMode = mode;
   onSubmitCb = onSubmit;
 
-  const titles  = { add: 'Добавить на полку', restock: 'Пополнить запас', set: 'Изменить количество' };
-  const submits = { add: 'Добавить', restock: 'Пополнить', set: 'Сохранить' };
+  // Блок Б: добавлен режим 'edit'
+  const titles  = { add: 'Добавить на полку', restock: 'Пополнить запас', set: 'Изменить количество', edit: 'Изменить' };
+  const submits = { add: 'Добавить', restock: 'Пополнить', set: 'Сохранить', edit: 'Сохранить' };
 
   $('#amountTitle').textContent = titles[mode] || titles.add;
   $('#amountTeaName').textContent = teaName;
   $('#amountSubmit').textContent = submits[mode] || submits.add;
-  $('#amountThresholdField').classList.toggle('hidden', mode !== 'add');
 
-  // Значение по умолчанию: add → 100, restock → 50, set → текущий остаток
+  // Порог виден в 'add' и 'edit' (Блок Б)
+  $('#amountThresholdField').classList.toggle('hidden', mode !== 'add' && mode !== 'edit');
+
+  // Значение по умолчанию: add → 100, restock → 50, set/edit → текущий остаток
   $('#amountValue').value = amount ?? (mode === 'restock' ? 50 : 100);
 
   const unitSel = $('#amountUnitSel');
   unitSel.value = unit || 'g';
-  unitSel.disabled = mode !== 'add'; // единица существующей строки не меняется
+  // Единица редактируема в 'add' и 'edit' (Блок Б)
+  unitSel.disabled = mode !== 'add' && mode !== 'edit';
 
   $('#amountThreshold').value = threshold ?? 20;
   $('#amountPresets').classList.toggle('hidden', (unitSel.value || 'g') !== 'g');
