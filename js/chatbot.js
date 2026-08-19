@@ -115,6 +115,7 @@ export function initChatbot() {
     input.value = '';
   });
 
+  
   $('#chatbotSuggestions')?.addEventListener('click', (e) => {
     const btn = e.target.closest('.chatbot-suggestion');
     if (btn) send(btn.textContent);
