@@ -1,18 +1,17 @@
 // ============================================================
 // auth.js — управление авторизацией + роли пользователей
 // Блок 1: загрузка роли (admin/moderator/user)
-// Фикс: возвращена полноценная модалка политики персональных
-// данных (openPrivacy) вместо тоста.
+// Блок 2: кнопка режима модератора + переход в каталог
 // ============================================================
+import { supabase, isConfigured } from './supabaseClient.js';
 import {
-  $, showToast, openOverlay, closeOverlay, wireOverlay,
+  $, openOverlay, closeOverlay, wireOverlay, showToast,
   setInvalid, isValidEmail, trackEvent,
 } from './ui.js';
-import { supabase, isConfigured } from './supabaseClient.js';
 import { SHOW_DEMO_ACCOUNTS } from './config.js';
 
 let currentUser = null;
-let currentUserRole = 'user'; // Блок 1: роль пользователя
+let currentUserRole = 'user'; // Блок 1
 const listeners = [];
 
 export const getUser = () => currentUser;
@@ -21,7 +20,12 @@ export const isModerator = () => ['admin', 'moderator'].includes(currentUserRole
 export const isAdmin = () => currentUserRole === 'admin';              // Блок 1
 
 export function onAuthChange(fn) { listeners.push(fn); }
-function emit() { listeners.forEach((fn) => fn(currentUser, currentUserRole)); }
+function emit() { listeners.forEach((fn) => fn(currentUser, currentUserRole)); } // Блок 1
+
+export function openAuth() {
+  const ov = $('#authOverlay');
+  if (ov) openOverlay(ov);
+}
 
 async function refreshUser() {
   if (!isConfigured()) {
@@ -63,14 +67,20 @@ async function refreshUser() {
 }
 
 function renderState() {
-  const authBtn  = $('#authOpen');
+  const openBtn = $('#authOpen');
   const userArea = $('#userArea');
-  const email    = $('#userEmail');
+  if (!openBtn || !userArea) return;
 
   if (currentUser) {
-    authBtn?.classList.add('hidden');
-    userArea?.classList.remove('hidden');
-    if (email) email.textContent = currentUser.email;
+    openBtn.classList.add('hidden');
+    userArea.classList.remove('hidden');
+
+    const email = currentUser.email || '';
+    const name = currentUser.user_metadata?.name || email;
+    const initials = name.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+
+    $('#userEmail').textContent = email;
+    $('#avatarBtn').textContent = initials || '?';
 
     // Блок 1: роль в dropdown меню
     const roleBadge = $('#userRoleBadge');
@@ -89,98 +99,79 @@ function renderState() {
     const modBtn = $('#openModerationBtn');
     if (modBtn) modBtn.classList.toggle('hidden', !isModerator());
   } else {
-    authBtn?.classList.remove('hidden');
-    userArea?.classList.add('hidden');
+    openBtn.classList.remove('hidden');
+    userArea.classList.add('hidden');
+    $('#userMenu')?.classList.add('hidden');
   }
 }
 
 // ============================================================
-// Политика персональных данных — модалка (возвращена)
+// Политика обработки персональных данных
 // ============================================================
-let privacyOv = null;
+const PRIVACY_HTML = `
+  <h3 style="margin:0 0 6px;">1. Общие положения</h3>
+  <p style="margin:0 0 12px;">Сервис «Чайная полка» (далее — сервис) собирает только данные, необходимые для его работы, и не передаёт их третьим лицам. Регистрируясь, вы даёте согласие на обработку перечисленных ниже данных.</p>
 
-function injectPrivacyStyles() {
-  if ($('#privacyStyles')) return;
-  const st = document.createElement('style');
-  st.id = 'privacyStyles';
-  st.textContent = `
-    .privacy-body { max-height: 55vh; overflow-y: auto; padding: 2px 2px 6px; }
-    .privacy-body h3 { margin: 14px 0 6px; font-size: 14px; }
-    .privacy-body h3:first-child { margin-top: 0; }
-    .privacy-body p,
-    .privacy-body li { margin: 0 0 8px; font-size: 13px; line-height: 1.6; color: #5C543F; }
-    .privacy-body ul { padding-left: 18px; }
-  `;
-  document.head.appendChild(st);
-}
+  <h3 style="margin:0 0 6px;">2. Какие данные мы собираем</h3>
+  <p style="margin:0 0 12px;">— Аккаунт: email и имя.<br>— Записи полки: добавленные чаи, остатки, журнал завариваний с оценками и заметками.<br>— Заявки на добавление чая в общий каталог.</p>
+
+  <h3 style="margin:0 0 6px;">3. Зачем они нужны</h3>
+  <p style="margin:0 0 12px;">Чтобы вести вашу личную полку и журнал, рассматривать заявки в каталог и улучшать сервис. Данные не используются для рекламы и не продаются.</p>
+
+  <h3 style="margin:0 0 6px;">4. Где хранятся и кто их видит</h3>
+  <p style="margin:0 0 12px;">Данные хранятся в защищённой облачной базе Supabase. Ваши записи видите только вы. Администрация сервиса видит заявки для модерации. Одобренный чай публикуется в каталоге без указания ваших контактов.</p>
+
+  <h3 style="margin:0 0 6px;">5. Аналитика</h3>
+  <p style="margin:0 0 12px;">Сервис использует аналитику без cookie (Vercel Analytics, PostHog): она фиксирует обезличенные действия — визиты и нажатия кнопок — и не позволяет идентифицировать личность.</p>
+
+  <h3 style="margin:0 0 6px;">6. Ваши права</h3>
+  <p style="margin:0 0 0;">Вы можете удалить чаи с полки, отозвать заявки, а также запросить удаление аккаунта и всех данных — напишите нам через ссылку «Обратная связь» внизу страницы.</p>
+`;
+
+let privacyOv = null;
 
 function buildPrivacyOverlay() {
   const ov = document.createElement('div');
   ov.className = 'overlay';
   ov.hidden = true;
   ov.innerHTML = `
-    <div class="modal narrow" role="dialog" aria-modal="true" aria-labelledby="privacyTitle">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="privacyTitle">
       <div class="modal-head">
-        <h2 id="privacyTitle">Политика персональных данных</h2>
-        <button class="icon-btn" type="button" data-privacy="close" aria-label="Закрыть">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        <h2 id="privacyTitle">Политика обработки персональных данных</h2>
+        <button class="icon-btn" id="privacyClose" type="button" aria-label="Закрыть">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
         </button>
       </div>
-      <div class="privacy-body">
-        <h3>1. Какие данные мы собираем</h3>
-        <p>При регистрации мы запрашиваем только email и имя. Никаких других данных сервис не запрашивает.</p>
-
-        <h3>2. Зачем они нужны</h3>
-        <ul>
-          <li>создание аккаунта и вход в сервис;</li>
-          <li>хранение вашей личной полки чая, журнала завариваний и заявок в каталог.</li>
-        </ul>
-
-        <h3>3. Где хранятся данные</h3>
-        <p>Данные хранятся в базе Supabase (PostgreSQL) и защищены политиками доступа (RLS): вашу полку и журнал видите только вы.</p>
-
-        <h3>4. Третьим лицам</h3>
-        <p>Мы не передаём данные третьим лицам, не используем их для рекламы и не отправляем рассылки.</p>
-
-        <h3>5. Аналитика</h3>
-        <p>Для обезличенной статистики посещений используется Яндекс Метрика (просмотры страниц и нажатия кнопок). Персональные данные в Метрику не передаются.</p>
-
-        <h3>6. Удаление данных</h3>
-        <p>Вы можете прекратить использование аккаунта в любой момент. Для полного удаления данных напишите нам через форму обратной связи в подвале сайта.</p>
-      </div>
+      <div style="font-size:13.5px; line-height:1.6; color:#4A4331; max-height:55vh; overflow-y:auto; padding:2px;">${PRIVACY_HTML}</div>
       <div class="modal-foot">
-        <button class="btn btn-primary" type="button" data-privacy="close">Понятно</button>
+        <button class="btn btn-primary" id="privacyOk" type="button">Понятно</button>
       </div>
     </div>`;
   document.body.appendChild(ov);
-  wireOverlay(ov); // клик по фону закрывает
-  ov.addEventListener('click', (e) => {
-    if (e.target.closest('[data-privacy="close"]')) closeOverlay(ov);
-  });
+  wireOverlay(ov);
   return ov;
 }
 
 function openPrivacy() {
-  injectPrivacyStyles();
-  if (!privacyOv) privacyOv = buildPrivacyOverlay();
+  if (!privacyOv) {
+    privacyOv = buildPrivacyOverlay();
+    $('#privacyClose').addEventListener('click', () => closeOverlay(privacyOv));
+    $('#privacyOk').addEventListener('click', () => closeOverlay(privacyOv));
+  }
   openOverlay(privacyOv);
 }
 
-// ============================================================
-// Согласие под формой регистрации
-// ============================================================
 function injectConsent() {
-  const form = $('#authForm');
-  if (!form || $('#consentLine')) return;
-
-  const line = document.createElement('p');
-  line.id = 'consentLine';
-  line.className = 'consent';
-  line.innerHTML = `
-    Нажимая «Создать аккаунт», вы соглашаетесь с
-    <a href="#" id="privacyOpen">обработкой персональных данных</a>.
-  `;
-  form.appendChild(line);
+  const anchor = $('#fieldPassword');
+  if (!anchor || $('#consentLine')) return;
+  const p = document.createElement('p');
+  p.id = 'consentLine';
+  p.className = 'hint hidden';
+  p.style.margin = '0 0 var(--space-3)';
+  p.innerHTML =
+    'Регистрируясь на сайте, вы подтверждаете своё согласие на ' +
+    '<a href="#" id="privacyOpen" style="text-decoration:underline;">сбор персональных данных</a>.';
+  anchor.insertAdjacentElement('afterend', p);
 }
 
 // ============================================================
@@ -198,7 +189,6 @@ export async function initAuth() {
 
   injectConsent();
 
-  // Ссылка «обработка персональных данных» (элемент создан в JS)
   document.addEventListener('click', (e) => {
     if (e.target.closest('#privacyOpen')) {
       e.preventDefault();
@@ -226,7 +216,6 @@ export async function initAuth() {
   $('#authClose')?.addEventListener('click', () => closeOverlay(overlay));
   $('#authOpen')?.addEventListener('click', () => openOverlay(overlay));
 
-  // Любая кнопка с data-auth-required требует входа
   document.addEventListener('click', (e) => {
     const el = e.target.closest('[data-auth-required]');
     if (el && !currentUser) {
@@ -237,7 +226,6 @@ export async function initAuth() {
     }
   });
 
-  // Меню пользователя
   const avatarBtn = $('#avatarBtn');
   const userMenu  = $('#userMenu');
   avatarBtn?.addEventListener('click', (e) => {
@@ -254,7 +242,7 @@ export async function initAuth() {
     showToast('Вы вышли из аккаунта');
   });
 
-  // Блок 1: вход в режим модератора
+  // Блок 2: вход в режим модератора → переход в каталог
   $('#openModerationBtn')?.addEventListener('click', () => {
     if (!isModerator()) {
       showToast('Нет прав для модерации', 'warn');
@@ -263,7 +251,8 @@ export async function initAuth() {
     userMenu?.classList.add('hidden');
     localStorage.setItem('tea_shelf_mode', 'moderator');
     showToast('🛡️ Режим модератора активирован');
-    window.location.reload();
+    // Переходим в каталог с включённой модерацией
+    window.location.href = 'catalog.html?moderation=1';
   });
 
   // Блок 1: выход из режима модератора
@@ -273,7 +262,6 @@ export async function initAuth() {
     window.location.reload();
   });
 
-  // Сабмит формы входа/регистрации
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = $('#authEmail').value;
@@ -306,14 +294,11 @@ export async function initAuth() {
         });
         if (error) throw error;
 
-        // Supabase НЕ возвращает ошибку для уже занятого email
-        // (защита от перебора адресов). Признак дубля — пустой
-        // массив identities в ответе.
         if (Array.isArray(data.identities) && data.identities.length === 0) {
           const box = $('#authError');
           box.textContent = 'Этот email уже зарегистрирован. Попробуйте войти.';
           box.classList.add('show');
-          return; // модалку не закрываем, форму не сбрасываем
+          return;
         }
 
         trackEvent('signup');
@@ -329,7 +314,6 @@ export async function initAuth() {
       box.classList.add('show');
     } finally {
       btn.disabled = false;
-      // Не вызываем setMode() — она скрывает плашку ошибки.
       btn.textContent = mode === 'login' ? 'Войти' : 'Создать аккаунт';
     }
   });

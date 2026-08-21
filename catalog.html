@@ -142,6 +142,16 @@
       </div>
 
       <div class="toolbar" role="group" aria-label="Фильтры и поиск каталога">
+        <!-- Блок 2: тумблер режимов (виден только модераторам) -->
+        <div class="mode-switch hidden" id="modeSwitch">
+          <button class="mode-btn active" type="button" data-mode="catalog">
+            📚 Каталог
+          </button>
+          <button class="mode-btn" type="button" data-mode="moderation">
+            🛡️ Модерация <span class="badge" id="pendingCount">0</span>
+          </button>
+        </div>
+        
         <div class="search-field">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 21l-4.35-4.35M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16Z"/></svg>
           <input
@@ -447,5 +457,131 @@
   </template>
 
   <script type="module" src="js/catalog.js"></script>
+    <!-- Блок 2: Модалка проверки заявки -->
+  <div class="overlay" id="moderateOverlay" hidden>
+    <div class="modal wide" role="dialog" aria-modal="true" aria-labelledby="moderateTitle">
+      <div class="modal-head">
+        <h2 id="moderateTitle">Проверка заявки</h2>
+        <button class="icon-btn" id="moderateClose" type="button" aria-label="Закрыть">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+
+      <div class="moderate-warn hidden" id="moderateDuplicateWarn">
+        ⚠️ Чай с таким названием уже есть в каталоге!
+      </div>
+
+      <form id="moderateForm" novalidate>
+        <div class="field">
+          <label for="moderateName">Название <span class="req">*</span></label>
+          <input id="moderateName" type="text" required>
+          <p class="err">Укажите название</p>
+        </div>
+
+        <div class="row2">
+          <div class="field">
+            <label for="moderateType">Тип <span class="req">*</span></label>
+            <select id="moderateType" required>
+              <option value="">Выберите тип</option>
+              <option value="Улун">Улун</option>
+              <option value="Зелёный">Зелёный</option>
+              <option value="Пуэр">Пуэр</option>
+              <option value="Белый">Белый</option>
+              <option value="Красный">Красный</option>
+              <option value="Жёлтый">Жёлтый</option>
+              <option value="Матте">Матте</option>
+              <option value="Цветочный">Цветочный</option>
+              <option value="Матча">Матча</option>
+              <option value="Хэй ча">Хэй ча</option>
+              <option value="Чёрный">Чёрный</option>
+              <option value="Травяной">Травяной</option>
+              <option value="Смесь">Смесь / купаж</option>
+            </select>
+            <p class="err">Выберите тип</p>
+          </div>
+          <div class="field">
+            <label for="moderateRegion">Регион</label>
+            <input id="moderateRegion" type="text">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="moderateDescription">Описание</label>
+          <textarea id="moderateDescription" rows="4" maxlength="1000"></textarea>
+        </div>
+
+        <div class="row3">
+          <div class="field">
+            <label for="moderateTemp">Температура</label>
+            <input id="moderateTemp" type="text" placeholder="90°C">
+          </div>
+          <div class="field">
+            <label for="moderateTime">Время</label>
+            <input id="moderateTime" type="text" placeholder="20-30 сек">
+          </div>
+          <div class="field">
+            <label for="moderateGrams">Доза (г)</label>
+            <input id="moderateGrams" type="number" min="1" step="1">
+          </div>
+        </div>
+
+        <div class="row2">
+          <div class="field">
+            <label for="moderateSteeps">Проливы</label>
+            <input id="moderateSteeps" type="text" placeholder="6-8">
+          </div>
+          <div class="field">
+            <label for="moderatePhoto">Фото (URL)</label>
+            <input id="moderatePhoto" type="url" placeholder="https://...">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="moderateTags">Теги (через запятую)</label>
+          <input id="moderateTags" type="text" placeholder="крепкий, сладкий, цветочный">
+        </div>
+
+        <div class="modal-foot">
+          <button class="btn btn-danger" id="moderateRejectBtn" type="button">
+            ❌ Отклонить
+          </button>
+          <button class="btn btn-primary" id="moderateApproveBtn" type="button">
+            ✅ Одобрить
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Блок 2: Модалка причины отклонения -->
+  <div class="overlay" id="rejectOverlay" hidden>
+    <div class="modal narrow" role="dialog" aria-modal="true" aria-labelledby="rejectTitle">
+      <div class="modal-head">
+        <h2 id="rejectTitle">Причина отклонения</h2>
+        <button class="icon-btn" id="rejectClose" type="button" aria-label="Закрыть">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+
+      <form id="rejectForm" novalidate>
+        <div class="field">
+          <label for="rejectReason">Комментарий для автора</label>
+          <textarea id="rejectReason" rows="3" maxlength="500" placeholder="Например: неточное название, дубликат, спам"></textarea>
+        </div>
+
+        <div class="field">
+          <label>
+            <input type="checkbox" id="rejectDuplicate">
+            Это дубликат (чай будет удалён полностью)
+          </label>
+        </div>
+
+        <div class="modal-foot">
+          <button class="btn btn-ghost" id="rejectCancel" type="button">Отмена</button>
+          <button class="btn btn-danger" type="submit">Отклонить заявку</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </body>
 </html>
