@@ -630,14 +630,24 @@
           </div>
         </div>
 
-        <div class="row2">
+                <div class="row2">
           <div class="field">
             <label for="moderateSteeps">Проливы</label>
             <input id="moderateSteeps" type="text" placeholder="6-8">
           </div>
-          <div class="field">
-            <label for="moderatePhoto">Фото (URL)</label>
-            <input id="moderatePhoto" type="url" placeholder="https://...">
+        </div>
+
+        <div class="field">
+          <label>Фото чая (SEO-загрузка)</label>
+          <div class="photo-upload">
+            <img id="moderateCurrentPhoto" class="hidden" alt="Текущее фото" style="max-width:200px; border-radius:8px; margin-bottom:8px;">
+            <div class="upload-controls">
+              <input type="hidden" id="moderatePhoto">
+              <label class="btn btn-outline btn-sm" for="moderatePhotoInput">Выбрать файл</label>
+              <input type="file" id="moderatePhotoInput" accept="image/*" hidden>
+              <button type="button" class="btn btn-sm" id="moderatePhotoUploadBtn">Загрузить фото</button>
+            </div>
+            <p class="hint">Фото автоматически сохранится в папку типа чая (например, oolong/da-hun-pao-123.jpg)</p>
           </div>
         </div>
 
