@@ -1,6 +1,12 @@
 // ============================================================
 // catalog.js — логика страницы catalog.html
-// Блок 2: режим модерации для admin/moderator
+// Словарь БД: status='published', автор — author_id,
+// типы по-русски, region/temp/time — text, tags — text
+// Блок B: «Избранное» вместо «хотелок» (таблица wishlist).
+// Блок C: серверная пагинация по 20 + «Показать ещё».
+// Неделя 4: серверный фильтр по типу чая; события Vercel
+// Analytics: tea_card_opened / tea_added_to_shelf / tea_proposed /
+// favorite_toggled.
 // ============================================================
 import { initCommon } from './common.js';
 import { supabase } from './supabaseClient.js';
@@ -9,26 +15,26 @@ import {
   $, showToast, openOverlay, closeOverlay, wireOverlay,
   setInvalid, escapeHtml, plural, typeClass, TYPE_TO_DB, toTags, trackEvent,
 } from './ui.js';
-import { getUser, isModerator } from './auth.js'; // Блок 2
+import { getUser } from './auth.js';
 import { openTeaModal } from './teaModal.js';
 import { initAmountModal, openAmountModal } from './amountModal.js';
 
 const PAGE_SIZE = 20;
 
-let published = [];
-let pending = [];
-let teas = [];
+let published = [];   // загруженные страницы published
+let pending = [];     // мои pending-заявки (все, их мало)
+let teas = [];        // pending + published (для поиска по клику)
 let myShelf = new Set();
 let favorites = new Set();
 let currentTea = null;
-let moderatingTea = null; // Блок 2: текущая заявка на модерации
+let currentUser = null;
+let isModerator = false; // флаг модератора
 
-let loadedCount = 0;
-let canMore = false;
+let loadedCount = 0;  // сколько published загружено в текущем запросе
+let canMore = false;  // возможно, в базе есть ещё
 let loading = false;
 
 const state = { q: '', sort: 'popular', type: 'all' };
-const mode = { current: 'catalog' }; // Блок 2: 'catalog' | 'moderation'
 
 // ---------- Устойчивость к сети ----------
 async function safeFetch(build, label = '') {
@@ -48,7 +54,7 @@ async function safeFetch(build, label = '') {
   return null;
 }
 
-// ---------- Серверный запрос ----------
+// ---------- Серверный запрос: поиск + тип + сортировка + страница ----------
 function pageQuery(offset) {
   let q = supabase.from(TABLES.catalog).select('*')
     .eq('status', 'published');
@@ -56,7 +62,8 @@ function pageQuery(offset) {
     q = q.eq('type', state.type);
   }
   if (state.q) {
-    q = q.or(`name.ilike.%${state.q}%,region.ilike.%${state.q}%`);
+    // Поиск по name, region И tags
+    q = q.or(`name.ilike.%${state.q}%,region.ilike.%${state.q}%,tags.ilike.%${state.q}%`);
   }
   if (state.sort === 'popular') {
     q = q.order('popularity', { ascending: false }).order('id', { ascending: true });
@@ -72,7 +79,7 @@ function loadPublished(offset = 0) {
   return safeFetch(() => pageQuery(offset), `catalog page ${offset}`);
 }
 
-// ---------- Загрузка ----------
+// ---------- Загрузка (старт / смена входа) ----------
 async function load() {
   const first = await loadPublished(0);
   if (first === null) {
@@ -84,6 +91,11 @@ async function load() {
 
   pending = [];
   const user = getUser();
+  currentUser = user;
+  
+  // Проверяем, является ли пользователь модератором
+  isModerator = user?.email?.endsWith('@admin.com') || false;
+  
   if (user) {
     const [p, sh, wl] = await Promise.all([
       safeFetch(() => supabase.from(TABLES.catalog).select('*')
@@ -100,9 +112,9 @@ async function load() {
   teas = pending.concat(published);
   render();
   renderMore();
-  updateModeSwitch(); // Блок 2
 }
 
+// ---------- Поиск / тип / сортировка: перезагрузка первой страницы ----------
 async function refresh() {
   const first = await loadPublished(0);
   if (first === null) return showToast('Не удалось обновить список', 'warn');
@@ -114,6 +126,7 @@ async function refresh() {
   renderMore();
 }
 
+// ---------- «Показать ещё» ----------
 async function loadMore() {
   if (loading || !canMore) return;
   loading = true;
@@ -145,69 +158,72 @@ function renderMore() {
   btn.textContent = 'Показать ещё';
 }
 
-// ---------- Блок 2: загрузка pending-заявок для модерации ----------
-async function loadPendingForModeration() {
-  if (!isModerator()) return;
-
-  try {
-    const { data, error } = await supabase.rpc('get_pending_teas');
-    if (error) {
-      console.error('[loadPendingForModeration] ошибка:', error.message);
-      return;
-    }
-    pending = data || [];
-    $('#pendingCount').textContent = pending.length;
-    render();
-  } catch (e) {
-    console.error('[loadPendingForModeration] exception:', e);
-  }
+// ---------- Транслитерация и SEO-оптимизация ----------
+function transliterate(text) {
+  if (!text) return '';
+  
+  const ru = {
+    'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd',
+    'е': 'e', 'ё': 'yo', 'ж': 'zh', 'з': 'z', 'и': 'i',
+    'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n',
+    'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't',
+    'у': 'u', 'ф': 'f', 'х': 'kh', 'ц': 'ts', 'ч': 'ch',
+    'ш': 'sh', 'щ': 'shch', 'ъ': '', 'ы': 'y', 'ь': '',
+    'э': 'e', 'ю': 'yu', 'я': 'ya'
+  };
+  
+  return text.toLowerCase()
+    .split('')
+    .map(char => ru[char] || char)
+    .join('');
 }
 
-// ---------- Блок 2: обновление тумблера ----------
-function updateModeSwitch() {
-  const modeSwitch = $('#modeSwitch');
-  if (!modeSwitch) return;
-
-  // Показываем тумблер только модераторам
-  modeSwitch.classList.toggle('hidden', !isModerator());
-
-  // Обновляем счётчик pending
-  $('#pendingCount').textContent = pending.length;
-
-  // Если в URL есть ?moderation=1 — включаем режим модерации
-  const urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.get('moderation') === '1' && isModerator()) {
-    switchMode('moderation');
-    // Убираем параметр из URL чтобы не активировался повторно
-    const url = new URL(window.location);
-    url.searchParams.delete('moderation');
-    window.history.replaceState({}, '', url);
-  }
+function seoSlugify(text) {
+  if (!text) return 'tea';
+  
+  return transliterate(text)
+    .replace(/[^\w\s-]/g, '')           // удаляем спецсимволы
+    .replace(/\s+/g, '-')               // пробелы → дефисы
+    .replace(/-+/g, '-')                // множественные дефисы → один
+    .replace(/^-+|-+$/g, '')            // убираем дефисы с краёв
+    .toLowerCase()
+    .slice(0, 60);                      // ограничиваем длину
 }
 
-// ---------- Блок 2: переключение режимов ----------
-function switchMode(newMode) {
-  mode.current = newMode;
-  $$('.mode-btn').forEach((btn) => {
-    btn.classList.toggle('active', btn.dataset.mode === newMode);
-  });
-
-  if (newMode === 'moderation') {
-    loadPendingForModeration();
-  } else {
-    refresh();
-  }
+// ---------- SEO-оптимизация типа чая для URL ----------
+function getSeoTypeName(type) {
+  if (!type) return 'other';
+  
+  // Словарь транслитерации для типов
+  const typeMap = {
+    'зелёный': 'green',
+    'зеленый': 'green',
+    'чёрный': 'black',
+    'черный': 'black',
+    'улун': 'oolong',
+    'пуэр': 'puerh',
+    'белый': 'white',
+    'жёлтый': 'yellow',
+    'желтый': 'yellow',
+    'красный': 'red',
+    'хэй ча': 'hei-cha',
+    'хэйча': 'hei-cha',
+    'цветочный': 'floral',
+    'матте': 'matte',
+    'матча': 'matcha',
+    'травяной': 'herbal',
+    'смесь': 'blend',
+    'купаж': 'blend',
+  };
+  
+  const lowerType = type.toLowerCase();
+  return typeMap[lowerType] || lowerType.replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
 }
 
 // ---------- Рендер ----------
 function cardNode(tea) {
   const node = $('#teaCardTemplate').content.firstElementChild.cloneNode(true);
   node.dataset.teaId = tea.id;
-
-  // Блок 2: помечаем pending-карточки
-  if (tea.status === 'pending' && mode.current === 'moderation') {
-    node.classList.add('pending');
-  }
 
   const img = node.querySelector('img');
   if (tea.photo_url) {
@@ -240,24 +256,32 @@ function cardNode(tea) {
     ? `${pop} ${plural(pop, ['заваривание', 'заваривания', 'завариваний'])} у пользователей`
     : '';
 
-  // Блок 2: бейдж pending показываем только в режиме модерации
-  node.querySelector('.pendbadge').classList.toggle('hidden', 
-    tea.status !== 'pending' || mode.current !== 'moderation');
+  node.querySelector('.pendbadge').classList.toggle('hidden', tea.status !== 'pending');
 
   const onShelf = myShelf.has(tea.id);
   node.querySelector('.onshelf').classList.toggle('hidden', !onShelf);
-  
-  // Блок 2: кнопка "На полку" скрыта в режиме модерации
-  const addToShelfBtn = node.querySelector('[data-action="add-to-shelf"]');
-  addToShelfBtn.classList.toggle('hidden', 
-    onShelf || tea.status === 'pending' || mode.current === 'moderation');
+  node.querySelector('[data-action="add-to-shelf"]')
+    .classList.toggle('hidden', onShelf || tea.status === 'pending');
 
-  // Блок 2: сердце скрыто для pending в режиме модерации
   node.querySelector('.heart').classList.toggle('on', favorites.has(tea.id));
-  if (tea.status === 'pending' && mode.current === 'moderation') {
-    node.querySelector('.heart').classList.add('hidden');
+  
+  // Кнопка редактирования:
+  // - Модератор может редактировать ВСЕ чаи
+  // - Автор может редактировать ТОЛЬКО pending чаи
+  const canEdit = isModerator || (tea.author_id === currentUser?.id && tea.status === 'pending');
+  
+  if (canEdit) {
+    const editBtn = document.createElement('button');
+    editBtn.className = 'edit-tea-btn';
+    editBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M4 20l4-1 11-11-3-3L5 16l-1 4Z"/></svg>';
+    editBtn.title = tea.status === 'pending' ? 'Редактировать заявку' : 'Редактировать чай';
+    editBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openEditTeaModal(tea);
+    });
+    node.querySelector('.media-top').appendChild(editBtn);
   }
-
+  
   return node;
 }
 
@@ -266,14 +290,12 @@ function render() {
   grid.setAttribute('aria-busy', 'false');
   grid.innerHTML = '';
 
-  // Блок 2: в режиме модерации показываем только pending
-  const list = mode.current === 'moderation' ? pending : teas;
-
+  const list = teas; // фильтрация/сортировка уже выполнены сервером
   if (!list.length) {
-    const msg = mode.current === 'moderation'
-      ? '<h3>Заявок на модерацию нет</h3><p>Все заявки рассмотрены. Новые появятся здесь автоматически.</p>'
-      : '<h3>Ничего не найдено</h3><p>Попробуйте изменить запрос или сортировку.</p>';
-    grid.innerHTML = `<div class="empty grid-col-span">${msg}</div>`;
+    grid.innerHTML = `<div class="empty grid-col-span">
+      <h3>Ничего не найдено</h3>
+      <p>Попробуйте изменить запрос или сортировку.</p>
+    </div>`;
     return;
   }
   list.forEach((t) => grid.appendChild(cardNode(t)));
@@ -322,6 +344,7 @@ async function addToShelf(tea, payload) {
     low_threshold: payload.threshold,
   });
   if (error) {
+    // 23505 = unique_violation: чай уже на полке (страховка БД)
     if (error.code === '23505') {
       myShelf.add(tea.id);
       render();
@@ -332,7 +355,7 @@ async function addToShelf(tea, payload) {
   myShelf.add(tea.id);
   showToast(`«${tea.name}» добавлен на полку`);
   trackEvent('tea_added_to_shelf', { tea_id: tea.id, tea_name: tea.name, unit: payload.unit });
-  $('#addToShelfBtn')?.classList.add('hidden');
+  $('#addToShelfBtn')?.classList.add('hidden'); // чай уже на полке — кнопка модалки гаснется
   render();
 }
 
@@ -345,147 +368,66 @@ function requestAdd(tea) {
   });
 }
 
-// ---------- Блок 2: модалка модерации ----------
-function initModerate() {
-  const ov = $('#moderateOverlay');
-  if (!ov) return;
-  wireOverlay(ov);
-  $('#moderateClose')?.addEventListener('click', () => closeOverlay(ov));
-
-  // Одобрить
-  $('#moderateApproveBtn')?.addEventListener('click', async () => {
-    if (!moderatingTea) return;
-
-    const form = $('#moderateForm');
-    const name = $('#moderateName').value.trim();
-    const type = $('#moderateType').value;
-
-    let ok = true;
-    ok = setInvalid($('#moderateName').closest('.field'), !name) && ok;
-    ok = setInvalid($('#moderateType').closest('.field'), !type) && ok;
-    if (!ok) return;
-
-    const editedData = {
-      name,
-      type,
-      region: $('#moderateRegion').value.trim() || null,
-      description: $('#moderateDescription').value.trim() || null,
-      temp: $('#moderateTemp').value.trim() || null,
-      time: $('#moderateTime').value.trim() || null,
-      grams: $('#moderateGrams').value ? parseInt($('#moderateGrams').value) : null,
-      steeps: $('#moderateSteeps').value.trim() || null,
-      photo_url: $('#moderatePhoto').value.trim() || null,
-      tags: $('#moderateTags').value.trim() || null,
-    };
-
-    const user = getUser();
-    const { error } = await supabase.rpc('approve_tea', {
-      p_tea_id: moderatingTea.id,
-      p_moderator_id: user.id,
-      p_edited_data: editedData,
-    });
-
-    if (error) {
-      showToast('Ошибка одобрения: ' + error.message, 'warn');
-      return;
-    }
-
-    closeOverlay(ov);
-    showToast(`✅ «${name}» одобрен и опубликован`);
-    await loadPendingForModeration();
-  });
-
-  // Отклонить
-  $('#moderateRejectBtn')?.addEventListener('click', () => {
-    if (!moderatingTea) return;
-    closeOverlay(ov);
-    openRejectModal(moderatingTea);
-  });
-}
-
-// ---------- Блок 2: модалка причины отклонения ----------
-function openRejectModal(tea) {
-  const ov = $('#rejectOverlay');
-  if (!ov) return;
-  $('#rejectReason').value = '';
-  $('#rejectDuplicate').checked = false;
+// ---------- Редактирование чая (для модератора/автора pending) ----------
+function openEditTeaModal(tea) {
+  const ov = $('#editTeaOverlay');
+  if (!ov) {
+    showToast('Модалка редактирования не найдена', 'warn');
+    return;
+  }
+  
+  $('#editTeaId').value = tea.id;
+  $('#editTeaName').value = tea.name || '';
+  $('#editTeaType').value = Object.keys(TYPE_TO_DB).find(key => TYPE_TO_DB[key] === tea.type) || '';
+  $('#editTeaOrigin').value = tea.region || '';
+  $('#editTeaDescription').value = tea.description || '';
+  $('#editTeaTemp').value = tea.temp || '';
+  $('#editTeaTime').value = tea.time || '';
+  $('#editTeaGrams').value = tea.grams || '';
+  $('#editTeaSteeps').value = tea.steeps || '';
+  $('#editTeaTags').value = tea.tags || '';
+  $('#editTeaPhotoUrl').value = tea.photo_url || '';
+  
+  // Показываем текущее фото
+  const img = $('#editTeaCurrentPhoto');
+  if (tea.photo_url) {
+    img.src = tea.photo_url;
+    img.classList.remove('hidden');
+  } else {
+    img.classList.add('hidden');
+  }
+  
   openOverlay(ov);
 }
 
-function initReject() {
-  const ov = $('#rejectOverlay');
-  if (!ov) return;
-  wireOverlay(ov);
-  $('#rejectClose')?.addEventListener('click', () => closeOverlay(ov));
-  $('#rejectCancel')?.addEventListener('click', () => closeOverlay(ov));
-
-  $('#rejectForm')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (!moderatingTea) return;
-
-    const reason = $('#rejectReason').value.trim() || null;
-    const isDuplicate = $('#rejectDuplicate').checked;
-
-    const user = getUser();
-    const { error } = await supabase.rpc('reject_tea', {
-      p_tea_id: moderatingTea.id,
-      p_moderator_id: user.id,
-      p_reason: reason,
-      p_duplicate_exists: isDuplicate,
-    });
-
-    if (error) {
-      showToast('Ошибка отклонения: ' + error.message, 'warn');
-      return;
-    }
-
-    closeOverlay(ov);
-    const action = isDuplicate ? 'удалён (дубликат)' : 'отклонён';
-    showToast(`❌ Чай ${action}`);
-    await loadPendingForModeration();
-  });
-}
-
-// ---------- Блок 2: открытие модалки модерации ----------
-function openModerateModal(tea) {
-  moderatingTea = tea;
-
-  // Заполняем форму данными из заявки
-  $('#moderateName').value = tea.name || '';
-  $('#moderateType').value = tea.type || '';
-  $('#moderateRegion').value = tea.region || '';
-  $('#moderateDescription').value = tea.description || '';
-  $('#moderateTemp').value = tea.temp || '';
-  $('#moderateTime').value = tea.time || '';
-  $('#moderateGrams').value = tea.grams || '';
-  $('#moderateSteeps').value = tea.steeps || '';
-  $('#moderatePhoto').value = tea.photo_url || '';
-  $('#moderateTags').value = tea.tags || '';
-
-  // Проверяем дубликаты
-  checkDuplicate(tea.name);
-
-  openOverlay($('#moderateOverlay'));
-}
-
-// ---------- Блок 2: проверка дубликатов ----------
-async function checkDuplicate(name) {
-  const warn = $('#moderateDuplicateWarn');
-  if (!warn) return;
-
-  const { data, error } = await supabase
+async function saveEditedTea(formData) {
+  const teaId = formData.id;
+  const updates = {
+    name: formData.name,
+    type: TYPE_TO_DB[formData.type] || formData.type,
+    region: formData.region,
+    description: formData.description,
+    temp: formData.temp,
+    time: formData.time,
+    grams: formData.grams ? parseFloat(formData.grams) : null,
+    steeps: formData.steeps,
+    tags: formData.tags,
+    photo_url: formData.photo_url,
+  };
+  
+  const { error } = await supabase
     .from(TABLES.catalog)
-    .select('id, name')
-    .eq('status', 'published')
-    .ilike('name', `%${name}%`);
-
-  if (error || !data || data.length === 0) {
-    warn.classList.add('hidden');
-    return;
+    .update(updates)
+    .eq('id', teaId);
+  
+  if (error) {
+    showToast('Не удалось сохранить: ' + error.message, 'warn');
+    return false;
   }
-
-  // Если нашли похожие — показываем предупреждение
-  warn.classList.remove('hidden');
+  
+  showToast('✅ Чай обновлён');
+  await load(); // перезагружаем каталог
+  return true;
 }
 
 // ---------- Предложить чай ----------
@@ -530,12 +472,106 @@ function initPropose() {
   });
 }
 
+// ---------- Загрузка фото (с SEO-папками и SEO-именами) ----------
+async function uploadPhoto(file, teaType, teaName = null) {
+  const bucketName = 'tea-photos';
+  const fileExt = file.name.split('.').pop().toLowerCase();
+  
+  // Создаём SEO-оптимизированную папку по типу чая
+  const seoType = getSeoTypeName(teaType);
+  
+  // Создаём SEO-оптимизированное имя файла из названия чая
+  let baseName = teaName ? seoSlugify(teaName) : 'tea';
+  
+  // Добавляем timestamp для уникальности
+  const fileName = `${baseName}-${Date.now()}.${fileExt}`;
+  
+  // Полный путь: {тип}/{название}-{timestamp}.{ext}
+  const path = seoType ? `${seoType}/${fileName}` : fileName;
+  
+  const { data, error } = await supabase.storage
+    .from(bucketName)
+    .upload(path, file, {
+      cacheControl: '3600',
+      upsert: false
+    });
+  
+  if (error) {
+    showToast('Ошибка загрузки фото: ' + error.message, 'warn');
+    return null;
+  }
+  
+  // Получаем публичный URL
+  const { data: { publicUrl } } = supabase.storage
+    .from(bucketName)
+    .getPublicUrl(path);
+  
+  return publicUrl;
+}
+
 // ---------- Старт ----------
 async function init() {
   await initCommon();
   initAmountModal();
 
-  // Поиск с дебаунсом
+  // Инициализация модалки редактирования
+  const editOv = $('#editTeaOverlay');
+  if (editOv) {
+    wireOverlay(editOv);
+    $('#editTeaClose')?.addEventListener('click', () => closeOverlay(editOv));
+    $('#editTeaCancel')?.addEventListener('click', () => closeOverlay(editOv));
+    
+    // Обработка загрузки фото
+    $('#editTeaPhotoInput')?.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const teaType = $('#editTeaType').value;
+      const teaName = $('#editTeaName').value.trim();
+      
+      const btn = $('#editTeaUploadBtn');
+      btn.disabled = true;
+      btn.textContent = 'Загрузка...';
+      
+      const photoUrl = await uploadPhoto(file, teaType, teaName);
+      if (photoUrl) {
+        $('#editTeaPhotoUrl').value = photoUrl;
+        const img = $('#editTeaCurrentPhoto');
+        img.src = photoUrl;
+        img.classList.remove('hidden');
+        showToast('✅ Фото загружено');
+      }
+      
+      btn.disabled = false;
+      btn.textContent = 'Загрузить фото';
+    });
+    
+    // Сохранение изменений
+    $('#editTeaForm')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const formData = {
+        id: $('#editTeaId').value,
+        name: $('#editTeaName').value.trim(),
+        type: $('#editTeaType').value,
+        region: $('#editTeaOrigin').value.trim(),
+        description: $('#editTeaDescription').value.trim(),
+        temp: $('#editTeaTemp').value.trim(),
+        time: $('#editTeaTime').value.trim(),
+        grams: $('#editTeaGrams').value,
+        steeps: $('#editTeaSteeps').value.trim(),
+        tags: $('#editTeaTags').value.trim(),
+        photo_url: $('#editTeaPhotoUrl').value.trim(),
+      };
+      
+      const success = await saveEditedTea(formData);
+      if (success) {
+        closeOverlay(editOv);
+      }
+    });
+  }
+
+  // Поиск с дебаунсом: запрос к БД через 350 мс после последней буквы
   let searchTimer = null;
   $('#catalogSearch').addEventListener('input', (e) => {
     state.q = e.target.value.trim().toLowerCase();
@@ -543,6 +579,7 @@ async function init() {
     searchTimer = setTimeout(refresh, 350);
   });
 
+  // Неделя 4: фильтр по типу
   $('#catalogTypeFilter')?.addEventListener('change', (e) => {
     state.type = e.target.value;
     refresh();
@@ -555,48 +592,38 @@ async function init() {
 
   $('#moreBtn').addEventListener('click', loadMore);
 
-  // Блок 2: тумблер режимов
-  $('#modeSwitch')?.addEventListener('click', (e) => {
-    const btn = e.target.closest('.mode-btn');
-    if (!btn) return;
-    switchMode(btn.dataset.mode);
-  });
-
   const grid = $('#catalogGrid');
   grid.addEventListener('click', (e) => {
     const card = e.target.closest('.tcard');
     if (!card) return;
-    const tea = teas.find((t) => String(t.id) === card.dataset.teaId) 
-             || pending.find((t) => String(t.id) === card.dataset.teaId);
+    const tea = teas.find((t) => String(t.id) === card.dataset.teaId);
     if (!tea) return;
 
     if (e.target.closest('[data-action="add-to-shelf"]')) return requestAdd(tea);
     if (e.target.closest('.heart')) return toggleFavorite(tea);
-
-    // Блок 2: в режиме модерации — открываем модалку модерации
-    if (mode.current === 'moderation' && tea.status === 'pending') {
-      return openModerateModal(tea);
-    }
+    // Игнорируем клик по кнопке редактирования
+    if (e.target.closest('.edit-tea-btn')) return;
 
     currentTea = tea;
     openTeaModal(tea, teas);
     trackEvent('tea_card_opened', { tea_id: tea.id, tea_name: tea.name });
     syncFavBtn(tea);
+    // кнопка «На полку» в модалке: скрыта, если чай уже на полке или pending
     $('#addToShelfBtn')?.classList.toggle('hidden',
       myShelf.has(tea.id) || tea.status === 'pending');
   });
 
+  // Кнопка «На полку» внутри карточки чая
   $('#addToShelfBtn')?.addEventListener('click', () => {
     if (currentTea) requestAdd(currentTea);
   });
 
+  // Кнопка избранного внутри карточки чая
   $('#wishlistBtn')?.addEventListener('click', () => {
     if (currentTea) toggleFavorite(currentTea);
   });
 
   initPropose();
-  initModerate(); // Блок 2
-  initReject();   // Блок 2
 
   try {
     await load();

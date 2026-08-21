@@ -7,7 +7,7 @@
   <!-- ============================================================
        SEO / META
   ============================================================ -->
-  <title>Каталог чаёв — Чайная полка</title>
+  <title>Чайная полка - Каталог</title>
   <meta
     name="description"
     content="Общий каталог чаёв: описания, параметры заваривания, популярные чаи. Предложите свой чай — заявка попадёт на модерацию."
@@ -366,7 +366,112 @@
       </form>
     </div>
   </div>
+  <!-- Редактирование чая (для модератора) -->
+  <div class="overlay" id="editTeaOverlay" hidden>
+    <div class="modal wide" role="dialog" aria-modal="true" aria-labelledby="editTeaTitle">
+      <div class="modal-head">
+        <h2 id="editTeaTitle">Редактировать чай</h2>
+        <button class="icon-btn" id="editTeaClose" type="button" aria-label="Закрыть">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
 
+      <form id="editTeaForm" novalidate>
+        <input type="hidden" id="editTeaId">
+
+        <div class="row2">
+          <div class="field">
+            <label for="editTeaName">Название *</label>
+            <input id="editTeaName" type="text" required>
+            <p class="err">Укажите название</p>
+          </div>
+
+          <div class="field">
+            <label for="editTeaType">Тип *</label>
+            <select id="editTeaType" required>
+              <option value="">Выберите тип</option>
+              <option value="black">Чёрный</option>
+              <option value="green">Зелёный</option>
+              <option value="white">Белый</option>
+              <option value="yellow">Жёлтый</option>
+              <option value="oolong">Улун</option>
+              <option value="red">Красный</option>
+              <option value="puerh">Пуэр</option>
+              <option value="dark">Хэй ча</option>
+              <option value="floral">Цветочный</option>
+              <option value="matte">Матте</option>
+              <option value="matcha">Матча</option>
+              <option value="herbal">Травяной</option>
+              <option value="blend">Смесь / купаж</option>
+            </select>
+            <p class="err">Выберите тип</p>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="editTeaOrigin">Страна или регион</label>
+          <input id="editTeaOrigin" type="text">
+        </div>
+
+        <div class="field">
+          <label for="editTeaDescription">Описание</label>
+          <textarea id="editTeaDescription" rows="4"></textarea>
+        </div>
+
+        <div class="row2">
+          <div class="field">
+            <label for="editTeaTemp">Температура</label>
+            <input id="editTeaTemp" type="text" placeholder="80–85°C">
+          </div>
+          <div class="field">
+            <label for="editTeaTime">Время</label>
+            <input id="editTeaTime" type="text" placeholder="2–3 мин">
+          </div>
+        </div>
+
+        <div class="row2">
+          <div class="field">
+            <label for="editTeaGrams">Доза (г на чашку)</label>
+            <input id="editTeaGrams" type="number" step="0.1" min="0">
+          </div>
+          <div class="field">
+            <label for="editTeaSteeps">Количество проливов</label>
+            <input id="editTeaSteeps" type="text" placeholder="6–8">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="editTeaTags">Теги (через запятую)</label>
+          <input id="editTeaTags" type="text" placeholder="улун, китайский, сладкий">
+          <p class="hint">Теги помогают в поиске. Пример: улун, китайский, молочный</p>
+        </div>
+
+        <!-- Загрузка фото -->
+        <div class="field">
+          <label>Фото чая</label>
+          <div class="photo-upload">
+            <img id="editTeaCurrentPhoto" class="hidden" alt="Текущее фото">
+            <div class="upload-controls">
+              <input type="hidden" id="editTeaPhotoUrl">
+              <label class="btn btn-outline btn-sm" for="editTeaPhotoInput">
+                Выбрать файл
+              </label>
+              <input type="file" id="editTeaPhotoInput" accept="image/*" hidden>
+              <button type="button" class="btn btn-sm" id="editTeaUploadBtn">
+                Загрузить фото
+              </button>
+            </div>
+            <p class="hint">Рекомендуемый размер: 800×600px, формат JPG/PNG</p>
+          </div>
+        </div>
+
+        <div class="modal-foot">
+          <button class="btn btn-ghost" type="button" id="editTeaCancel">Отмена</button>
+          <button class="btn btn-primary" type="submit">Сохранить изменения</button>
+        </div>
+      </form>
+    </div>
+  </div>
   <!-- Вход / регистрация -->
   <div class="overlay" id="authOverlay" hidden>
     <div class="modal narrow" role="dialog" aria-modal="true" aria-labelledby="authTitle">
