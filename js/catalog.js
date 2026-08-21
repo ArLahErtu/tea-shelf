@@ -6,7 +6,7 @@ import { initCommon } from './common.js';
 import { supabase } from './supabaseClient.js';
 import { TABLES } from './config.js';
 import {
-  $, showToast, openOverlay, closeOverlay, wireOverlay,
+  $, $$, showToast, openOverlay, closeOverlay, wireOverlay,
   setInvalid, escapeHtml, plural, typeClass, TYPE_TO_DB, toTags, trackEvent,
 } from './ui.js';
 import { getUser, isModerator } from './auth.js';
