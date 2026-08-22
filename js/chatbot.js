@@ -1,7 +1,14 @@
 // ============================================================
 // chatbot.js — умный чат с командами + режим ИИ (заглушка)
 // + история диалогов (7 дней в localStorage)
-// Блок В: уведомления о модерации заявок
+// БЛОК 2 (этап 3):
+//   • команды безопасны на любой странице: если нужной модалки
+//     нет в DOM — бот отвечает текстом со ссылкой, а не падает;
+//   • уведомления о модерации — только здесь (без дублей в common.js).
+// БЛОК 2.5: «Добавь чай» работает с ЛЮБОЙ страницы — модалка
+//   количества стала глобальной (amountModal.js сам её инъектит).
+//   Это первый шаг к Telegram-боту: та же операция insert в
+//   user_shelf, только без веб-интерфейса.
 // ============================================================
 // ВАЖНО: сначала вставляем HTML, потом инициализируем логику
 import './chatbotHTML.js';
@@ -15,7 +22,7 @@ let currentMode = 'bot'; // 'bot' или 'ai'
 let shelfCache = null;
 let catalogCache = null;
 let journalCache = null;
-let moderationChecked = false; // Блок В: проверяем один раз за сессию
+let moderationChecked = false;
 
 // ---------- История диалогов ----------
 const HISTORY_KEY = 'chatbot_history';
@@ -53,11 +60,22 @@ function renderHistory() {
     m.className = 'chatbot-message ' + (msg.who === 'user' ? 'is-user' : 'is-bot');
     m.innerHTML = msg.text.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
     box.appendChild(m);
+    if (msg.actions && msg.actions.length > 0) {
+      wireActions(m, msg.actions);
+    }
   });
   box.scrollTop = box.scrollHeight;
 }
 
-// ---------- Блок В: уведомления о модерации ----------
+// ---------- Определение страницы ----------
+function currentPage() {
+  const page = document.body?.dataset?.page;
+  if (page === 'shelf') return 'shelf';
+  if (page === 'catalog') return 'catalog';
+  return 'home';
+}
+
+// ---------- Уведомления о модерации (единственный источник!) ----------
 const MODERATION_KEY = 'tea_shelf_moderation_status';
 
 function loadModerationStatus() {
@@ -98,7 +116,7 @@ async function checkModerationNotifications() {
 
     saveModerationStatus(newStatus);
 
-    // Показываем уведомления для одобренных
+    // Показываем уведомления для одобренных (только в чате, без тостов)
     approved.forEach(tea => {
       addMessage(
         `✅ **Ваша заявка «${tea.name}» одобрена!**\nЧай добавлен в общий каталог. Теперь его можно добавить на полку.`,
@@ -155,6 +173,9 @@ async function handleAdd(match) {
   if (onShelf) {
     return `⚠️ «${tea.name}» уже на полке (${onShelf.amount}г). Используй «Пополни ${tea.name} ${amount}г»`;
   }
+
+  // БЛОК 2.5: модалка количества теперь глобальная —
+  // открывается на ЛЮБОЙ странице (главная, каталог, полка).
   setTimeout(() => {
     openAmountModal({
       mode: 'add',
@@ -178,12 +199,22 @@ async function handleAdd(match) {
       },
     });
   }, 100);
-  return `📝 **Добавить «${tea.name}»:**\nКоличество: ${amount}г\nПорог "мало": 20г\n\nМодалка открыта — подтверди добавление.`;
+  return `📝 **Добавить «${tea.name}»:**\nКоличество: ${amount}г\n\nМодалка открыта — подтверди добавление.`;
 }
 
 async function handleBrew(match) {
   const teaName = match[1].trim();
   const amount = parseInt(match[2]);
+
+  // Модалка заваривания (оценка + заметка) пока живёт только на «Полке».
+  // Для Telegram-бота это не проблема: он вызовет RPC brew_tea напрямую.
+  if (!$('#brewOverlay')) {
+    return {
+      text: `☕ **Заваривание «${teaName}» (${amount}г)**\nЧтобы записать заваривание с оценкой и заметкой, открой страницу «Полка».`,
+      actions: [{ label: '🏠 Перейти на полку', action: 'go-to-shelf' }],
+    };
+  }
+
   const row = await findTeaOnShelf(teaName);
   if (!row) {
     return `❌ «${teaName}» нет на полке. Сначала добавь чай.`;
@@ -210,6 +241,15 @@ async function handleBrew(match) {
 
 async function handleRemove(match) {
   const teaName = match[1].trim();
+
+  if (currentPage() !== 'shelf') {
+    // Удаление — через меню карточки на «Полке»
+    return {
+      text: `❓ **Убрать «${teaName}» с полки**\nЭто действие доступно на странице «Полка» — через меню карточки чая.`,
+      actions: [{ label: '🏠 Перейти на полку', action: 'go-to-shelf' }],
+    };
+  }
+
   const row = await findTeaOnShelf(teaName);
   if (!row) {
     return `«${teaName}» нет на полке.`;
@@ -236,7 +276,7 @@ async function handleCheck(match) {
   answer += `Осталось: **${row.amount}${row.unit === 'g' ? 'г' : row.unit}**\n`;
   answer += `Завариваний: ${brews.length}`;
   if (avgRating) {
-    answer += `· Рейтинг: ${'★'.repeat(Math.round(avgRating))}${'☆'.repeat(5 - Math.round(avgRating))} (${avgRating})`;
+    answer += `\nРейтинг: ${'★'.repeat(Math.round(avgRating))}${'☆'.repeat(5 - Math.round(avgRating))} (${avgRating})`;
   }
   if (row.amount <= (row.low_threshold || 0)) {
     answer += `\n⚠️ **Заканчивается!**`;
@@ -285,9 +325,9 @@ async function handleStats() {
 async function handleHelp() {
   return `📋 **Что я умею:**\n\n` +
     `🛒 **Управление полкой:**\n` +
-    `• «Добавь [чай] [кол-во]г» — добавить чай на полку\n` +
-    `• «Заварил [чай] [кол-во]г» — записать заваривание\n` +
-    `• «Убери [чай]» — убрать с полки\n` +
+    `• «Добавь [чай] [кол-во]г» — добавить чай на полку (с любой страницы!)\n` +
+    `• «Заварил [чай] [кол-во]г» — записать заваривание (на «Полке»)\n` +
+    `• «Убери [чай]» — убрать с полки (на «Полке»)\n` +
     `• «Сколько [чай] осталось?» — проверить остаток\n\n` +
     `📊 **Информация:**\n` +
     `• «Что докупить?» — список покупок\n` +
@@ -309,7 +349,6 @@ async function findTeaInCatalog(name) {
   );
 }
 
-// Блок В: поиск чая по id (для уведомлений о модерации)
 async function findTeaById(teaId) {
   await loadCatalogCache();
   if (!catalogCache) return null;
@@ -414,6 +453,7 @@ async function findAnswer(text) {
 }
 
 async function askAI(text) {
+  // Заглушка — в Блоке 3 заменим на реальный вызов Groq через Edge Function.
   return '🤖 ИИ-ассистент пока в разработке. Скоро я смогу отвечать на любые вопросы о чае, подбирать сорта под настроение и давать рекомендации по завариванию!';
 }
 
@@ -436,59 +476,71 @@ function addMessage(text, who, actions = null) {
   saveHistory({ text, who, actions });
 
   if (actions) {
-    m.querySelectorAll('.action-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const action = btn.dataset.action;
-        const data = btn.dataset.data;
-
-        if (action === 'confirm-remove') {
-          const { error } = await supabase.from(TABLES.shelf).delete().eq('id', data);
-          if (error) {
-            showToast('Не удалось удалить: ' + error.message, 'warn');
-            return;
-          }
-          addMessage('✅ Чай убран с полки', 'bot');
-          shelfCache = null;
-        } else if (action === 'cancel') {
-          addMessage('Отменено', 'bot');
-        } else if (action === 'add-approved-tea') {
-          // Блок В: добавляем одобренный чай на полку
-          const tea = await findTeaById(data);
-          if (!tea) {
-            addMessage('❌ Чай не найден в каталоге.', 'bot');
-            return;
-          }
-          const onShelf = await isTeaOnShelf(tea.id);
-          if (onShelf) {
-            addMessage(`⚠️ «${tea.name}» уже на полке.`, 'bot');
-            return;
-          }
-          openAmountModal({
-            mode: 'add',
-            teaName: tea.name,
-            onSubmit: async (payload) => {
-              const user = getUser();
-              const { error } = await supabase.from(TABLES.shelf).insert({
-                user_id: user.id,
-                tea_id: tea.id,
-                amount: payload.amount,
-                unit: payload.unit,
-                low_threshold: payload.threshold,
-              });
-              if (error) {
-                showToast('Не удалось добавить: ' + error.message, 'warn');
-                return;
-              }
-              showToast(`✅ «${tea.name}» добавлен на полку`);
-              shelfCache = null;
-            },
-          });
-        }
-
-        m.querySelector('.chatbot-actions')?.remove();
-      });
-    });
+    wireActions(m, actions);
   }
+}
+
+// Вынес обработку кнопок-actions отдельно — переиспользуем в renderHistory
+function wireActions(m, actions) {
+  m.querySelectorAll('.action-btn').forEach(btn => {
+    // избежим повторного навешивания после восстановления из истории
+    if (btn.dataset.wired === '1') return;
+    btn.dataset.wired = '1';
+
+    btn.addEventListener('click', async () => {
+      const action = btn.dataset.action;
+      const data = btn.dataset.data;
+
+      if (action === 'confirm-remove') {
+        const { error } = await supabase.from(TABLES.shelf).delete().eq('id', data);
+        if (error) {
+          showToast('Не удалось удалить: ' + error.message, 'warn');
+          return;
+        }
+        addMessage('✅ Чай убран с полки', 'bot');
+        shelfCache = null;
+      } else if (action === 'cancel') {
+        addMessage('Отменено', 'bot');
+      } else if (action === 'add-approved-tea') {
+        // БЛОК 2.5: модалка количества глобальная — работаем с любой страницы
+        const tea = await findTeaById(data);
+        if (!tea) {
+          addMessage('❌ Чай не найден в каталоге.', 'bot');
+          return;
+        }
+        const onShelf = await isTeaOnShelf(tea.id);
+        if (onShelf) {
+          addMessage(`⚠️ «${tea.name}» уже на полке.`, 'bot');
+          return;
+        }
+        openAmountModal({
+          mode: 'add',
+          teaName: tea.name,
+          onSubmit: async (payload) => {
+            const user = getUser();
+            const { error } = await supabase.from(TABLES.shelf).insert({
+              user_id: user.id,
+              tea_id: tea.id,
+              amount: payload.amount,
+              unit: payload.unit,
+              low_threshold: payload.threshold,
+            });
+            if (error) {
+              showToast('Не удалось добавить: ' + error.message, 'warn');
+              return;
+            }
+            showToast(`✅ «${tea.name}» добавлен на полку`);
+            shelfCache = null;
+          },
+        });
+      } else if (action === 'go-to-shelf') {
+        window.location.href = 'shelf.html';
+        return; // не удаляем кнопки — пользователь уходит со страницы
+      }
+
+      m.querySelector('.chatbot-actions')?.remove();
+    });
+  });
 }
 
 function switchMode(mode) {
@@ -516,7 +568,7 @@ export function initChatbot() {
     if (open) {
       input?.focus();
       renderHistory();
-      // Блок В: проверяем уведомления о модерации при первом открытии
+      // Уведомления о модерации проверяются один раз за сессию
       if (!moderationChecked) {
         moderationChecked = true;
         checkModerationNotifications();
@@ -539,10 +591,15 @@ export function initChatbot() {
     setTimeout(async () => {
       typingDiv.remove();
       let answer;
-      if (currentMode === 'ai') {
-        answer = await askAI(msg);
-      } else {
-        answer = await findAnswer(msg);
+      try {
+        if (currentMode === 'ai') {
+          answer = await askAI(msg);
+        } else {
+          answer = await findAnswer(msg);
+        }
+      } catch (e) {
+        console.error('[chatbot] команда упала:', e);
+        answer = '⚠️ Не удалось выполнить команду. Попробуй ещё раз или напиши «Что ты можешь».';
       }
       if (typeof answer === 'object' && answer.text) {
         addMessage(answer.text, 'bot', answer.actions);
@@ -565,17 +622,13 @@ export function initChatbot() {
 
   $('#chatbotModeSwitch')?.addEventListener('click', (e) => {
     const btn = e.target.closest('.chatbot-mode-btn');
-    if (!btn || btn.disabled) return;
+    if (!btn) return;
+    if (btn.disabled) {
+      showToast('🤖 ИИ-ассистент скоро будет доступен!');
+      return;
+    }
     switchMode(btn.dataset.mode);
   });
-
-  const aiBtn = document.querySelector('.chatbot-mode-btn[data-mode="ai"]');
-  if (aiBtn) {
-    aiBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      showToast('🤖 ИИ-ассистент скоро будет доступен!');
-    });
-  }
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && !win.hidden) setOpen(false);

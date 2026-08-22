@@ -5,15 +5,79 @@
 //   'restock' — пополнение запаса (добавка к текущему остатку)
 //   'set'     — точная установка остатка (порог скрыт, единица фикс.)
 //   'edit'    — редактирование позиции (порог + единица видны) — Блок Б
+// БЛОК 2.5 (этап 3): модалка стала ГЛОБАЛЬНОЙ — если в HTML страницы
+// нет разметки (например, главная), модуль вставляет её сам.
+// Теперь «Добавь чай» работает с ЛЮБОЙ страницы — как и будет
+// работать из будущего Telegram-бота (тот же insert в user_shelf).
 // ============================================================
 import { $, $$, openOverlay, closeOverlay, wireOverlay } from './ui.js';
 
 let onSubmitCb = null;
 let currentMode = 'add';
+let wired = false; // защита от повторной навески слушателей
+
+// ---------- Разметка (копия модалки из shelf.html/catalog.html) ----------
+// Вставляется только на страницах, где её нет в HTML (главная).
+const AMOUNT_OVERLAY_HTML = `
+<div class="overlay" id="amountOverlay" hidden>
+  <div class="modal narrow" role="dialog" aria-modal="true" aria-labelledby="amountTitle">
+    <div class="modal-head">
+      <h2 id="amountTitle">Добавить на полку</h2>
+      <button class="icon-btn" id="amountClose" type="button" aria-label="Закрыть">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <p class="modal-sub" id="amountTeaName">—</p>
+
+    <form id="amountForm" novalidate>
+      <div class="row2">
+        <div class="field">
+          <label for="amountValue">Количество <span class="req">*</span></label>
+          <input id="amountValue" type="number" min="1" step="1" value="100" inputmode="decimal" required>
+          <p class="err">Укажите количество</p>
+        </div>
+        <div class="field">
+          <label for="amountUnitSel">Единица</label>
+          <select id="amountUnitSel">
+            <option value="g">граммы</option>
+            <option value="sachet">пакетики</option>
+            <option value="pcs">упаковки</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="presets" id="amountPresets">
+        <button type="button" class="preset" data-amount="50">50</button>
+        <button type="button" class="preset sel" data-amount="100">100</button>
+        <button type="button" class="preset" data-amount="250">250</button>
+      </div>
+
+      <div class="field" id="amountThresholdField">
+        <label for="amountThreshold">Порог «мало»</label>
+        <input id="amountThreshold" type="number" min="0" step="1" value="20">
+        <p class="hint">Когда остаток дойдёт до этого значения, чай попадёт в «Что докупить».</p>
+      </div>
+
+      <div class="modal-foot">
+        <button class="btn btn-ghost" type="button" id="amountCancel">Отмена</button>
+        <button class="btn btn-primary" type="submit" id="amountSubmit">Добавить</button>
+      </div>
+    </form>
+  </div>
+</div>
+`;
+
+function ensureAmountOverlay() {
+  if ($('#amountOverlay')) return; // в catalog/shelf разметка уже есть в HTML
+  document.body.insertAdjacentHTML('beforeend', AMOUNT_OVERLAY_HTML);
+}
 
 export function initAmountModal() {
+  ensureAmountOverlay();
   const ov = $('#amountOverlay');
-  if (!ov) return;
+  if (!ov || wired) return; // уже инициализированы — не вешаем слушатели дважды
+  wired = true;
+
   wireOverlay(ov);
   $('#amountClose')?.addEventListener('click', () => closeOverlay(ov));
   $('#amountCancel')?.addEventListener('click', () => closeOverlay(ov));
@@ -60,6 +124,7 @@ export function openAmountModal({
   threshold = null,
   onSubmit,
 }) {
+  ensureAmountOverlay(); // страховка: модалка существует всегда
   const ov = $('#amountOverlay');
   if (!ov) { console.warn('amountOverlay не найден в DOM'); return; }
   currentMode = mode;

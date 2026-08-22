@@ -1,20 +1,28 @@
 // ============================================================
 // common.js — инициализация общих блоков на всех страницах
-// Неделя 4: уведомление о модерации, ссылка обратной связи,
+// Неделя 4: ссылка обратной связи,
 // аналитика — Яндекс Метрика (вместо PostHog: не работает в РФ).
+// БЛОК 2 (этап 3): убрано дублирование уведомлений о модерации
+// (теперь только в chatbot.js — красивое сообщение в чате).
+// БЛОК 2.5: модалка количества инициализируется на ВСЕХ страницах —
+// «Добавить чай» работает откуда угодно (чат, главная, каталог).
 // ============================================================
-import { initDbStatus, supabase } from './supabaseClient.js';
-import { initAuth, getUser } from './auth.js';
+import { initDbStatus } from './supabaseClient.js';
+import { initAuth } from './auth.js';
 import { initChatbot } from './chatbot.js';
-import { closeOverlay, $$, showToast } from './ui.js';
-import { TABLES, FEEDBACK_URL } from './config.js';
+import { initAmountModal } from './amountModal.js';
+import { closeOverlay, $$ } from './ui.js';
+import { FEEDBACK_URL } from './config.js';
 
 export async function initCommon() {
   initDbStatus();          // чип статуса БД (скрыт в CSS)
   await initAuth();        // шапка + модалка входа
+  initAmountModal();       // модалка количества — теперь на каждой странице
   initChatbot();           // FAB + окно бота
   initFeedbackLink();      // ссылка на Google Form в футере
-  notifyModeration();      // тост об одобренных заявках
+  // УВЕДОМЛЕНИЯ О МОДЕРАЦИИ убраны отсюда: теперь их шлёт chatbot.js
+  // при первом открытии чата (красивое сообщение с кнопкой
+  // «Добавить на полку», без спама тостами на всех страницах).
 
   // Esc закрывает любую открытую модалку
   document.addEventListener('keydown', (e) => {
@@ -57,37 +65,4 @@ function initFeedbackLink() {
   a.textContent = 'Обратная связь';
   a.style.textDecoration = 'underline';
   wrap.appendChild(a);
-}
-
-// ---------- Уведомление о модерации ----------
-async function notifyModeration() {
-  const user = getUser();
-  if (!user) return;
-
-  try {
-    const { data, error } = await supabase
-      .from(TABLES.catalog)
-      .select('id, name, status')
-      .eq('author_id', user.id);
-    if (error || !data?.length) return;
-
-    const published = data.filter((t) => t.status === 'published');
-    if (!published.length) return;
-
-    const seen = JSON.parse(localStorage.getItem('seenPublishedIds') || '[]');
-    const fresh = published.filter((t) => !seen.includes(t.id));
-
-    if (fresh.length === 1) {
-      showToast(`🎉 Ваш чай «${fresh[0].name}» одобрен и опубликован в каталоге!`);
-    } else if (fresh.length > 1) {
-      showToast(`🎉 Одобрено ${fresh.length} ваших чая — они уже в каталоге!`);
-    }
-
-    localStorage.setItem(
-      'seenPublishedIds',
-      JSON.stringify([...new Set([...seen, ...published.map((t) => t.id)])]),
-    );
-  } catch (e) {
-    console.warn('[moderation notify]', e?.message || e);
-  }
 }
