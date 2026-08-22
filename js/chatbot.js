@@ -1,16 +1,14 @@
 // ============================================================
-// chatbot.js — умный чат с командами + режим ИИ (заглушка)
+// chatbot.js — умный чат с командами + режим ИИ (YandexGPT)
 // + история диалогов (7 дней в localStorage)
 // БЛОК 2 (этап 3):
-//   • команды безопасны на любой странице: если нужной модалки
-//     нет в DOM — бот отвечает текстом со ссылкой, а не падает;
-//   • уведомления о модерации — только здесь (без дублей в common.js).
-// БЛОК 2.5: «Добавь чай» работает с ЛЮБОЙ страницы — модалка
-//   количества стала глобальной (amountModal.js сам её инъектит).
-//   Это первый шаг к Telegram-боту: та же операция insert в
-//   user_shelf, только без веб-интерфейса.
+//   • команды безопасны на любой странице;
+//   • уведомления о модерации — только здесь (без дублей).
+// БЛОК 2.5: «Добавь чай» работает с ЛЮБОЙ страницы.
+// БЛОК 3: ИИ-ассистент на YandexGPT через Edge Function.
+//   API-ключ хранится только в бэкенде, передаём контекст
+//   (чаи с полки + журнал завариваний) для умных советов.
 // ============================================================
-// ВАЖНО: сначала вставляем HTML, потом инициализируем логику
 import './chatbotHTML.js';
 import { $, $$, showToast, openOverlay } from './ui.js';
 import { getUser } from './auth.js';
@@ -94,7 +92,6 @@ async function checkModerationNotifications() {
   if (!user) return;
 
   try {
-    // Загружаем ВСЕ чаи автора (pending + published)
     const { data, error } = await supabase
       .from(TABLES.catalog)
       .select('id, name, status')
@@ -108,7 +105,6 @@ async function checkModerationNotifications() {
 
     data.forEach(tea => {
       newStatus[tea.id] = tea.status;
-      // Раньше был pending, теперь published → одобрено!
       if (prevStatus[tea.id] === 'pending' && tea.status === 'published') {
         approved.push(tea);
       }
@@ -116,7 +112,6 @@ async function checkModerationNotifications() {
 
     saveModerationStatus(newStatus);
 
-    // Показываем уведомления для одобренных (только в чате, без тостов)
     approved.forEach(tea => {
       addMessage(
         `✅ **Ваша заявка «${tea.name}» одобрена!**\nЧай добавлен в общий каталог. Теперь его можно добавить на полку.`,
@@ -174,8 +169,6 @@ async function handleAdd(match) {
     return `⚠️ «${tea.name}» уже на полке (${onShelf.amount}г). Используй «Пополни ${tea.name} ${amount}г»`;
   }
 
-  // БЛОК 2.5: модалка количества теперь глобальная —
-  // открывается на ЛЮБОЙ странице (главная, каталог, полка).
   setTimeout(() => {
     openAmountModal({
       mode: 'add',
@@ -206,8 +199,6 @@ async function handleBrew(match) {
   const teaName = match[1].trim();
   const amount = parseInt(match[2]);
 
-  // Модалка заваривания (оценка + заметка) пока живёт только на «Полке».
-  // Для Telegram-бота это не проблема: он вызовет RPC brew_tea напрямую.
   if (!$('#brewOverlay')) {
     return {
       text: `☕ **Заваривание «${teaName}» (${amount}г)**\nЧтобы записать заваривание с оценкой и заметкой, открой страницу «Полка».`,
@@ -243,7 +234,6 @@ async function handleRemove(match) {
   const teaName = match[1].trim();
 
   if (currentPage() !== 'shelf') {
-    // Удаление — через меню карточки на «Полке»
     return {
       text: `❓ **Убрать «${teaName}» с полки**\nЭто действие доступно на странице «Полка» — через меню карточки чая.`,
       actions: [{ label: '🏠 Перейти на полку', action: 'go-to-shelf' }],
@@ -332,6 +322,8 @@ async function handleHelp() {
     `📊 **Информация:**\n` +
     `• «Что докупить?» — список покупок\n` +
     `• «Статистика» — твоя чайная статистика\n\n` +
+    `🤖 **ИИ-режим:**\n` +
+    `Переключись на «🤖 ИИ» — буду отвечать на вопросы о чае, подбирать сорта под настроение и давать советы!\n\n` +
     `💡 **Примеры:**\n` +
     `• «Добавь Да Хун Пао 100г»\n` +
     `• «Заварил Сенча 5г»\n` +
@@ -405,8 +397,9 @@ async function loadJournalCache() {
   if (!user || journalCache) return;
   const { data, error } = await supabase
     .from(TABLES.journal)
-    .select('*')
-    .eq('user_id', user.id);
+    .select('*, tea:tea_id(*)')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false });
   if (error) {
     console.error('[loadJournalCache] ошибка:', error);
     journalCache = [];
@@ -427,6 +420,46 @@ async function getTeaBrews(teaId) {
     return [];
   }
   return data || [];
+}
+
+// ---------- ИИ-ассистент (YandexGPT через Edge Function) ----------
+async function askAI(text) {
+  try {
+    // Загружаем контекст: чаи с полки и последние заваривания
+    await loadShelfCache();
+    await loadJournalCache();
+
+    const context = {
+      shelf: shelfCache?.map(r => ({
+        name: r.tea?.name || 'Чай',
+        amount: r.amount,
+        unit: r.unit,
+      })) || [],
+      journal: journalCache?.slice(0, 10).map(j => ({
+        name: j.tea?.name || 'Чай',
+        rating: j.rating,
+        note: j.note,
+      })) || [],
+    };
+
+    const { data, error } = await supabase.functions.invoke('ai-assistant', {
+      body: { text, context },
+    });
+
+    if (error) {
+      console.error('[askAI] Edge Function error:', error);
+      return `⚠️ Не удалось связаться с ИИ: ${error.message}. Попробуй ещё раз через минуту.`;
+    }
+
+    if (data?.answer) {
+      return data.answer;
+    }
+
+    return '⚠️ ИИ вернул пустой ответ. Попробуй переформулировать вопрос.';
+  } catch (e) {
+    console.error('[askAI] unexpected error:', e);
+    return `⚠️ Ошибка при обращении к ИИ: ${e instanceof Error ? e.message : 'неизвестная ошибка'}`;
+  }
 }
 
 // ---------- Основная логика ----------
@@ -452,11 +485,6 @@ async function findAnswer(text) {
   return hit ? hit.answer : FALLBACK;
 }
 
-async function askAI(text) {
-  // Заглушка — в Блоке 3 заменим на реальный вызов Groq через Edge Function.
-  return '🤖 ИИ-ассистент пока в разработке. Скоро я смогу отвечать на любые вопросы о чае, подбирать сорта под настроение и давать рекомендации по завариванию!';
-}
-
 function addMessage(text, who, actions = null) {
   const box = $('#chatbotMessages');
   if (!box) return;
@@ -480,10 +508,8 @@ function addMessage(text, who, actions = null) {
   }
 }
 
-// Вынес обработку кнопок-actions отдельно — переиспользуем в renderHistory
 function wireActions(m, actions) {
   m.querySelectorAll('.action-btn').forEach(btn => {
-    // избежим повторного навешивания после восстановления из истории
     if (btn.dataset.wired === '1') return;
     btn.dataset.wired = '1';
 
@@ -502,7 +528,6 @@ function wireActions(m, actions) {
       } else if (action === 'cancel') {
         addMessage('Отменено', 'bot');
       } else if (action === 'add-approved-tea') {
-        // БЛОК 2.5: модалка количества глобальная — работаем с любой страницы
         const tea = await findTeaById(data);
         if (!tea) {
           addMessage('❌ Чай не найден в каталоге.', 'bot');
@@ -535,7 +560,7 @@ function wireActions(m, actions) {
         });
       } else if (action === 'go-to-shelf') {
         window.location.href = 'shelf.html';
-        return; // не удаляем кнопки — пользователь уходит со страницы
+        return;
       }
 
       m.querySelector('.chatbot-actions')?.remove();
@@ -549,7 +574,7 @@ function switchMode(mode) {
     btn.classList.toggle('active', btn.dataset.mode === mode);
   });
   const hint = mode === 'ai'
-    ? '🤖 ИИ-режим (пока заглушка)'
+    ? '🤖 ИИ-режим активирован! Спрашивай про чай.'
     : '💬 Обычный чат-бот с командами';
   showToast(hint);
 }
@@ -562,13 +587,21 @@ export function initChatbot() {
   const input  = $('#chatbotInput');
   if (!fab || !win) return;
 
+  // Активируем кнопку ИИ (раньше была disabled)
+  const aiBtn = document.querySelector('.chatbot-mode-btn[data-mode="ai"]');
+  if (aiBtn) {
+    aiBtn.disabled = false;
+    // Убираем бейдж "Скоро"
+    const badge = aiBtn.querySelector('.badge-soon');
+    if (badge) badge.remove();
+  }
+
   function setOpen(open) {
     win.hidden = !open;
     fab.setAttribute('aria-expanded', String(open));
     if (open) {
       input?.focus();
       renderHistory();
-      // Уведомления о модерации проверяются один раз за сессию
       if (!moderationChecked) {
         moderationChecked = true;
         checkModerationNotifications();
