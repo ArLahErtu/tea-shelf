@@ -8,7 +8,7 @@
 
   <meta
     name="description"
-    content="Личная чайная полка: остатки, журнал завариваний с оценками, список покупок, общий каталог чаёв и ИИ-помощник."
+    content="Личная чайная полка: остатки, журнал завариваний, список покупок, общий каталог чаёв и модерация."
   >
 
   <link rel="canonical" href="https://tea-shelf.vercel.app/index.html">
@@ -18,7 +18,7 @@
   <meta property="og:title" content="Чайная полка — умный учёт вашего чая">
   <meta
     property="og:description"
-    content="Учёт чая в один тап: остатки, журнал завариваний, список покупок, общий каталог и ИИ-советник."
+    content="Учёт чая в один тап: остатки, журнал завариваний, список покупок и общий каталог."
   >
   <meta property="og:url" content="https://tea-shelf.vercel.app/index.html">
   <meta property="og:image" content="https://tea-shelf.vercel.app/img/icon-512.png">
@@ -64,7 +64,7 @@
     "@context": "https://schema.org",
     "@type": "WebApplication",
     "name": "Чайная полка",
-    "description": "Личная чайная полка: остатки, журнал завариваний, список покупок, общий каталог чаёв и ИИ-помощник.",
+    "description": "Личная чайная полка: остатки, журнал завариваний, список покупок, общий каталог чаёв и модерация.",
     "applicationCategory": "LifestyleApplication",
     "operatingSystem": "Web",
     "url": "https://tea-shelf.vercel.app",
@@ -84,7 +84,9 @@
 
       <a class="brand" href="index.html" aria-label="Чайная полка — на главную">
         <span class="logo" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><path d="M5 20c0-8 5-13 14-15-1 9-6 14-14 15Z"/></svg>
+          <svg viewBox="0 0 24 24" focusable="false">
+            <path d="M5 20c0-8 5-13 14-15-1 9-6 14-14 15Z"/>
+          </svg>
         </span>
         <span class="btxt">Чайная полка</span>
       </a>
@@ -96,11 +98,15 @@
       </nav>
 
       <div class="top-actions">
-        <span class="db-chip demo" id="dbStatus" role="status" aria-live="polite">
-          <i aria-hidden="true"></i>подключение…
+
+        <span class="db-chip demo" id="dbStatus">
+          <i aria-hidden="true"></i>
+          подключение…
         </span>
 
-        <button class="btn btn-outline btn-sm" id="authOpen" type="button">Вход</button>
+        <button class="btn btn-outline btn-sm" id="authOpen" type="button">
+          Вход
+        </button>
 
         <div class="avatar-btn hidden" id="userArea">
           <button
@@ -111,7 +117,7 @@
             aria-expanded="false"
             aria-label="Меню пользователя"
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/>
               <path d="M4 20c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5"/>
             </svg>
@@ -125,78 +131,102 @@
             <button class="danger" id="logoutBtn" type="button">Выйти</button>
           </div>
         </div>
+
       </div>
     </div>
   </header>
 
   <main id="main">
 
-    <!-- HERO -->
-    <section class="hero">
-      <div class="wrap hero-in">
-        <div>
-          <p class="eyebrow">Ваш чай всегда под рукой</p>
-          <h1>Чайная полка</h1>
-          <p class="lead">
-            «Чайная полка» — личный дневник чая: остатки, журнал завариваний
-            с оценками и список покупок, который собирается сам.
-          </p>
-          <div class="hero-cta">
-            <a class="btn btn-primary btn-lg" href="shelf.html" data-auth-required="true">
-              Начать вести полку
-            </a>
-            <a class="btn btn-outline btn-lg" href="catalog.html">
-              Открыть каталог
-            </a>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- USP -->
-    <section class="sec">
+    <!-- ==========================================================
+         HERO — отцентрован, 4 УТП сеткой
+    ============================================================ -->
+    <section class="hero" aria-labelledby="hero-title">
       <div class="wrap">
-        <div class="usp-grid">
-          <div class="usp">
-            <div class="usp-icon">
-              <svg viewBox="0 0 24 24"><path d="M4 10l4 4 10-9"/></svg>
-            </div>
-            <h3>Учёт в один тап</h3>
-            <p>Нажмите «Заварил» — сервис сам спишет остаток и запишет в журнал.</p>
-          </div>
-          <div class="usp">
-            <div class="usp-icon">
-              <svg viewBox="0 0 24 24"><path d="M4 10l4 4 10-9"/></svg>
-            </div>
-            <h3>Покупки под контролем</h3>
-            <p>Полка сама напомнит, когда любимый чай заканчивается.</p>
-          </div>
-          <div class="usp">
-            <div class="usp-icon">
-              <svg viewBox="0 0 24 24"><path d="M4 10l4 4 10-9"/></svg>
-            </div>
-            <h3>Данные только ваши</h3>
-            <p>Полка и журнал привязаны к аккаунту и видны только вам.</p>
-          </div>
-          <div class="usp">
-            <div class="usp-icon">
-              <svg viewBox="0 0 24 24"><path d="M4 10l4 4 10-9"/></svg>
-            </div>
-            <h3>Общий каталог</h3>
-            <p>60+ чаёв с описаниями. Предложите свой — его увидят все.</p>
-          </div>
+
+        <h1 id="hero-title">
+          Ваш чай всегда под рукой
+        </h1>
+
+        <p class="lead">
+          «Чайная полка» — личный дневник чая: остатки, журнал завариваний
+          с оценками и список покупок, который собирается сам.
+        </p>
+
+        <div class="hero-cta">
+          <a class="btn btn-primary btn-lg" href="shelf.html" data-auth-required="true">
+            Начать вести полку
+          </a>
+
+          <a class="btn btn-outline btn-lg" href="catalog.html">
+            Открыть каталог
+          </a>
         </div>
+
+        <div class="usp-grid" aria-label="Преимущества сервиса">
+
+          <div class="usp">
+            <div class="ic g" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path d="M4 8h12v6a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V8Z"/>
+                <path d="M16 9h2a2 2 0 1 1 0 4h-2"/>
+                <path d="M7 4c0 1 1 1 1 2M11 4c0 1 1 1 1 2"/>
+              </svg>
+            </div>
+            <b>Учёт в один тап</b>
+            <span>Нажмите «Заварил» — сервис сам спишет остаток и запишет в журнал.</span>
+          </div>
+
+          <div class="usp">
+            <div class="ic a" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path d="M6 8h12l-1 12H7L6 8Z"/>
+                <path d="M9 8a3 3 0 0 1 6 0"/>
+              </svg>
+            </div>
+            <b>Покупки под контролем</b>
+            <span>Полка сама напомнит, когда любимый чай заканчивается.</span>
+          </div>
+
+          <div class="usp">
+            <div class="ic r" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3Z"/>
+                <path d="M9 11l2 2 4-4"/>
+              </svg>
+            </div>
+            <b>Данные только ваши</b>
+            <span>Полка и журнал привязаны к аккаунту и видны только вам.</span>
+          </div>
+
+          <div class="usp">
+            <div class="ic b" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path d="M6 4h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/>
+                <path d="M9 8h6M9 12h6M9 16h4"/>
+              </svg>
+            </div>
+            <b>Общий каталог</b>
+            <span>60+ чаёв с описаниями. Предложите свой — его увидят все.</span>
+          </div>
+
+        </div>
+
       </div>
     </section>
 
-    <!-- ВОЗМОЖНОСТИ -->
-    <section class="sec tinted" aria-label="Что умеет сервис">
+    <!-- ==========================================================
+         FEATURES (на мобильном — карусель, см. main.js + index.css)
+    ============================================================ -->
+    <section class="sec" id="features" aria-labelledby="features-title">
       <div class="wrap">
 
         <div class="sec-head">
           <p class="sec-kicker">Возможности</p>
-          <h2>Что умеет «Чайная полка»</h2>
-          <p class="sub">
+          <h2 id="features-title">
+            Что умеет «Чайная полка»
+          </h2>
+          <p>
             Минимальный, но живой набор для домашнего чайного учёта:
             остатки, журнал, покупки и общий каталог.
           </p>
@@ -204,186 +234,296 @@
 
         <div class="feat-grid">
 
-          <div class="feat">
+          <article class="feat">
+            <div class="ic g" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path d="M4 8h12v6a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V8Z"/>
+                <path d="M16 9h2a2 2 0 1 1 0 4h-2"/>
+                <path d="M7 4c0 1 1 1 1 2M11 4c0 1 1 1 1 2"/>
+              </svg>
+            </div>
             <h3>Учёт в один тап</h3>
             <p>
               Кнопка «Заварил» списывает чай и пишет запись в журнал.
               Граммы, саше и упаковки.
             </p>
-          </div>
+          </article>
 
-          <div class="feat">
+          <article class="feat">
+            <div class="ic a" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path d="M6 8h12l-1 12H7L6 8Z"/>
+                <path d="M9 8a3 3 0 0 1 6 0"/>
+              </svg>
+            </div>
             <h3>«Мало» и список покупок</h3>
             <p>
               У каждого чая свой порог. Полка сама собирает список
               «что докупить» и пополняет одной кнопкой.
             </p>
-          </div>
+          </article>
 
-          <div class="feat">
+          <article class="feat">
+            <div class="ic b" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path d="M6 4h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/>
+                <path d="M9 8h6M9 12h6M9 16h4"/>
+              </svg>
+            </div>
             <h3>Журнал завариваний</h3>
             <p>
               BrewLog с оценками и заметками: средняя оценка на карточке
               и история по датам.
             </p>
-          </div>
+          </article>
 
-          <div class="feat">
+          <article class="feat">
+            <div class="ic r" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3Z"/>
+                <path d="M9 11l2 2 4-4"/>
+              </svg>
+            </div>
             <h3>Общий каталог с модерацией</h3>
             <p>
               Предлагайте чаи — заявки видны только вам до одобрения.
               Фото добавляет модератор.
             </p>
-          </div>
+          </article>
 
         </div>
 
       </div>
     </section>
 
-    <!-- КАК НАЧАТЬ -->
-    <section class="sec" aria-label="Как начать">
+    <!-- ==========================================================
+         STEPS
+    ============================================================ -->
+    <section class="sec" id="steps" aria-labelledby="steps-title">
       <div class="wrap">
 
         <div class="sec-head">
           <p class="sec-kicker">Как начать</p>
-          <h2>Три шага до первой чашки</h2>
-          <p class="sub">
+          <h2 id="steps-title">
+            Три шага до первой чашки
+          </h2>
+          <p>
             Быстрый старт без сложной настройки.
           </p>
         </div>
 
         <div class="steps">
 
-          <div class="step">
-            <div class="step-num">1</div>
+          <article class="step">
+            <div class="n" aria-hidden="true">1</div>
             <h3>Создайте аккаунт</h3>
             <p>
               Регистрация за минуту — и полка, журнал и заявки
               привязаны к вашему профилю.
             </p>
-          </div>
+          </article>
 
-          <div class="step">
-            <div class="step-num">2</div>
+          <article class="step">
+            <div class="n" aria-hidden="true">2</div>
             <h3>Добавьте чай из каталога</h3>
             <p>
               20+ чаёв с описаниями и параметрами заваривания.
               Нет вашего — предложите свой.
             </p>
-          </div>
+          </article>
 
-          <div class="step">
-            <div class="step-num">3</div>
+          <article class="step">
+            <div class="n" aria-hidden="true">3</div>
             <h3>Заваривайте и отмечайте</h3>
             <p>
               Остатки пересчитываются сами, а когда чай закончится —
               он попадёт в список покупок.
             </p>
-          </div>
+          </article>
 
         </div>
 
       </div>
     </section>
 
-    <!-- БИБЛИОТЕКА -->
-    <section class="sec tinted" aria-label="Популярные чаи">
+    <!-- ==========================================================
+         LIBRARY (заполняется из Supabase через js/main.js)
+    ============================================================ -->
+    <section class="sec" id="library" aria-labelledby="library-title">
       <div class="wrap">
+
         <div class="sec-head">
           <p class="sec-kicker">Библиотека</p>
-          <h2>Из каталога — вживую</h2>
-          <p class="sub">
+          <h2 id="library-title">
+            Из каталога — вживую
+          </h2>
+          <p>
             Реальные данные из базы: самые популярные чаи у пользователей.
           </p>
         </div>
 
-        <div class="tea-grid" aria-busy="true">
-          <!-- Заполняется main.js из базы -->
+        <div class="tea-grid" id="popularTeas">
+
+          <a class="tmini" href="catalog.html">
+            <span class="tm">
+              <span class="ph" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path d="M5 20c0-8 5-13 14-15-1 9-6 14-14 15Z"/>
+                </svg>
+              </span>
+            </span>
+            <span class="tb">
+              <b>Молочный улун</b>
+              <span>Улун · Китай</span>
+            </span>
+          </a>
+
+          <a class="tmini" href="catalog.html">
+            <span class="tm">
+              <span class="ph" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path d="M5 20c0-8 5-13 14-15-1 9-6 14-14 15Z"/>
+                </svg>
+              </span>
+            </span>
+            <span class="tb">
+              <b>Да Хун Пао</b>
+              <span>Улун · Китай</span>
+            </span>
+          </a>
+
+          <a class="tmini" href="catalog.html">
+            <span class="tm">
+              <span class="ph" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path d="M5 20c0-8 5-13 14-15-1 9-6 14-14 15Z"/>
+                </svg>
+              </span>
+            </span>
+            <span class="tb">
+              <b>Шен Пуэр</b>
+              <span>Пуэр · Юньнань</span>
+            </span>
+          </a>
+
+          <a class="tmini" href="catalog.html">
+            <span class="tm">
+              <span class="ph" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path d="M5 20c0-8 5-13 14-15-1 9-6 14-14 15Z"/>
+                </svg>
+              </span>
+            </span>
+            <span class="tb">
+              <b>Сенча</b>
+              <span>Зелёный · Япония</span>
+            </span>
+          </a>
+
+          <a class="tmini" href="catalog.html">
+            <span class="tm">
+              <span class="ph" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path d="M5 20c0-8 5-13 14-15-1 9-6 14-14 15Z"/>
+                </svg>
+              </span>
+            </span>
+            <span class="tb">
+              <b>Эрл Грей</b>
+              <span>Чёрный · бергамот</span>
+            </span>
+          </a>
+
+          <a class="tmini" href="catalog.html">
+            <span class="tm">
+              <span class="ph" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path d="M5 20c0-8 5-13 14-15-1 9-6 14-14 15Z"/>
+                </svg>
+              </span>
+            </span>
+            <span class="tb">
+              <b>Те Гуань Инь</b>
+              <span>Улун · Аньси</span>
+            </span>
+          </a>
+
         </div>
 
-        <div style="text-align:center; margin-top:var(--space-5);">
+        <p style="margin-top: var(--space-4);">
           <a class="btn btn-outline" href="catalog.html">
             Весь каталог →
           </a>
-        </div>
+        </p>
+
       </div>
     </section>
 
-    <!-- РАЗВИТИЕ СЕРВИСА (ОБНОВЛЁННЫЙ БЛОК) -->
-    <section class="sec" aria-label="Развитие сервиса">
+    <!-- ==========================================================
+         ROADMAP — простым языком
+    ============================================================ -->
+    <section class="sec" id="status" aria-labelledby="status-title">
       <div class="wrap">
 
         <div class="sec-head">
           <p class="sec-kicker">Развитие сервиса</p>
-          <h2>Что уже работает и что появится скоро</h2>
-          <p class="sub">
-            Сервис в активном использовании. Собираем обратную связь.
-          </p>
+          <h2 id="status-title">
+            Что уже работает и что появится скоро
+          </h2>
         </div>
 
         <div class="road">
 
-          <div class="panel">
-            <h3>✅ Уже работает</h3>
+          <div class="panel done">
+            <h3>Уже работает</h3>
             <ul>
               <li>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10l4 4 10-9"/></svg>
-                Личная полка: остатки в граммах/пакетиках/упаковках
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M4 10l4 4 10-9"/>
+                </svg>
+                Личная полка: добавляйте чаи и следите за остатками
               </li>
               <li>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10l4 4 10-9"/></svg>
-                Журнал завариваний с оценками ★★★★★ и заметками
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M4 10l4 4 10-9"/>
+                </svg>
+                Кнопка «Заварил» — и запись в журнале с оценкой и заметкой
               </li>
               <li>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10l4 4 10-9"/></svg>
-                Список «Что докупить» с дозакупкой одной кнопкой
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M4 10l4 4 10-9"/>
+                </svg>
+                Список «Что докупить» собирается сам, когда чай на исходе
               </li>
               <li>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10l4 4 10-9"/></svg>
-                Общий каталог с поиском, фильтрами и модерацией
-              </li>
-              <li>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10l4 4 10-9"/></svg>
-                Чат-помощник: команды «Добавь», «Заварил», «Что докупить?»
-              </li>
-              <li>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10l4 4 10-9"/></svg>
-                ИИ-режим на YandexGPT: советы по чаю с учётом вашей полки
-              </li>
-              <li>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10l4 4 10-9"/></svg>
-                Режим модератора с редактированием карточек
-              </li>
-              <li>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10l4 4 10-9"/></svg>
-                Уведомления о модерации заявок в чате
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M4 10l4 4 10-9"/>
+                </svg>
+                Общий каталог: предложите свой чай — его увидят все
               </li>
             </ul>
           </div>
 
-          <div class="panel">
-            <h3>🔜 В планах</h3>
+          <div class="panel next">
+            <h3>Скоро появится</h3>
             <ul>
               <li>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-                Подписка с расширенным ИИ-ассистентом (безлимит, больше токенов)
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M12 5v14M5 12h14"/>
+                </svg>
+                Подсказчик, который подберёт чай под настроение
               </li>
               <li>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-                Telegram-бот для управления полкой
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M12 5v14M5 12h14"/>
+                </svg>
+                Уведомления: расскажем, когда вашу заявку одобрят
               </li>
               <li>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-                Email/Telegram-уведомления при одобрении заявок
-              </li>
-              <li>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-                Экспорт статистики в CSV/Excel
-              </li>
-              <li>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-                Красивые отчёты и графики чайных привычек
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M12 5v14M5 12h14"/>
+                </svg>
+                Красивая статистика о ваших чайных привычках
               </li>
             </ul>
           </div>
@@ -393,7 +533,9 @@
       </div>
     </section>
 
-    <!-- CTA -->
+    <!-- ==========================================================
+         CTA
+    ============================================================ -->
     <section class="sec" aria-label="Начать пользоваться сервисом">
       <div class="wrap">
 
