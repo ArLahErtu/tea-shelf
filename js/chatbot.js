@@ -429,17 +429,51 @@ async function askAI(text) {
     await loadShelfCache();
     await loadJournalCache();
 
+    // Расширенный контекст (версия 2.0)
+    const shelf = shelfCache?.map(r => ({
+      name: r.tea?.name || 'Чай',
+      amount: r.amount,
+      unit: r.unit,
+      type: r.tea?.type,
+    })) || [];
+
+    const journal = journalCache?.slice(0, 10).map(j => ({
+      name: j.tea?.name || 'Чай',
+      rating: j.rating,
+      note: j.note,
+      type: j.tea?.type,
+    })) || [];
+
+    // Статистика
+    const rated = journalCache?.filter(j => j.rating) || [];
+    const avgRating = rated.length
+      ? (rated.reduce((s, j) => s + j.rating, 0) / rated.length).toFixed(1)
+      : null;
+
+    // Любимый тип чая (по частоте завариваний)
+    const typeCounts = {};
+    journalCache?.forEach(j => {
+      const type = j.tea?.type || 'неизвестный';
+      typeCounts[type] = (typeCounts[type] || 0) + 1;
+    });
+    const favoriteType = Object.keys(typeCounts).length
+      ? Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0][0]
+      : null;
+
+    // Список покупок (заканчивающиеся чаи)
+    const shopping = shelf
+      .filter(r => r.amount > 0 && r.amount <= 20) // порог "мало"
+      .map(r => ({ name: r.name, amount: r.amount, unit: r.unit }));
+
     const context = {
-      shelf: shelfCache?.map(r => ({
-        name: r.tea?.name || 'Чай',
-        amount: r.amount,
-        unit: r.unit,
-      })) || [],
-      journal: journalCache?.slice(0, 10).map(j => ({
-        name: j.tea?.name || 'Чай',
-        rating: j.rating,
-        note: j.note,
-      })) || [],
+      shelf,
+      journal,
+      stats: {
+        avgRating: avgRating ? parseFloat(avgRating) : undefined,
+        totalBrews: journalCache?.length || 0,
+        favoriteType,
+      },
+      shopping,
     };
 
     const { data, error } = await supabase.functions.invoke('ai-assistant', {
