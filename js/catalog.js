@@ -10,7 +10,9 @@
 //   • модератор видит ВСЕ pending через RPC get_pending_teas;
 //   • одобрение/отклонение через RPC approve_tea / reject_tea;
 //   • редактирование любых карточек через RPC update_tea;
-//   • фикс фильтра по типу (ilike, регистронезависимо).
+//   • фикс фильтра по типу (ilike, регистронезависимо);
+//   • URL синхронизирован с режимом (?moderation=1), выход стабилен;
+//   • ошибки модерации — тихо в консоль + блок в сетке, без тостов.
 // ============================================================
 import { initCommon } from './common.js';
 import { supabase } from './supabaseClient.js';
@@ -34,6 +36,7 @@ let favorites = new Set();
 let currentTea = null;
 let currentUser = null;
 let currentModerationTea = null; // заявка, открытая в модалке модерации
+let moderationError = false;     // RPC упал — показываем тихий блок в сетке
 
 let viewMode = 'catalog'; // 'catalog' | 'moderation'
 
@@ -88,18 +91,30 @@ function loadPublished(offset = 0) {
 }
 
 // ---------- Модерация: загрузка ВСЕХ pending через RPC ----------
+// Без всплывающих тостов: ошибка уходит в консоль и в тихий блок сетки.
 async function loadModeration() {
-  if (!isModerator()) { pendingAll = []; return; }
+  if (!isModerator()) { pendingAll = []; moderationError = false; return; }
   const { data, error } = await supabase.rpc('get_pending_teas');
   if (error) {
     console.warn('[moderation]', error.message);
-    showToast('Не удалось загрузить заявки: ' + error.message, 'warn');
+    moderationError = true;
     pendingAll = [];
   } else {
+    moderationError = false;
     pendingAll = data || [];
   }
   const badge = $('#pendingCount');
   if (badge) badge.textContent = pendingAll.length;
+}
+
+// ---------- Синхронизация URL с режимом ----------
+// Убирает ?moderation=1 при выходе в каталог, чтобы перезагрузка
+// или обновление токена не возвращали насильно в модерацию.
+function syncUrlWithMode() {
+  const url = new URL(location.href);
+  if (viewMode === 'moderation') url.searchParams.set('moderation', '1');
+  else url.searchParams.delete('moderation');
+  history.replaceState(null, '', url.toString());
 }
 
 // ---------- Загрузка (старт / смена входа) ----------
@@ -134,18 +149,18 @@ async function load() {
   }
   teas = pending.concat(published);
 
-  // Если модератор пришёл по ссылке ?moderation=1 или ранее включил режим
+  // Определяем режим: уже включен / пришли по ссылке / ранее сохранили
   const params = new URLSearchParams(location.search);
   const wantModeration = isModerator() && (
+    viewMode === 'moderation' ||
     params.get('moderation') === '1' ||
     localStorage.getItem('tea_shelf_mode') === 'moderator'
   );
-  if (wantModeration) {
-    viewMode = 'moderation';
-    $$('#modeSwitch .mode-btn').forEach((b) =>
-      b.classList.toggle('active', b.dataset.mode === 'moderation'));
-    await loadModeration();
-  }
+  viewMode = wantModeration ? 'moderation' : 'catalog';
+  $$('#modeSwitch .mode-btn').forEach((b) =>
+    b.classList.toggle('active', b.dataset.mode === viewMode));
+  if (viewMode === 'moderation') await loadModeration();
+  syncUrlWithMode();
 
   render();
   renderMore();
@@ -164,6 +179,7 @@ async function setMode(mode) {
   } else {
     localStorage.removeItem('tea_shelf_mode');
   }
+  syncUrlWithMode();
   render();
   renderMore();
 }
@@ -241,7 +257,8 @@ function filterPending(list) {
   } else if (state.sort === 'popular') {
     res.sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
   } else {
-    res.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    // в tea_catalog нет created_at — новые заявки имеют больший id
+    res.sort((a, b) => (b.id || 0) - (a.id || 0));
   }
   return res;
 }
@@ -383,6 +400,13 @@ function render() {
 
   // ----- Режим модерации: показываем ВСЕ pending -----
   if (viewMode === 'moderation') {
+    if (moderationError) {
+      grid.innerHTML = `<div class="empty grid-col-span">
+        <h3>Не удалось загрузить заявки</h3>
+        <p>Попробуйте переключиться в «Каталог» и обратно или обновить страницу.</p>
+      </div>`;
+      return;
+    }
     const list = filterPending(pendingAll);
     if (!list.length) {
       grid.innerHTML = `<div class="empty grid-col-span">
@@ -916,11 +940,13 @@ async function init() {
 
   initPropose();
 
-  // Перезагрузка при входе/выходе (роль подтянется из user_roles)
+  // Перезагрузка при входе/выходе. Режим НЕ сбрасываем без причины —
+  // только если прав модератора больше нет (вышел из аккаунта).
   onAuthChange(() => {
-    viewMode = 'catalog';
-    $$('#modeSwitch .mode-btn').forEach((b) =>
-      b.classList.toggle('active', b.dataset.mode === 'catalog'));
+    if (viewMode === 'moderation' && !isModerator()) {
+      viewMode = 'catalog';
+      localStorage.removeItem('tea_shelf_mode');
+    }
     load().catch((err) => console.warn('[catalog reload]', err));
   });
 
