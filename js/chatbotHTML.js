@@ -1,6 +1,7 @@
 // ============================================================
 // chatbotHTML.js — генерация HTML чат-бота
 // Вставляется один раз при загрузке любой страницы
+// БЛОК 4: добавлен бейдж счётчика ИИ-запросов (#chatbotLimit)
 // ============================================================
 const CHATBOT_HTML = `
 <div id="chatbot-root">
@@ -59,6 +60,16 @@ const CHATBOT_HTML = `
     <button class="chatbot-mode-btn" data-mode="ai" type="button" disabled>
       🤖 ИИ <span class="badge-soon">Скоро</span>
     </button>
+  </div>
+
+  <!-- БЛОК 4: счётчик ИИ-запросов (виден только в ИИ-режиме) -->
+  <div
+    class="hidden"
+    id="chatbotLimit"
+    style="margin:6px 12px 0; padding:4px 10px; font-size:11px; line-height:1.4;
+           color:#6B6353; background:#F5EFE2; border-radius:8px; text-align:center;"
+  >
+    🤖 <span id="chatbotLimitText">–</span>
   </div>
 
   <!-- Сообщения -->

@@ -1,13 +1,7 @@
 // ============================================================
-// chatbot.js — умный чат с командами + режим ИИ (YandexGPT)
-// + история диалогов (7 дней в localStorage)
-// БЛОК 2 (этап 3):
-//   • команды безопасны на любой странице;
-//   • уведомления о модерации — только здесь (без дублей).
-// БЛОК 2.5: «Добавь чай» работает с ЛЮБОЙ страницы.
-// БЛОК 3: ИИ-ассистент на YandexGPT через Edge Function.
-//   API-ключ хранится только в бэкенде, передаём контекст
-//   (чаи с полки + журнал завариваний) для умных советов.
+// chatbot.js — умный чат с командами + ИИ (YandexGPT)
+// БЛОК 4: тарификация — счётчик запросов в модалке чата,
+// день по местному времени пользователя, premium/free.
 // ============================================================
 import './chatbotHTML.js';
 import { $, $$, showToast, openOverlay } from './ui.js';
@@ -21,6 +15,7 @@ let shelfCache = null;
 let catalogCache = null;
 let journalCache = null;
 let moderationChecked = false;
+let aiLimits = null; // { plan, requests_remaining, requests_limit }
 
 // ---------- История диалогов ----------
 const HISTORY_KEY = 'chatbot_history';
@@ -65,12 +60,58 @@ function renderHistory() {
   box.scrollTop = box.scrollHeight;
 }
 
-// ---------- Определение страницы ----------
+// ---------- Определение страницы и таймзоны ----------
 function currentPage() {
   const page = document.body?.dataset?.page;
   if (page === 'shelf') return 'shelf';
   if (page === 'catalog') return 'catalog';
   return 'home';
+}
+
+function userTimezone() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  } catch {
+    return 'UTC';
+  }
+}
+
+// ---------- Бейдж счётчика ИИ-запросов ----------
+function renderLimitBadge() {
+  const box = $('#chatbotLimit');
+  if (!box) return;
+  const user = getUser();
+  if (!user || currentMode !== 'ai' || !aiLimits) {
+    box.classList.add('hidden');
+    return;
+  }
+  box.classList.remove('hidden');
+  const label = $('#chatbotLimitText');
+  if (!label) return;
+  if (aiLimits.plan === 'premium') {
+    label.textContent = 'ИИ-режим: безлимит ∞';
+  } else {
+    const rem = aiLimits.requests_remaining ?? 0;
+    const lim = aiLimits.requests_limit ?? 7;
+    label.textContent = `Запросов сегодня: ${rem} из ${lim}`;
+  }
+}
+
+async function fetchAiLimits() {
+  const user = getUser();
+  if (!user) { aiLimits = null; renderLimitBadge(); return; }
+  try {
+    const { data } = await supabase.rpc('get_user_limits', {
+      p_user_id: user.id,
+      p_timezone: userTimezone(),
+    });
+    if (data && data.length) {
+      aiLimits = data[0];
+    }
+  } catch (e) {
+    console.warn('[ai limits]', e?.message || e);
+  }
+  renderLimitBadge();
 }
 
 // ---------- Уведомления о модерации (единственный источник!) ----------
@@ -323,7 +364,7 @@ async function handleHelp() {
     `• «Что докупить?» — список покупок\n` +
     `• «Статистика» — твоя чайная статистика\n\n` +
     `🤖 **ИИ-режим:**\n` +
-    `Переключись на «🤖 ИИ» — буду отвечать на вопросы о чае, подбирать сорта под настроение и давать советы!\n\n` +
+    `Переключись на «🤖 ИИ» — буду отвечать на вопросы о чае, подбирать сорта и давать советы!\n\n` +
     `💡 **Примеры:**\n` +
     `• «Добавь Да Хун Пао 100г»\n` +
     `• «Заварил Сенча 5г»\n` +
@@ -425,11 +466,9 @@ async function getTeaBrews(teaId) {
 // ---------- ИИ-ассистент (YandexGPT через Edge Function) ----------
 async function askAI(text) {
   try {
-    // Загружаем контекст: чаи с полки и последние заваривания
     await loadShelfCache();
     await loadJournalCache();
 
-    // Расширенный контекст (версия 2.0)
     const shelf = shelfCache?.map(r => ({
       name: r.tea?.name || 'Чай',
       amount: r.amount,
@@ -444,13 +483,11 @@ async function askAI(text) {
       type: j.tea?.type,
     })) || [];
 
-    // Статистика
     const rated = journalCache?.filter(j => j.rating) || [];
     const avgRating = rated.length
       ? (rated.reduce((s, j) => s + j.rating, 0) / rated.length).toFixed(1)
       : null;
 
-    // Любимый тип чая (по частоте завариваний)
     const typeCounts = {};
     journalCache?.forEach(j => {
       const type = j.tea?.type || 'неизвестный';
@@ -460,9 +497,8 @@ async function askAI(text) {
       ? Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0][0]
       : null;
 
-    // Список покупок (заканчивающиеся чаи)
     const shopping = shelf
-      .filter(r => r.amount > 0 && r.amount <= 20) // порог "мало"
+      .filter(r => r.amount > 0 && r.amount <= 20)
       .map(r => ({ name: r.name, amount: r.amount, unit: r.unit }));
 
     const context = {
@@ -477,18 +513,33 @@ async function askAI(text) {
     };
 
     const { data, error } = await supabase.functions.invoke('ai-assistant', {
-      body: { text, context },
+      body: { text, context, timezone: userTimezone() },
     });
 
     if (error) {
       console.error('[askAI] Edge Function error:', error);
-      return `⚠️ Не удалось связаться с ИИ: ${error.message}. Попробуй ещё раз через минуту.`;
+      // 429 = исчерпан лимит — показываем вежливый ответ из функции
+      try {
+        const errData = await error.context?.json();
+        if (errData?.answer) {
+          await fetchAiLimits(); // обновим счётчик
+          return errData.answer;
+        }
+      } catch { /* игнорируем, покажем общий текст */ }
+      return `⚠️ Не удалось связаться с ИИ. Попробуй ещё раз через минуту.`;
     }
 
-    if (data?.answer) {
-      return data.answer;
+    // Обновляем счётчик из ответа, без лишнего запроса к БД
+    if (data && (data.plan || data.requests_remaining !== undefined)) {
+      aiLimits = {
+        plan: data.plan ?? aiLimits?.plan,
+        requests_remaining: data.requests_remaining ?? aiLimits?.requests_remaining,
+        requests_limit: aiLimits?.requests_limit ?? 7,
+      };
+      renderLimitBadge();
     }
 
+    if (data?.answer) return data.answer;
     return '⚠️ ИИ вернул пустой ответ. Попробуй переформулировать вопрос.';
   } catch (e) {
     console.error('[askAI] unexpected error:', e);
@@ -607,10 +658,13 @@ function switchMode(mode) {
   $$('.chatbot-mode-btn').forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.mode === mode);
   });
-  const hint = mode === 'ai'
-    ? '🤖 ИИ-режим активирован! Спрашивай про чай.'
-    : '💬 Обычный чат-бот с командами';
-  showToast(hint);
+  if (mode === 'ai') {
+    fetchAiLimits(); // покажем счётчик
+    showToast('🤖 ИИ-режим активирован! Спрашивай про чай.');
+  } else {
+    renderLimitBadge(); // спрячем счётчик
+    showToast('💬 Обычный чат-бот с командами');
+  }
 }
 
 export function initChatbot() {
@@ -625,7 +679,6 @@ export function initChatbot() {
   const aiBtn = document.querySelector('.chatbot-mode-btn[data-mode="ai"]');
   if (aiBtn) {
     aiBtn.disabled = false;
-    // Убираем бейдж "Скоро"
     const badge = aiBtn.querySelector('.badge-soon');
     if (badge) badge.remove();
   }
@@ -636,6 +689,7 @@ export function initChatbot() {
     if (open) {
       input?.focus();
       renderHistory();
+      if (currentMode === 'ai') fetchAiLimits();
       if (!moderationChecked) {
         moderationChecked = true;
         checkModerationNotifications();
