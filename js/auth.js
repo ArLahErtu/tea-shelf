@@ -2,6 +2,12 @@
 // auth.js — управление авторизацией + роли пользователей
 // Блок 1: загрузка роли (admin/moderator/user)
 // Блок 2: кнопка режима модератора + переход в каталог
+// ФИКС (этап 3): «Режим модератора» — ТУМБЛЕР:
+//   • ВЫКЛ — админ/модератор пользуется сервисом как обычный
+//     пользователь (чистый интерфейс, «На полку» и т.д.);
+//   • ВКЛ — карандаши редактирования, тумблер «Каталог/Модерация»;
+//   • строка роли из меню пользователя убрана (юзверю не нужно
+//     знать, кто он).
 // ============================================================
 import { supabase, isConfigured } from './supabaseClient.js';
 import {
@@ -11,16 +17,33 @@ import {
 import { SHOW_DEMO_ACCOUNTS } from './config.js';
 
 let currentUser = null;
-let currentUserRole = 'user'; // Блок 1
+let currentUserRole = 'user';
+// Режим модератора: активен только при роли И включённом тумблере
+let moderationActive = localStorage.getItem('tea_shelf_mode') === 'moderator';
 const listeners = [];
 
 export const getUser = () => currentUser;
-export const getUserRole = () => currentUserRole;                       // Блок 1
-export const isModerator = () => ['admin', 'moderator'].includes(currentUserRole); // Блок 1
-export const isAdmin = () => currentUserRole === 'admin';              // Блок 1
+export const getUserRole = () => currentUserRole;
+export const hasModeratorRole = () => ['admin', 'moderator'].includes(currentUserRole);
+export const isModerationActive = () => moderationActive && hasModeratorRole();
+export const isAdmin = () => currentUserRole === 'admin';
 
 export function onAuthChange(fn) { listeners.push(fn); }
-function emit() { listeners.forEach((fn) => fn(currentUser, currentUserRole)); } // Блок 1
+function emit() { listeners.forEach((fn) => fn(currentUser, currentUserRole)); }
+
+// ---------- Тумблер режима модератора ----------
+export function toggleModerationMode() {
+  if (!hasModeratorRole()) {
+    showToast('Нет прав для модерации', 'warn');
+    return false;
+  }
+  moderationActive = !moderationActive;
+  if (moderationActive) localStorage.setItem('tea_shelf_mode', 'moderator');
+  else localStorage.removeItem('tea_shelf_mode');
+  renderState();
+  emit(); // страницы (каталог) подхватят изменение без ручного reload
+  return moderationActive;
+}
 
 export function openAuth() {
   const ov = $('#authOverlay');
@@ -82,22 +105,15 @@ function renderState() {
     $('#userEmail').textContent = email;
     $('#avatarBtn').textContent = initials || '?';
 
-    // Блок 1: роль в dropdown меню
-    const roleBadge = $('#userRoleBadge');
-    if (roleBadge) {
-      const roleLabels = {
-        admin: '👮 Администратор',
-        moderator: '🛡️ Модератор',
-        user: '👤 Пользователь',
-      };
-      roleBadge.textContent = roleLabels[currentUserRole] || roleLabels.user;
-      roleBadge.classList.toggle('role-admin', currentUserRole === 'admin');
-      roleBadge.classList.toggle('role-moderator', currentUserRole === 'moderator');
-    }
-
-    // Блок 1: кнопка режима модератора — только для admin/moderator
+    // Тумблер «Режим модератора»: виден только обладателям роли,
+    // текст и состояние зависят от того, включён ли режим сейчас.
     const modBtn = $('#openModerationBtn');
-    if (modBtn) modBtn.classList.toggle('hidden', !isModerator());
+    if (modBtn) {
+      modBtn.classList.toggle('hidden', !hasModeratorRole());
+      modBtn.textContent = isModerationActive()
+        ? '👤 Выйти из режима модератора'
+        : '🛡️ Режим модератора';
+    }
   } else {
     openBtn.classList.remove('hidden');
     userArea.classList.add('hidden');
@@ -139,7 +155,7 @@ function buildPrivacyOverlay() {
       <div class="modal-head">
         <h2 id="privacyTitle">Политика обработки персональных данных</h2>
         <button class="icon-btn" id="privacyClose" type="button" aria-label="Закрыть">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
         </button>
       </div>
       <div style="font-size:13.5px; line-height:1.6; color:#4A4331; max-height:55vh; overflow-y:auto; padding:2px;">${PRIVACY_HTML}</div>
@@ -186,6 +202,9 @@ export async function initAuth() {
 
   if (demo) demo.classList.toggle('hidden', !SHOW_DEMO_ACCOUNTS);
   if (overlay) wireOverlay(overlay);
+
+  // Юзеру не нужно знать свою роль — убираем строку из меню полностью
+  $('#userRoleBadge')?.remove();
 
   injectConsent();
 
@@ -242,24 +261,19 @@ export async function initAuth() {
     showToast('Вы вышли из аккаунта');
   });
 
-  // Блок 2: вход в режим модератора → переход в каталог
+  // ТУМБЛЕР режима модератора:
+  // ВКЛ  → переходим в каталог с открытой модерацией;
+  // ВЫКЛ → возвращаем обычный пользовательский интерфейс.
   $('#openModerationBtn')?.addEventListener('click', () => {
-    if (!isModerator()) {
-      showToast('Нет прав для модерации', 'warn');
-      return;
-    }
+    const active = toggleModerationMode();
     userMenu?.classList.add('hidden');
-    localStorage.setItem('tea_shelf_mode', 'moderator');
-    showToast('🛡️ Режим модератора активирован');
-    // Переходим в каталог с включённой модерацией
-    window.location.href = 'catalog.html?moderation=1';
-  });
-
-  // Блок 1: выход из режима модератора
-  $('#exitModerationBtn')?.addEventListener('click', () => {
-    localStorage.removeItem('tea_shelf_mode');
-    showToast('👤 Возврат в обычный режим');
-    window.location.reload();
+    if (active) {
+      showToast('🛡️ Режим модератора активирован');
+      window.location.href = 'catalog.html?moderation=1';
+    } else {
+      showToast('👤 Вы в обычном режиме');
+      window.location.reload();
+    }
   });
 
   form?.addEventListener('submit', async (e) => {

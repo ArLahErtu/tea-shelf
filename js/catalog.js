@@ -7,12 +7,14 @@
 // Неделя 4: серверный фильтр по типу чая; события Метрики.
 // БЛОК 1 (этап 3): ПОЛНОЦЕННАЯ МОДЕРАЦИЯ —
 //   • роль берётся из auth.js (user_roles), без хардкода email;
-//   • модератор видит ВСЕ pending через RPC get_pending_teas;
+//   • режим модератора — ТУМБЛЕР (isModerationActive):
+//     ВЫКЛ — чистый пользовательский интерфейс без карандашей;
+//     ВКЛ  — карандаши, тумблер «Каталог/Модерация», очередь;
 //   • одобрение/отклонение через RPC approve_tea / reject_tea;
 //   • редактирование любых карточек через RPC update_tea;
 //   • фикс фильтра по типу (ilike, регистронезависимо);
-//   • URL синхронизирован с режимом (?moderation=1), выход стабилен;
-//   • ошибки модерации — тихо в консоль + блок в сетке, без тостов.
+//   • URL синхронизирован с режимом (?moderation=1);
+//   • ошибки модерации — тихо в консоль + блок в сетке.
 // ============================================================
 import { initCommon } from './common.js';
 import { supabase } from './supabaseClient.js';
@@ -21,7 +23,7 @@ import {
   $, $$, showToast, openOverlay, closeOverlay, wireOverlay,
   setInvalid, escapeHtml, plural, typeClass, TYPE_TO_DB, toTags, trackEvent,
 } from './ui.js';
-import { getUser, isModerator, onAuthChange } from './auth.js';
+import { getUser, isModerationActive, onAuthChange } from './auth.js';
 import { openTeaModal } from './teaModal.js';
 import { initAmountModal, openAmountModal } from './amountModal.js';
 
@@ -93,7 +95,7 @@ function loadPublished(offset = 0) {
 // ---------- Модерация: загрузка ВСЕХ pending через RPC ----------
 // Без всплывающих тостов: ошибка уходит в консоль и в тихий блок сетки.
 async function loadModeration() {
-  if (!isModerator()) { pendingAll = []; moderationError = false; return; }
+  if (!isModerationActive()) { pendingAll = []; moderationError = false; return; }
   const { data, error } = await supabase.rpc('get_pending_teas');
   if (error) {
     console.warn('[moderation]', error.message);
@@ -131,8 +133,8 @@ async function load() {
   const user = getUser();
   currentUser = user;
 
-  // Тумблер режимов виден только модераторам (роль из user_roles!)
-  $('#modeSwitch').classList.toggle('hidden', !isModerator());
+  // Тумблер режимов виден только при ВКЛЮЧЁННОМ режиме модератора
+  $('#modeSwitch').classList.toggle('hidden', !isModerationActive());
 
   if (user) {
     const [p, sh, wl] = await Promise.all([
@@ -149,12 +151,10 @@ async function load() {
   }
   teas = pending.concat(published);
 
-  // Определяем режим: уже включен / пришли по ссылке / ранее сохранили
+  // Определяем вкладку: уже включена / пришли по ссылке с тумблера
   const params = new URLSearchParams(location.search);
-  const wantModeration = isModerator() && (
-    viewMode === 'moderation' ||
-    params.get('moderation') === '1' ||
-    localStorage.getItem('tea_shelf_mode') === 'moderator'
+  const wantModeration = isModerationActive() && (
+    viewMode === 'moderation' || params.get('moderation') === '1'
   );
   viewMode = wantModeration ? 'moderation' : 'catalog';
   $$('#modeSwitch .mode-btn').forEach((b) =>
@@ -166,7 +166,7 @@ async function load() {
   renderMore();
 }
 
-// ---------- Переключение режимов Каталог / Модерация ----------
+// ---------- Переключение вкладок Каталог / Модерация ----------
 async function setMode(mode) {
   if (mode === viewMode) { render(); renderMore(); return; }
   viewMode = mode;
@@ -174,10 +174,7 @@ async function setMode(mode) {
     b.classList.toggle('active', b.dataset.mode === mode));
 
   if (mode === 'moderation') {
-    localStorage.setItem('tea_shelf_mode', 'moderator');
     await loadModeration();
-  } else {
-    localStorage.removeItem('tea_shelf_mode');
   }
   syncUrlWithMode();
   render();
@@ -371,11 +368,11 @@ function cardNode(tea) {
   node.querySelector('.heart').classList.toggle('hidden', inModeration);
   node.querySelector('.heart').classList.toggle('on', favorites.has(tea.id));
 
-  // Кнопка редактирования (только в режиме каталога):
+  // Кнопка редактирования (только в режиме каталога и при ВКЛ-тумблере):
   // - Модератор может редактировать ВСЕ чаи
-  // - Автор может редактировать ТОЛЬКО pending чаи
+  // - Автор может редактировать ТОЛЬКО pending чаи (даже без тумблера)
   const canEdit = !inModeration && (
-    isModerator() || (tea.author_id === currentUser?.id && tea.status === 'pending')
+    isModerationActive() || (tea.author_id === currentUser?.id && tea.status === 'pending')
   );
 
   if (canEdit) {
@@ -639,7 +636,8 @@ async function rejectCurrentTea() {
 }
 
 // ============================================================
-// РЕДАКТИРОВАНИЕ карточки (модератор — любые, автор — pending)
+// РЕДАКТИРОВАНИЕ карточки (модератор с вкл. тумблером — любые,
+// автор — свои pending)
 // ============================================================
 function openEditTeaModal(tea) {
   const ov = $('#editTeaOverlay');
@@ -940,12 +938,11 @@ async function init() {
 
   initPropose();
 
-  // Перезагрузка при входе/выходе. Режим НЕ сбрасываем без причины —
-  // только если прав модератора больше нет (вышел из аккаунта).
+  // Перезагрузка при входе/выходе и при переключении тумблера.
+  // Если режим выключили или прав больше нет — уходим из модерации.
   onAuthChange(() => {
-    if (viewMode === 'moderation' && !isModerator()) {
+    if (viewMode === 'moderation' && !isModerationActive()) {
       viewMode = 'catalog';
-      localStorage.removeItem('tea_shelf_mode');
     }
     load().catch((err) => console.warn('[catalog reload]', err));
   });
