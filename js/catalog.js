@@ -15,6 +15,8 @@
 //   • фикс фильтра по типу (ilike, регистронезависимо);
 //   • URL синхронизирован с режимом (?moderation=1);
 //   • ошибки модерации — тихо в консоль + блок в сетке.
+// ФИКС: явный contentType при загрузке фото —
+//   webp/avif теперь сохраняются с правильным MIME и отображаются.
 // ============================================================
 import { initCommon } from './common.js';
 import { supabase } from './supabaseClient.js';
@@ -756,6 +758,20 @@ async function uploadPhoto(file, teaType, teaName = null) {
   const bucketName = 'tea-photos';
   const fileExt = file.name.split('.').pop().toLowerCase();
 
+  // ФИКС (webp/avif): явно сообщаем Storage MIME-тип файла.
+  // Без этого webp/avif сохранялись как application/octet-stream,
+  // и браузер отказывался рисовать их как изображения (без ошибки
+  // в консоли — просто битая картинка).
+  const MIME_FALLBACK = {
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    webp: 'image/webp',
+    avif: 'image/avif',
+    gif: 'image/gif',
+  };
+  const contentType = file.type || MIME_FALLBACK[fileExt] || 'image/jpeg';
+
   // Создаём SEO-оптимизированную папку по типу чая
   const seoType = getSeoTypeName(teaType);
 
@@ -772,7 +788,8 @@ async function uploadPhoto(file, teaType, teaName = null) {
     .from(bucketName)
     .upload(path, file, {
       cacheControl: '3600',
-      upsert: false
+      upsert: false,
+      contentType,   // ← вот она, лечебная строка
     });
 
   if (error) {
