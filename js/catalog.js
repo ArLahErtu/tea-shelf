@@ -7,16 +7,14 @@
 // Неделя 4: серверный фильтр по типу чая; события Метрики.
 // БЛОК 1 (этап 3): ПОЛНОЦЕННАЯ МОДЕРАЦИЯ —
 //   • роль берётся из auth.js (user_roles), без хардкода email;
-//   • режим модератора — ТУМБЛЕР (isModerationActive):
-//     ВЫКЛ — чистый пользовательский интерфейс без карандашей;
-//     ВКЛ  — карандаши, тумблер «Каталог/Модерация», очередь;
+//   • режим модератора — ТУМБЛЕР (isModerationActive);
 //   • одобрение/отклонение через RPC approve_tea / reject_tea;
 //   • редактирование любых карточек через RPC update_tea;
 //   • фикс фильтра по типу (ilike, регистронезависимо);
-//   • URL синхронизирован с режимом (?moderation=1);
-//   • ошибки модерации — тихо в консоль + блок в сетке.
-// ФИКС: явный contentType при загрузке фото —
-//   webp/avif теперь сохраняются с правильным MIME и отображаются.
+//   • URL синхронизирован с режимом (?moderation=1).
+// ФИКС ФОТО: WEBP/AVIF конвертируются в JPEG на клиенте
+//   (canvas) перед загрузкой — Supabase Storage в этом проекте
+//   отдаёт «экзотику» с неверным MIME, и картинки не рисуются.
 // ============================================================
 import { initCommon } from './common.js';
 import { supabase } from './supabaseClient.js';
@@ -95,7 +93,6 @@ function loadPublished(offset = 0) {
 }
 
 // ---------- Модерация: загрузка ВСЕХ pending через RPC ----------
-// Без всплывающих тостов: ошибка уходит в консоль и в тихий блок сетки.
 async function loadModeration() {
   if (!isModerationActive()) { pendingAll = []; moderationError = false; return; }
   const { data, error } = await supabase.rpc('get_pending_teas');
@@ -112,8 +109,6 @@ async function loadModeration() {
 }
 
 // ---------- Синхронизация URL с режимом ----------
-// Убирает ?moderation=1 при выходе в каталог, чтобы перезагрузка
-// или обновление токена не возвращали насильно в модерацию.
 function syncUrlWithMode() {
   const url = new URL(location.href);
   if (viewMode === 'moderation') url.searchParams.set('moderation', '1');
@@ -186,7 +181,6 @@ async function setMode(mode) {
 // ---------- Поиск / тип / сортировка: перезагрузка ----------
 async function refresh() {
   if (viewMode === 'moderation') {
-    // в модерации данные локальные, просто перерисовываем
     await loadModeration();
     render();
     return;
@@ -753,24 +747,49 @@ function initPropose() {
   });
 }
 
-// ---------- Загрузка фото (с SEO-папками и SEO-именами) ----------
+// ============================================================
+// ФОТО: конвертация «экзотики» (WEBP/AVIF/HEIC-совместимые)
+// в JPEG прямо в браузере + загрузка в Storage
+// ============================================================
+
+// Приводим фото к JPEG до загрузки: Supabase Storage в этом проекте
+// отдаёт webp/avif с неверным MIME, и браузер их не рисует.
+// JPEG/PNG пропускаем как есть.
+async function normalizePhoto(file) {
+  const safeTypes = ['image/jpeg', 'image/png'];
+  if (safeTypes.includes(file.type)) return file;
+
+  try {
+    const bitmap = await createImageBitmap(file);
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff'; // прозрачность webp/avif → белый фон
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(bitmap, 0, 0);
+    bitmap.close?.();
+
+    const blob = await new Promise((resolve) =>
+      canvas.toBlob(resolve, 'image/jpeg', 0.85));
+    if (!blob) return file;
+
+    return new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), {
+      type: 'image/jpeg',
+    });
+  } catch (e) {
+    // Не смогли декодировать (например, HEIC) — шлём оригинал
+    console.warn('[uploadPhoto] конвертация не удалась, шлём оригинал:', e);
+    return file;
+  }
+}
+
 async function uploadPhoto(file, teaType, teaName = null) {
   const bucketName = 'tea-photos';
-  const fileExt = file.name.split('.').pop().toLowerCase();
 
-  // ФИКС (webp/avif): явно сообщаем Storage MIME-тип файла.
-  // Без этого webp/avif сохранялись как application/octet-stream,
-  // и браузер отказывался рисовать их как изображения (без ошибки
-  // в консоли — просто битая картинка).
-  const MIME_FALLBACK = {
-    jpg: 'image/jpeg',
-    jpeg: 'image/jpeg',
-    png: 'image/png',
-    webp: 'image/webp',
-    avif: 'image/avif',
-    gif: 'image/gif',
-  };
-  const contentType = file.type || MIME_FALLBACK[fileExt] || 'image/jpeg';
+  // Конвертируем WEBP/AVIF и прочее в JPEG перед загрузкой
+  const prepared = await normalizePhoto(file);
+  const fileExt = prepared.name.split('.').pop().toLowerCase();
 
   // Создаём SEO-оптимизированную папку по типу чая
   const seoType = getSeoTypeName(teaType);
@@ -786,10 +805,10 @@ async function uploadPhoto(file, teaType, teaName = null) {
 
   const { data, error } = await supabase.storage
     .from(bucketName)
-    .upload(path, file, {
+    .upload(path, prepared, {
       cacheControl: '3600',
       upsert: false,
-      contentType,   // ← вот она, лечебная строка
+      contentType: prepared.type || 'image/jpeg',
     });
 
   if (error) {
