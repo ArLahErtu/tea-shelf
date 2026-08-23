@@ -12,11 +12,11 @@
 //   • редактирование любых карточек через RPC update_tea;
 //   • фикс фильтра по типу (ilike, регистронезависимо);
 //   • URL синхронизирован с режимом (?moderation=1).
-// ФОТО v3: грузим ОРИГИНАЛ (webp/avif — ради веса и SEO),
-//   затем проверяем Content-Type, с которым сервер отдаёт файл;
-//   если сервер отдал неверный MIME — автоматически конвертируем
-//   в JPEG и перезаливаем. Ошибки загрузки показываются полным
-//   текстом — для диагностики.
+// ФОТО v4: грузим ОРИГИНАЛ (webp/avif — вес и SEO).
+//   Проверка отдачи файла — ТЕРПЕЛИВАЯ (Storage раздаёт новые
+//   файлы с задержкой 1-2 с): 3 попытки GET с паузами.
+//   Конвертация в JPEG — ТОЛЬКО если сервер действительно
+//   не отдаёт картинку (json/octet-stream после всех попыток).
 // ============================================================
 import { initCommon } from './common.js';
 import { supabase } from './supabaseClient.js';
@@ -750,9 +750,10 @@ function initPropose() {
 }
 
 // ============================================================
-// ФОТО v3: оригинал (webp/avif — ради веса и SEO) + самопроверка
-// Content-Type при отдаче + автовосстановление в JPEG,
-// если сервер отдаёт неверный MIME. Полные тексты ошибок.
+// ФОТО v4: оригинал (webp/avif — вес и SEO) + терпеливая проверка.
+// Storage раздаёт новые файлы с задержкой 1-2 с, поэтому проверка
+// делает до 3 попыток GET с паузами. Конвертация в JPEG — только
+// если сервер после всех попыток не отдаёт картинку.
 // ============================================================
 
 const MIME_BY_EXT = {
@@ -782,6 +783,25 @@ async function convertToJpeg(file) {
   return new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), {
     type: 'image/jpeg',
   });
+}
+
+// Терпеливая проверка: сервер отдаёт картинку как картинку?
+// Возвращает true, если ответ 200 и Content-Type — любой image/*.
+async function verifyServedImage(url) {
+  for (let i = 1; i <= 3; i++) {
+    // даём Storage время раздать новый файл
+    await new Promise((r) => setTimeout(r, 1200));
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      const ct = (res.headers.get('content-type') || '').split(';')[0].trim();
+      console.info(`[uploadPhoto] проверка ${i} →`, res.status, ct);
+      if (res.ok && ct.startsWith('image/')) return true;
+      // 200, но не image (json/octet-stream) — подождём ещё, вдруг кэш
+    } catch (e) {
+      console.warn('[uploadPhoto] проверка сорвалась:', e);
+    }
+  }
+  return false;
 }
 
 async function uploadPhoto(file, teaType, teaName = null) {
@@ -819,37 +839,24 @@ async function uploadPhoto(file, teaType, teaName = null) {
     return null;
   }
 
-  // 2) Проверяем, с каким Content-Type сервер отдаёт файл
-  let servedOk = true;
+  // 2) Терпеливо проверяем, что сервер отдаёт файл как картинку
+  const servedOk = await verifyServedImage(res.publicUrl);
+  if (servedOk) return res.publicUrl;
+
+  // 3) Сервер так и не отдал картинку → конвертируем в JPEG
   try {
-    const head = await fetch(res.publicUrl, { method: 'HEAD' });
-    const ct = (head.headers.get('content-type') || '').split(';')[0].trim();
-    servedOk = ct === mime;
-    if (!servedOk) {
-      console.warn('[uploadPhoto] сервер отдаёт', ct, 'вместо', mime);
+    const jpeg = await convertToJpeg(file);
+    const res2 = await doUpload(jpeg, 'image/jpeg', 'jpg');
+    if (res2.error) {
+      showToast('Ошибка загрузки фото: ' + res2.error.message, 'warn');
+      return res.publicUrl; // последний шанс — оригинал
     }
+    showToast('ℹ️ Сервер не принял формат — сохранено как JPG');
+    return res2.publicUrl;
   } catch (e) {
-    // Не смогли проверить (CORS/сеть) — считаем, что всё ок
-    console.warn('[uploadPhoto] проверка заголовков не удалась:', e);
+    console.warn('[uploadPhoto] конвертация не удалась:', e);
+    return res.publicUrl;
   }
-
-  // 3) Сервер отдал неверный MIME → конвертируем в JPEG и перезаливаем
-  if (!servedOk) {
-    try {
-      const jpeg = await convertToJpeg(file);
-      const res2 = await doUpload(jpeg, 'image/jpeg', 'jpg');
-      if (res2.error) {
-        showToast('Ошибка загрузки фото: ' + res2.error.message, 'warn');
-        return res.publicUrl; // остаёмся на оригинале
-      }
-      showToast('ℹ️ Сервер не принял формат — сконвертировано в JPG');
-      return res2.publicUrl;
-    } catch (e) {
-      console.warn('[uploadPhoto] конвертация не удалась:', e);
-    }
-  }
-
-  return res.publicUrl;
 }
 
 // ---------- Старт ----------
