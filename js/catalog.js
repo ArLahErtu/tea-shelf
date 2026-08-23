@@ -12,9 +12,11 @@
 //   • редактирование любых карточек через RPC update_tea;
 //   • фикс фильтра по типу (ilike, регистронезависимо);
 //   • URL синхронизирован с режимом (?moderation=1).
-// ФИКС ФОТО: WEBP/AVIF конвертируются в JPEG на клиенте
-//   (canvas) перед загрузкой — Supabase Storage в этом проекте
-//   отдаёт «экзотику» с неверным MIME, и картинки не рисуются.
+// ФОТО v3: грузим ОРИГИНАЛ (webp/avif — ради веса и SEO),
+//   затем проверяем Content-Type, с которым сервер отдаёт файл;
+//   если сервер отдал неверный MIME — автоматически конвертируем
+//   в JPEG и перезаливаем. Ошибки загрузки показываются полным
+//   текстом — для диагностики.
 // ============================================================
 import { initCommon } from './common.js';
 import { supabase } from './supabaseClient.js';
@@ -748,80 +750,106 @@ function initPropose() {
 }
 
 // ============================================================
-// ФОТО: конвертация «экзотики» (WEBP/AVIF/HEIC-совместимые)
-// в JPEG прямо в браузере + загрузка в Storage
+// ФОТО v3: оригинал (webp/avif — ради веса и SEO) + самопроверка
+// Content-Type при отдаче + автовосстановление в JPEG,
+// если сервер отдаёт неверный MIME. Полные тексты ошибок.
 // ============================================================
 
-// Приводим фото к JPEG до загрузки: Supabase Storage в этом проекте
-// отдаёт webp/avif с неверным MIME, и браузер их не рисует.
-// JPEG/PNG пропускаем как есть.
-async function normalizePhoto(file) {
-  const safeTypes = ['image/jpeg', 'image/png'];
-  if (safeTypes.includes(file.type)) return file;
+const MIME_BY_EXT = {
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+  avif: 'image/avif',
+  gif: 'image/gif',
+};
 
-  try {
-    const bitmap = await createImageBitmap(file);
-    const canvas = document.createElement('canvas');
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#ffffff'; // прозрачность webp/avif → белый фон
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(bitmap, 0, 0);
-    bitmap.close?.();
+// Конвертация в JPEG (только как запасной путь)
+async function convertToJpeg(file) {
+  const bitmap = await createImageBitmap(file);
+  const canvas = document.createElement('canvas');
+  canvas.width = bitmap.width;
+  canvas.height = bitmap.height;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff'; // прозрачность webp/avif → белый фон
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(bitmap, 0, 0);
+  bitmap.close?.();
 
-    const blob = await new Promise((resolve) =>
-      canvas.toBlob(resolve, 'image/jpeg', 0.85));
-    if (!blob) return file;
-
-    return new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), {
-      type: 'image/jpeg',
-    });
-  } catch (e) {
-    // Не смогли декодировать (например, HEIC) — шлём оригинал
-    console.warn('[uploadPhoto] конвертация не удалась, шлём оригинал:', e);
-    return file;
-  }
+  const blob = await new Promise((resolve) =>
+    canvas.toBlob(resolve, 'image/jpeg', 0.85));
+  if (!blob) throw new Error('canvas.toBlob вернул null');
+  return new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), {
+    type: 'image/jpeg',
+  });
 }
 
 async function uploadPhoto(file, teaType, teaName = null) {
   const bucketName = 'tea-photos';
-
-  // Конвертируем WEBP/AVIF и прочее в JPEG перед загрузкой
-  const prepared = await normalizePhoto(file);
-  const fileExt = prepared.name.split('.').pop().toLowerCase();
-
-  // Создаём SEO-оптимизированную папку по типу чая
   const seoType = getSeoTypeName(teaType);
+  const baseName = teaName ? seoSlugify(teaName) : 'tea';
 
-  // Создаём SEO-оптимизированное имя файла из названия чая
-  let baseName = teaName ? seoSlugify(teaName) : 'tea';
+  const ext = file.name.split('.').pop().toLowerCase();
+  const mime = file.type || MIME_BY_EXT[ext] || 'image/jpeg';
 
-  // Добавляем timestamp для уникальности
-  const fileName = `${baseName}-${Date.now()}.${fileExt}`;
+  const doUpload = async (f, m, e) => {
+    const path = seoType
+      ? `${seoType}/${baseName}-${Date.now()}.${e}`
+      : `${baseName}-${Date.now()}.${e}`;
+    const { error } = await supabase.storage
+      .from(bucketName)
+      .upload(path, f, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: m,
+      });
+    if (error) return { error };
+    const { data: { publicUrl } } = supabase.storage
+      .from(bucketName)
+      .getPublicUrl(path);
+    return { publicUrl };
+  };
 
-  // Полный путь: {тип}/{название}-{timestamp}.{ext}
-  const path = seoType ? `${seoType}/${fileName}` : fileName;
-
-  const { data, error } = await supabase.storage
-    .from(bucketName)
-    .upload(path, prepared, {
-      cacheControl: '3600',
-      upsert: false,
-      contentType: prepared.type || 'image/jpeg',
-    });
-
-  if (error) {
-    showToast('Ошибка загрузки фото: ' + error.message, 'warn');
+  // 1) Грузим ОРИГИНАЛ — webp/avif остаются собой (вес + SEO)
+  const res = await doUpload(file, mime, ext);
+  if (res.error) {
+    // Полный текст ошибки — чтобы видеть причину (квота, MIME и т.д.)
+    showToast('Ошибка загрузки фото: ' + res.error.message, 'warn');
+    console.error('[uploadPhoto]', res.error);
     return null;
   }
 
-  // Получаем публичный URL
-  const { data: { publicUrl } } = supabase.storage
-    .from(bucketName)
-    .getPublicUrl(path);
+  // 2) Проверяем, с каким Content-Type сервер отдаёт файл
+  let servedOk = true;
+  try {
+    const head = await fetch(res.publicUrl, { method: 'HEAD' });
+    const ct = (head.headers.get('content-type') || '').split(';')[0].trim();
+    servedOk = ct === mime;
+    if (!servedOk) {
+      console.warn('[uploadPhoto] сервер отдаёт', ct, 'вместо', mime);
+    }
+  } catch (e) {
+    // Не смогли проверить (CORS/сеть) — считаем, что всё ок
+    console.warn('[uploadPhoto] проверка заголовков не удалась:', e);
+  }
 
-  return publicUrl;
+  // 3) Сервер отдал неверный MIME → конвертируем в JPEG и перезаливаем
+  if (!servedOk) {
+    try {
+      const jpeg = await convertToJpeg(file);
+      const res2 = await doUpload(jpeg, 'image/jpeg', 'jpg');
+      if (res2.error) {
+        showToast('Ошибка загрузки фото: ' + res2.error.message, 'warn');
+        return res.publicUrl; // остаёмся на оригинале
+      }
+      showToast('ℹ️ Сервер не принял формат — сконвертировано в JPG');
+      return res2.publicUrl;
+    } catch (e) {
+      console.warn('[uploadPhoto] конвертация не удалась:', e);
+    }
+  }
+
+  return res.publicUrl;
 }
 
 // ---------- Старт ----------
