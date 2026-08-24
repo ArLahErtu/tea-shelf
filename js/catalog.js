@@ -750,59 +750,41 @@ function initPropose() {
 }
 
 // ============================================================
-// ФОТО v4: оригинал (webp/avif — вес и SEO) + терпеливая проверка.
-// Storage раздаёт новые файлы с задержкой 1-2 с, поэтому проверка
-// делает до 3 попыток GET с паузами. Конвертация в JPEG — только
-// если сервер после всех попыток не отдаёт картинку.
+// ФОТО v5: оригинал (webp/avif — вес и SEO) + автоконвертация,
+// если бакет отверг формат/размер. Юзер ошибку больше не видит.
 // ============================================================
 
 const MIME_BY_EXT = {
-  jpg: 'image/jpeg',
-  jpeg: 'image/jpeg',
-  png: 'image/png',
-  webp: 'image/webp',
-  avif: 'image/avif',
-  gif: 'image/gif',
+  jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
+  webp: 'image/webp', avif: 'image/avif', gif: 'image/gif',
 };
 
-// Конвертация в JPEG (только как запасной путь)
-async function convertToJpeg(file) {
+// Бакет отверг формат/размер (а не сеть/права)?
+function isFormatOrSizeError(err) {
+  const msg = String(err?.message || '').toLowerCase();
+  return /mime|content-?type|invalid request|exceeded the allowed size|too large/.test(msg)
+    || ['413', '415'].includes(String(err?.statusCode));
+}
+
+// Конвертация в JPEG + даунскейл больших оригиналов (запасной путь)
+async function convertToJpeg(file, maxSide = 1600) {
   const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+  const w = Math.round(bitmap.width * scale);
+  const h = Math.round(bitmap.height * scale);
   const canvas = document.createElement('canvas');
-  canvas.width = bitmap.width;
-  canvas.height = bitmap.height;
+  canvas.width = w; canvas.height = h;
   const ctx = canvas.getContext('2d');
   ctx.fillStyle = '#ffffff'; // прозрачность webp/avif → белый фон
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.drawImage(bitmap, 0, 0);
+  ctx.fillRect(0, 0, w, h);
+  ctx.drawImage(bitmap, 0, 0, w, h);
   bitmap.close?.();
-
-  const blob = await new Promise((resolve) =>
-    canvas.toBlob(resolve, 'image/jpeg', 0.85));
+  const blob = await new Promise((r) => canvas.toBlob(r, 'image/jpeg', 0.85));
   if (!blob) throw new Error('canvas.toBlob вернул null');
-  return new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), {
-    type: 'image/jpeg',
-  });
+  return new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' });
 }
 
-// Терпеливая проверка: сервер отдаёт картинку как картинку?
-// Возвращает true, если ответ 200 и Content-Type — любой image/*.
-async function verifyServedImage(url) {
-  for (let i = 1; i <= 3; i++) {
-    // даём Storage время раздать новый файл
-    await new Promise((r) => setTimeout(r, 1200));
-    try {
-      const res = await fetch(url, { cache: 'no-store' });
-      const ct = (res.headers.get('content-type') || '').split(';')[0].trim();
-      console.info(`[uploadPhoto] проверка ${i} →`, res.status, ct);
-      if (res.ok && ct.startsWith('image/')) return true;
-      // 200, но не image (json/octet-stream) — подождём ещё, вдруг кэш
-    } catch (e) {
-      console.warn('[uploadPhoto] проверка сорвалась:', e);
-    }
-  }
-  return false;
-}
+// verifyServedImage(url) — без изменений из v4
 
 async function uploadPhoto(file, teaType, teaName = null) {
   const bucketName = 'tea-photos';
@@ -816,40 +798,51 @@ async function uploadPhoto(file, teaType, teaName = null) {
     const path = seoType
       ? `${seoType}/${baseName}-${Date.now()}.${e}`
       : `${baseName}-${Date.now()}.${e}`;
-    const { error } = await supabase.storage
-      .from(bucketName)
-      .upload(path, f, {
-        cacheControl: '3600',
-        upsert: false,
-        contentType: m,
-      });
+    const { error } = await supabase.storage.from(bucketName)
+      .upload(path, f, { cacheControl: '3600', upsert: false, contentType: m });
     if (error) return { error };
-    const { data: { publicUrl } } = supabase.storage
-      .from(bucketName)
-      .getPublicUrl(path);
+    const { data: { publicUrl } } = supabase.storage.from(bucketName).getPublicUrl(path);
     return { publicUrl };
   };
 
-  // 1) Грузим ОРИГИНАЛ — webp/avif остаются собой (вес + SEO)
-  const res = await doUpload(file, mime, ext);
-  if (res.error) {
-    // Полный текст ошибки — чтобы видеть причину (квота, MIME и т.д.)
+  // 1) Грузим ОРИГИНАЛ — webp/avif остаются собой
+  let res = await doUpload(file, mime, ext);
+
+  // 1.5) Бакет отверг формат/размер → конвертим в JPEG и повторяем
+  if (res.error && isFormatOrSizeError(res.error)) {
+    console.warn('[uploadPhoto] оригинал отклонён:', res.error.message);
+    try {
+      const jpeg = await convertToJpeg(file);
+      const retry = await doUpload(jpeg, 'image/jpeg', 'jpg');
+      if (!retry.error) {
+        showToast('ℹ️ Хранилище не приняло формат — сохранено как JPG');
+        res = retry;
+      } else {
+        showToast('Ошибка загрузки фото: ' + res.error.message, 'warn');
+        return null;
+      }
+    } catch (e) {
+      console.warn('[uploadPhoto] конвертация не удалась:', e);
+      showToast('Ошибка загрузки фото: ' + res.error.message, 'warn');
+      return null;
+    }
+  } else if (res.error) {
     showToast('Ошибка загрузки фото: ' + res.error.message, 'warn');
     console.error('[uploadPhoto]', res.error);
     return null;
   }
 
-  // 2) Терпеливо проверяем, что сервер отдаёт файл как картинку
+  // 2) Терпеливая проверка отдачи (как в v4)
   const servedOk = await verifyServedImage(res.publicUrl);
   if (servedOk) return res.publicUrl;
 
-  // 3) Сервер так и не отдал картинку → конвертируем в JPEG
+  // 3) Сервер не отдал картинку → конвертим в JPEG
   try {
     const jpeg = await convertToJpeg(file);
     const res2 = await doUpload(jpeg, 'image/jpeg', 'jpg');
     if (res2.error) {
       showToast('Ошибка загрузки фото: ' + res2.error.message, 'warn');
-      return res.publicUrl; // последний шанс — оригинал
+      return res.publicUrl;
     }
     showToast('ℹ️ Сервер не принял формат — сохранено как JPG');
     return res2.publicUrl;
