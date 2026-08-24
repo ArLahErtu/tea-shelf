@@ -12,15 +12,14 @@
 //   • редактирование любых карточек через RPC update_tea;
 //   • фикс фильтра по типу (ilike, регистронезависимо);
 //   • URL синхронизирован с режимом (?moderation=1).
-// ФОТО v4: грузим ОРИГИНАЛ (webp/avif — вес и SEO).
-//   Проверка отдачи файла — ТЕРПЕЛИВАЯ (Storage раздаёт новые
-//   файлы с задержкой 1-2 с): 3 попытки GET с паузами.
-//   Конвертация в JPEG — ТОЛЬКО если сервер действительно
-//   не отдаёт картинку (json/octet-stream после всех попыток).
+// ФОТО v5: загрузка сырым fetch с ЯВНЫМ Content-Type
+//   (обход бага supabase-js, который слал application/json).
+//   Оригиналы webp/avif сохраняются (вес + SEO); терпеливая
+//   проверка отдачи; конвертация в JPEG — только аварийно.
 // ============================================================
 import { initCommon } from './common.js';
 import { supabase } from './supabaseClient.js';
-import { TABLES } from './config.js';
+import { TABLES, SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
 import {
   $, $$, showToast, openOverlay, closeOverlay, wireOverlay,
   setInvalid, escapeHtml, plural, typeClass, TYPE_TO_DB, toTags, trackEvent,
@@ -30,6 +29,7 @@ import { openTeaModal } from './teaModal.js';
 import { initAmountModal, openAmountModal } from './amountModal.js';
 
 const PAGE_SIZE = 20;
+const PHOTO_BUCKET = 'tea-photos';
 
 let published = [];   // загруженные страницы published
 let pending = [];     // мои pending-заявки (автор видит свои)
@@ -750,44 +750,89 @@ function initPropose() {
 }
 
 // ============================================================
-// ФОТО v5: оригинал (webp/avif — вес и SEO) + автоконвертация,
-// если бакет отверг формат/размер. Юзер ошибку больше не видит.
+// ФОТО v5: сырой fetch с ЯВНЫМ Content-Type.
+// supabase-js в этом проекте подставлял в запрос дефолтный
+// заголовок application/json → Storage отвечал 400
+// «mime type application/json is not supported».
+// Теперь заголовки полностью под нашим контролем:
+//   • оригиналы webp/avif сохраняются (вес + SEO);
+//   • терпеливая проверка отдачи (3 попытки);
+//   • конвертация в JPEG — только аварийно.
 // ============================================================
 
 const MIME_BY_EXT = {
-  jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
-  webp: 'image/webp', avif: 'image/avif', gif: 'image/gif',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+  avif: 'image/avif',
+  gif: 'image/gif',
 };
 
-// Бакет отверг формат/размер (а не сеть/права)?
-function isFormatOrSizeError(err) {
-  const msg = String(err?.message || '').toLowerCase();
-  return /mime|content-?type|invalid request|exceeded the allowed size|too large/.test(msg)
-    || ['413', '415'].includes(String(err?.statusCode));
-}
-
-// Конвертация в JPEG + даунскейл больших оригиналов (запасной путь)
-async function convertToJpeg(file, maxSide = 1600) {
+// Конвертация в JPEG (только как запасной путь)
+async function convertToJpeg(file) {
   const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
-  const w = Math.round(bitmap.width * scale);
-  const h = Math.round(bitmap.height * scale);
   const canvas = document.createElement('canvas');
-  canvas.width = w; canvas.height = h;
+  canvas.width = bitmap.width;
+  canvas.height = bitmap.height;
   const ctx = canvas.getContext('2d');
   ctx.fillStyle = '#ffffff'; // прозрачность webp/avif → белый фон
-  ctx.fillRect(0, 0, w, h);
-  ctx.drawImage(bitmap, 0, 0, w, h);
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(bitmap, 0, 0);
   bitmap.close?.();
-  const blob = await new Promise((r) => canvas.toBlob(r, 'image/jpeg', 0.85));
+
+  const blob = await new Promise((resolve) =>
+    canvas.toBlob(resolve, 'image/jpeg', 0.85));
   if (!blob) throw new Error('canvas.toBlob вернул null');
-  return new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' });
+  return new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), {
+    type: 'image/jpeg',
+  });
 }
 
-// verifyServedImage(url) — без изменений из v4
+// Прямая загрузка в Storage через REST API (без supabase-js upload)
+async function rawStorageUpload(path, body, mime) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const url = `${SUPABASE_URL}/storage/v1/object/${PHOTO_BUCKET}/${path}`;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`,
+      'Content-Type': mime,          // ← явно говорим серверу тип файла
+      'x-upsert': 'false',
+      'cache-control': '3600',
+    },
+    body,
+  });
+
+  if (!res.ok) {
+    let detail = `${res.status}`;
+    try { detail += ' ' + (await res.text()); } catch { /* ignore */ }
+    throw new Error(detail);
+  }
+
+  return `${SUPABASE_URL}/storage/v1/object/public/${PHOTO_BUCKET}/${path}`;
+}
+
+// Терпеливая проверка: сервер отдаёт картинку как картинку?
+async function verifyServedImage(url) {
+  for (let i = 1; i <= 3; i++) {
+    // даём Storage время раздать новый файл
+    await new Promise((r) => setTimeout(r, 1200));
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      const ct = (res.headers.get('content-type') || '').split(';')[0].trim();
+      console.info(`[uploadPhoto] проверка ${i} →`, res.status, ct);
+      if (res.ok && ct.startsWith('image/')) return true;
+    } catch (e) {
+      console.warn('[uploadPhoto] проверка сорвалась:', e);
+    }
+  }
+  return false;
+}
 
 async function uploadPhoto(file, teaType, teaName = null) {
-  const bucketName = 'tea-photos';
   const seoType = getSeoTypeName(teaType);
   const baseName = teaName ? seoSlugify(teaName) : 'tea';
 
@@ -798,51 +843,33 @@ async function uploadPhoto(file, teaType, teaName = null) {
     const path = seoType
       ? `${seoType}/${baseName}-${Date.now()}.${e}`
       : `${baseName}-${Date.now()}.${e}`;
-    const { error } = await supabase.storage.from(bucketName)
-      .upload(path, f, { cacheControl: '3600', upsert: false, contentType: m });
-    if (error) return { error };
-    const { data: { publicUrl } } = supabase.storage.from(bucketName).getPublicUrl(path);
-    return { publicUrl };
+    try {
+      const publicUrl = await rawStorageUpload(path, f, m);
+      return { publicUrl };
+    } catch (err) {
+      return { error: err };
+    }
   };
 
-  // 1) Грузим ОРИГИНАЛ — webp/avif остаются собой
-  let res = await doUpload(file, mime, ext);
-
-  // 1.5) Бакет отверг формат/размер → конвертим в JPEG и повторяем
-  if (res.error && isFormatOrSizeError(res.error)) {
-    console.warn('[uploadPhoto] оригинал отклонён:', res.error.message);
-    try {
-      const jpeg = await convertToJpeg(file);
-      const retry = await doUpload(jpeg, 'image/jpeg', 'jpg');
-      if (!retry.error) {
-        showToast('ℹ️ Хранилище не приняло формат — сохранено как JPG');
-        res = retry;
-      } else {
-        showToast('Ошибка загрузки фото: ' + res.error.message, 'warn');
-        return null;
-      }
-    } catch (e) {
-      console.warn('[uploadPhoto] конвертация не удалась:', e);
-      showToast('Ошибка загрузки фото: ' + res.error.message, 'warn');
-      return null;
-    }
-  } else if (res.error) {
+  // 1) Грузим ОРИГИНАЛ — webp/avif остаются собой (вес + SEO)
+  const res = await doUpload(file, mime, ext);
+  if (res.error) {
     showToast('Ошибка загрузки фото: ' + res.error.message, 'warn');
-    console.error('[uploadPhoto]', res.error);
+    console.error('[uploadPhoto] оригинал отклонён:', res.error.message);
     return null;
   }
 
-  // 2) Терпеливая проверка отдачи (как в v4)
+  // 2) Терпеливо проверяем, что сервер отдаёт файл как картинку
   const servedOk = await verifyServedImage(res.publicUrl);
   if (servedOk) return res.publicUrl;
 
-  // 3) Сервер не отдал картинку → конвертим в JPEG
+  // 3) Сервер так и не отдал картинку → конвертируем в JPEG
   try {
     const jpeg = await convertToJpeg(file);
     const res2 = await doUpload(jpeg, 'image/jpeg', 'jpg');
     if (res2.error) {
       showToast('Ошибка загрузки фото: ' + res2.error.message, 'warn');
-      return res.publicUrl;
+      return res.publicUrl; // последний шанс — оригинал
     }
     showToast('ℹ️ Сервер не принял формат — сохранено как JPG');
     return res2.publicUrl;
@@ -1025,4 +1052,4 @@ async function init() {
   }
 }
 
-init();
+init(); 
