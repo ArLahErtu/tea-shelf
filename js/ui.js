@@ -236,3 +236,14 @@ export const UNIT_LABELS = {
   sachet: 'пакетик',
   pcs: 'упаковка',
 };
+// ------------------------------------------------------------
+// ЭТАП 2: резолверы имён записей журнала (чай / тизан / неизвестный)
+// ------------------------------------------------------------
+const journalResolvers = [];
+export function registerJournalResolver(fn) { journalResolvers.push(fn); }
+export function journalEntryName(j, fallback = 'Чай') {
+  for (const fn of journalResolvers) {
+    try { const n = fn(j); if (n) return n; } catch (e) { /* noop */ }
+  }
+  return fallback;
+}

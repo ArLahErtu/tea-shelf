@@ -13,7 +13,7 @@
 
   <meta property="og:type" content="website">
   <meta property="og:title" content="Моя чайная полка — Чайная полка">
-  <meta property="og:description" content="Личная полка: остатки, журнал, список покупок.">
+  <meta property="og:description" content="Личная полка: журнал, список покупок.">
   <meta property="og:url" content="https://tea-shelf.vercel.app/shelf.html">
   <meta property="og:image" content="https://tea-shelf.vercel.app/img/icon-512.png">
 
@@ -52,7 +52,7 @@
     "description": "Личная полка: остатки, журнал завариваний, список покупок.",
     "url": "https://tea-shelf.vercel.app/shelf.html"
   }
-    </script>
+  </script>
 </head>
 
 <body class="page-shelf" data-page="shelf">
@@ -146,7 +146,7 @@
       <div class="shelf-layout">
         <aside aria-label="Списки полки">
 
-          <section class="panel" aria-labelledby="shoppingTitle">
+          <section class="panel" id="shoppingPanel" aria-labelledby="shoppingTitle">
             <h3 id="shoppingTitle">Что докупить <span class="cnt" id="shoppingCount">0</span></h3>
             <p class="psub">Собирается из «мало» и закончившихся. Поправьте количество и пополните одной кнопкой.</p>
             <div id="shoppingList">
@@ -161,7 +161,7 @@
             </div>
           </section>
 
-          <section class="panel" aria-labelledby="favoritesTitle">
+          <section class="panel" id="favoritesPanel" aria-labelledby="favoritesTitle">
             <h3 id="favoritesTitle">Избранное <span class="cnt" id="favoritesCount">0</span></h3>
             <p class="psub">Чаи, отмеченные сердцем в каталоге или на полке. Удобно дополнить закупку.</p>
             <div id="favoritesList">
@@ -169,7 +169,7 @@
             </div>
           </section>
 
-          <section class="panel" aria-labelledby="moderationTitle">
+          <section class="panel" id="moderationPanel" aria-labelledby="moderationTitle">
             <h3 id="moderationTitle">Ждёт модерации <span class="cnt" id="moderationCount">0</span></h3>
             <p class="psub">Ваши заявки в каталог. Видны только вам, пока модератор не одобрит.</p>
             <div id="moderationList">
@@ -180,13 +180,11 @@
 
         </aside>
 
-        <div>
+        <div class="shelf-main">
           <div class="toolbar" role="group" aria-label="Фильтры и сортировка полки">
             <div class="tabs" aria-label="Фильтр по остатку">
               <button class="tab active" type="button" data-status="all" aria-pressed="true">Все <span class="cnt" id="countAll">0</span></button>
-              <button class="tab" type="button" data-status="available" aria-pressed="false">В наличии <span class="cnt" id="countAvailable">0</span></button>
               <button class="tab" type="button" data-status="low" aria-pressed="false">Мало <span class="cnt" id="countLow">0</span></button>
-              <button class="tab" type="button" data-status="finished" aria-pressed="false">Закончился <span class="cnt" id="countFinished">0</span></button>
             </div>
             <select class="sel" id="shelfTypeFilter" aria-label="Фильтр по типу чая">
               <option value="all">Все типы</option>
@@ -220,6 +218,16 @@
             </div>
           </section>
         </div>
+
+        <!-- ЭТАП 0: Архив закончившихся чаёв — самый нижний блок -->
+        <section class="panel archive-panel" id="archivePanel" aria-labelledby="archiveTitle">
+          <h3 id="archiveTitle">📦 Архив <span class="cnt" id="archiveCount">0</span></h3>
+          <p class="psub">Закончившиеся чаи. Журнал сохраняется. Пополните — и чай вернётся на полку.</p>
+          <div id="archiveList">
+            <p class="hint">Пока пусто. Когда чай закончится, он переедет сюда.</p>
+          </div>
+        </section>
+
       </div>
 
     </div>
@@ -448,8 +456,9 @@
         <div class="field" id="fieldPassword">
           <label for="authPassword">Пароль <span class="req">*</span></label>
           <input
-            id="authPassword" name="password" type="password" required minlength="6"
+            id="authPassword" name="password" required minlength="6"
             autocomplete="current-password" placeholder="Пароль — минимум 6 символов"
+            type="password"
           >
           <p class="err">Пароль — минимум 6 символов</p>
         </div>
@@ -486,7 +495,7 @@
             </button>
             <div class="menu hidden">
               <button type="button" data-action="edit">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l4-1 11-11-3-3L5 16l-1 4Z"/></svg>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l4-1 11-11-3-3L5 16-1 4Z"/></svg>
                 Изменить
               </button>
               <button type="button" data-action="restock">
@@ -560,6 +569,21 @@
         <span>Заявка от –</span>
       </div>
       <span class="modbadge">На модерации</span>
+    </div>
+  </template>
+
+  <!-- ЭТАП 0: Шаблон строки архива -->
+  <template id="archiveRowTemplate">
+    <div class="archrow" data-shelf-id="">
+      <div class="wn">
+        <b>Название чая</b>
+        <span>Закончился · 0 г</span>
+      </div>
+      <div class="arch-actions">
+        <button class="btn btn-outline btn-sm" type="button" data-action="open-journal">📖 Журнал</button>
+        <button class="btn btn-primary btn-sm" type="button" data-action="restock">Пополнить</button>
+        <button class="btn btn-ghost btn-sm" type="button" data-action="remove" aria-label="Убрать с полки">✕</button>
+      </div>
     </div>
   </template>
 

@@ -1,9 +1,7 @@
 // ============================================================
 // shelf.js — логика страницы shelf.html
-// Блок А: карточка «кол-во / ~заваривания», иконка журнала,
-// фикс формы заваривания.
-// Блок Б: фильтр «В наличии» включает «Мало»;
-// кнопка «Изменить» → режим edit (amount + unit + threshold).
+// ЭТАП 0: архив закончившихся + мобильный порядок блоков.
+// ЭТАП 2: секция «🌿 Тизаны» (модуль tisanes.js).
 // ============================================================
 import { initCommon } from './common.js';
 import { supabase } from './supabaseClient.js';
@@ -16,6 +14,8 @@ import {
 import { getUser, onAuthChange } from './auth.js';
 import { openTeaModal } from './teaModal.js';
 import { initAmountModal, openAmountModal } from './amountModal.js';
+import { initTisanes, reloadTisanes, renderTisanes, tisaneJournalName } from '../../tea-shelf/js/tisanes.js';
+import { initUnknowns, reloadUnknowns, renderUnknowns, unknownJournalName } from '../../tea-shelf/js/unknowns.js';
 
 let shelf = [];
 let journal = [];
@@ -31,6 +31,14 @@ const filters = { status: 'all', type: 'all', sort: 'ending' };
 const statusOf = (r) =>
   r.amount <= 0 ? 'finished'
   : (r.amount <= (r.low_threshold ?? 0) ? 'low' : 'available');
+
+// ЭТАП 2: имя записи журнала (чай из каталога или тизан)
+function journalName(j) {
+  if (j.tisane_id) return tisaneJournalName(j) || 'Тизан';
+  if (j.unknown_id) return unknownJournalName(j) || 'Неизвестный чай';
+  const tea = catalogAll.find((t) => t.id === j.tea_id);
+  return tea ? tea.name : 'Чай';
+}
 
 // ---------- Загрузка ----------
 async function load() {
@@ -64,7 +72,8 @@ async function load() {
 // ---------- Статистика ----------
 function renderStats() {
   const rated = journal.filter((j) => j.rating);
-  $('#statTeas').textContent = shelf.length || '0';
+  $('#statTeas').textContent =
+    shelf.filter((r) => statusOf(r) !== 'finished').length || '0';
   $('#statBrews').textContent = journal.length || '0';
   $('#statRating').textContent = rated.length
     ? (rated.reduce((s, j) => s + j.rating, 0) / rated.length).toFixed(1)
@@ -151,7 +160,7 @@ function renderModeration() {
   });
 }
 
-// ---------- Сетка полки ----------
+// ---------- Сетка полки (закончившиеся — в архив) ----------
 function renderGrid() {
   const grid = $('#shelfGrid');
   grid.setAttribute('aria-busy', 'false');
@@ -167,11 +176,9 @@ function renderGrid() {
     return;
   }
 
-  // Блок Б: «В наличии» = available + low (всё кроме finished)
-  $('#countAll').textContent = shelf.length;
-  $('#countAvailable').textContent = shelf.filter((r) => statusOf(r) !== 'finished').length;
-  $('#countLow').textContent = shelf.filter((r) => statusOf(r) === 'low').length;
-  $('#countFinished').textContent = shelf.filter((r) => statusOf(r) === 'finished').length;
+  const active = shelf.filter((r) => statusOf(r) !== 'finished');
+  $('#countAll').textContent = active.length;
+  $('#countLow').textContent = active.filter((r) => statusOf(r) === 'low').length;
 
   if (!shelf.length) {
     grid.innerHTML = `<div class="empty grid-col-span">
@@ -182,17 +189,8 @@ function renderGrid() {
     return;
   }
 
-  const list = shelf
-    .filter((r) => {
-      // Блок Б: «В наличии» включает available И low
-      if (filters.status === 'available') {
-        return statusOf(r) !== 'finished';
-      }
-      if (filters.status !== 'all') {
-        return statusOf(r) === filters.status;
-      }
-      return true;
-    })
+  const list = active
+    .filter((r) => filters.status === 'all' || statusOf(r) === filters.status)
     .filter((r) =>
       filters.type === 'all' || r.tea.type === TYPE_TO_DB[filters.type])
     .sort((a, b) => {
@@ -237,9 +235,8 @@ function cardNode(r) {
 
   node.querySelector('.card-name').textContent = r.tea.name;
 
-  // --- Количество / доступные заваривания (Блок А) ---
   const qtyVals = node.querySelectorAll('.qty-val');
-  const qtySep  = node.querySelector('.qty-sep');
+  const qtySep = node.querySelector('.qty-sep');
 
   qtyVals[0].innerHTML = `${r.amount} <em>${UNIT_LABELS[r.unit] || 'г'}</em>`;
 
@@ -267,6 +264,46 @@ function cardNode(r) {
   return node;
 }
 
+// ---------- Архив (закончившиеся) ----------
+function renderArchive() {
+  const box = $('#archiveList');
+  const rows = shelf.filter((r) => statusOf(r) === 'finished');
+  $('#archiveCount').textContent = rows.length;
+  box.innerHTML = '';
+
+  if (!rows.length) {
+    box.innerHTML = '<p class="hint">Пока пусто. Когда чай закончится, он переедет сюда.</p>';
+    return;
+  }
+
+  const tpl = $('#archiveRowTemplate');
+  rows
+    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+    .forEach((r) => {
+      const node = tpl.content.firstElementChild.cloneNode(true);
+      node.dataset.shelfId = r.id;
+      node.querySelector('b').textContent = r.tea.name;
+      node.querySelector('span').textContent =
+        `Закончился · ${r.amount} ${UNIT_LABELS[r.unit] || 'г'}`;
+      node.querySelector('[data-action="open-journal"]')
+        .classList.toggle('hidden', !journal.some((j) => j.tea_id === r.tea_id));
+      box.appendChild(node);
+    });
+}
+
+function initArchive() {
+  $('#archiveList').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const rowEl = btn.closest('.archrow');
+    const row = shelf.find((r) => String(r.id) === rowEl?.dataset.shelfId);
+    if (!row) return;
+    if (btn.dataset.action === 'restock') return restockRow(row);
+    if (btn.dataset.action === 'remove') return removeRow(row);
+    if (btn.dataset.action === 'open-journal') return openTeaJournal(row.tea_id, row.tea.name);
+  });
+}
+
 // ---------- Журнал (общий) ----------
 function renderJournal() {
   const box = $('#journalList');
@@ -277,14 +314,13 @@ function renderJournal() {
     return;
   }
 
-  const teaById = new Map(catalogAll.map((t) => [t.id, t]));
   journal.slice(0, 20).forEach((j) => {
     const node = document.createElement('div');
     node.className = 'jentry';
     node.innerHTML = `
       <div class="jdate">${j.created_at ? formatDate(j.created_at) : '—'}</div>
       <div class="jbody">
-        <b>${escapeHtml(teaById.get(j.tea_id)?.name || 'Чай')}</b>
+        <b>${escapeHtml(journalName(j))}</b>
         <div class="jm">${j.amount} ${UNIT_LABELS[j.unit] || 'г'}</div>
         ${j.note ? `<div class="jnote">${escapeHtml(j.note)}</div>` : ''}
         ${j.rating ? `<div class="jstars">${'★'.repeat(j.rating)}${'☆'.repeat(5 - j.rating)}</div>` : ''}
@@ -299,6 +335,9 @@ function renderAll() {
   renderFavorites();
   renderModeration();
   renderGrid();
+  renderArchive();
+  renderTisanes();
+  renderUnknowns();
   renderJournal();
 
   const low = shelf.filter((r) => statusOf(r) !== 'available').length;
@@ -309,7 +348,7 @@ function renderAll() {
   }
 }
 
-// ---------- Журнал конкретного чая (Блок А) ----------
+// ---------- Журнал конкретного чая ----------
 function initJournalOverlay() {
   const ov = $('#journalOverlay');
   if (!ov) return;
@@ -404,7 +443,10 @@ function initBrew() {
     });
     $$('#brewPresets .preset').forEach((p) => p.classList.remove('sel'));
 
-    showToast(`Заваривание записано ☕ Осталось ${data} ${UNIT_LABELS[unit] || 'г'}`);
+    const left = Number(data);
+    showToast(left <= 0
+      ? 'Заваривание записано ☕ Чай закончился и переехал в архив 📦'
+      : `Заваривание записано ☕ Осталось ${left} ${UNIT_LABELS[unit] || 'г'}`);
     await load();
     renderAll();
   });
@@ -441,8 +483,6 @@ function restockRow(row) {
   });
 }
 
-// Блок Б: «Изменить» → режим edit (amount + unit + threshold)
-// История завариваний привязана к tea_id — не теряется
 function editAmount(row) {
   openAmountModal({
     mode: 'edit',
@@ -595,6 +635,7 @@ async function init() {
   initBrew();
   initRestock();
   initFavorites();
+  initArchive();
   initJournalOverlay();
 
   $('#addToShelfBtn')?.addEventListener('click', () => {
@@ -610,12 +651,12 @@ async function init() {
     const row = shelf.find((r) => String(r.id) === card.dataset.shelfId);
     if (!row) return;
 
-    if (e.target.closest('[data-action="brew"]'))            return openBrew(row);
-    if (e.target.closest('[data-action="restock"]'))         return restockRow(row);
-    if (e.target.closest('[data-action="edit"]'))            return editAmount(row);
-    if (e.target.closest('[data-action="remove"]'))          return removeRow(row);
+    if (e.target.closest('[data-action="brew"]')) return openBrew(row);
+    if (e.target.closest('[data-action="restock"]')) return restockRow(row);
+    if (e.target.closest('[data-action="edit"]')) return editAmount(row);
+    if (e.target.closest('[data-action="remove"]')) return removeRow(row);
     if (e.target.closest('[data-action="toggle-favorite"]')) return toggleFav(row);
-    if (e.target.closest('[data-action="open-journal"]'))    return openTeaJournal(row.tea_id, row.tea.name);
+    if (e.target.closest('[data-action="open-journal"]')) return openTeaJournal(row.tea_id, row.tea.name);
     if (e.target.closest('[data-action="open-menu"]')) {
       const menu = e.target.closest('.menu-wrap').querySelector('.menu');
       $$('#shelfGrid .menu').forEach((m) => m !== menu && m.classList.add('hidden'));
@@ -634,10 +675,22 @@ async function init() {
     }
   });
 
-  onAuthChange(async () => { await load(); renderAll(); });
+  onAuthChange(async () => {
+    await load();
+    await reloadTisanes();
+    await reloadUnknowns();
+    renderAll();
+  });
+
+  window.addEventListener('tea-shelf-changed', async () => {
+    await load();
+    renderAll();
+  });
 
   try {
     await load();
+    await initTisanes();
+    await initUnknowns();
     renderAll();
   } catch (err) {
     $('#shelfGrid').setAttribute('aria-busy', 'false');

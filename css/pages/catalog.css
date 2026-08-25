@@ -415,3 +415,11 @@
   align-items: center;
   flex-wrap: wrap;
 }
+
+/* ЭТАП 0: пометка об ИИ-изображениях в заголовке каталога */
+.ai-note {
+  margin-top: var(--space-2);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}

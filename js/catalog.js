@@ -12,14 +12,14 @@
 //   • редактирование любых карточек через RPC update_tea;
 //   • фикс фильтра по типу (ilike, регистронезависимо);
 //   • URL синхронизирован с режимом (?moderation=1).
-// ФОТО v5: загрузка сырым fetch с ЯВНЫМ Content-Type
-//   (обход бага supabase-js, который слал application/json).
-//   Оригиналы webp/avif сохраняются (вес + SEO); терпеливая
-//   проверка отдачи; конвертация в JPEG — только аварийно.
+// ФОТО v5: оригинал (webp/avif — вес и SEO) + терпеливая проверка.
+//   Если бакет отверг формат/размер — автоконвертация в JPEG
+//   и повтор, пользователь ошибку не видит.
+//   ЭТАП 0: добавлен обработчик загрузки фото из модалки модерации.
 // ============================================================
 import { initCommon } from './common.js';
 import { supabase } from './supabaseClient.js';
-import { TABLES, SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
+import { TABLES } from './config.js';
 import {
   $, $$, showToast, openOverlay, closeOverlay, wireOverlay,
   setInvalid, escapeHtml, plural, typeClass, TYPE_TO_DB, toTags, trackEvent,
@@ -29,7 +29,6 @@ import { openTeaModal } from './teaModal.js';
 import { initAmountModal, openAmountModal } from './amountModal.js';
 
 const PAGE_SIZE = 20;
-const PHOTO_BUCKET = 'tea-photos';
 
 let published = [];   // загруженные страницы published
 let pending = [];     // мои pending-заявки (автор видит свои)
@@ -376,7 +375,7 @@ function cardNode(tea) {
   if (canEdit) {
     const editBtn = document.createElement('button');
     editBtn.className = 'edit-tea-btn';
-    editBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M4 20l4-1 11-11-3-3L5 16l-1 4Z"/></svg>';
+    editBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M4 20l4-1 11-11-3-3L5 16-1 4Z"/></svg>';
     editBtn.title = tea.status === 'pending' ? 'Редактировать заявку' : 'Редактировать чай';
     editBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -517,6 +516,17 @@ function openModerateModal(tea) {
   $('#moderateSteeps').value = tea.steeps || '';
   $('#moderateTags').value = tea.tags || '';
   $('#moderatePhoto').value = tea.photo_url || '';
+
+  // Текущее фото в модалке модерации
+  const img = $('#moderateCurrentPhoto');
+  if (img) {
+    if (tea.photo_url) {
+      img.src = tea.photo_url;
+      img.classList.remove('hidden');
+    } else {
+      img.classList.add('hidden');
+    }
+  }
 
   $('#moderateDuplicateWarn').classList.add('hidden');
   checkDuplicate(tea);
@@ -750,14 +760,10 @@ function initPropose() {
 }
 
 // ============================================================
-// ФОТО v5: сырой fetch с ЯВНЫМ Content-Type.
-// supabase-js в этом проекте подставлял в запрос дефолтный
-// заголовок application/json → Storage отвечал 400
-// «mime type application/json is not supported».
-// Теперь заголовки полностью под нашим контролем:
-//   • оригиналы webp/avif сохраняются (вес + SEO);
-//   • терпеливая проверка отдачи (3 попытки);
-//   • конвертация в JPEG — только аварийно.
+// ФОТО v5: оригинал (webp/avif — вес и SEO) + терпеливая проверка.
+// Storage раздаёт новые файлы с задержкой 1-2 с, поэтому проверка
+// делает до 3 попыток GET с паузами. Если бакет отверг формат/
+// размер — автоконвертация в JPEG и повтор вместо ошибки.
 // ============================================================
 
 const MIME_BY_EXT = {
@@ -769,16 +775,27 @@ const MIME_BY_EXT = {
   gif: 'image/gif',
 };
 
-// Конвертация в JPEG (только как запасной путь)
-async function convertToJpeg(file) {
+// Бакет отверг формат/размер (а не сеть/права)?
+function isFormatOrSizeError(err) {
+  const msg = String(err?.message || '').toLowerCase();
+  return /mime|content-?type|invalid request|exceeded the allowed size|too large/.test(msg)
+    || ['413', '415'].includes(String(err?.statusCode));
+}
+
+// Конвертация в JPEG (запасной путь) + даунскейл больших оригиналов
+async function convertToJpeg(file, maxSide = 1600) {
   const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+  const w = Math.round(bitmap.width * scale);
+  const h = Math.round(bitmap.height * scale);
+
   const canvas = document.createElement('canvas');
-  canvas.width = bitmap.width;
-  canvas.height = bitmap.height;
+  canvas.width = w;
+  canvas.height = h;
   const ctx = canvas.getContext('2d');
   ctx.fillStyle = '#ffffff'; // прозрачность webp/avif → белый фон
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.drawImage(bitmap, 0, 0);
+  ctx.fillRect(0, 0, w, h);
+  ctx.drawImage(bitmap, 0, 0, w, h);
   bitmap.close?.();
 
   const blob = await new Promise((resolve) =>
@@ -789,33 +806,8 @@ async function convertToJpeg(file) {
   });
 }
 
-// Прямая загрузка в Storage через REST API (без supabase-js upload)
-async function rawStorageUpload(path, body, mime) {
-  const { data: { session } } = await supabase.auth.getSession();
-  const url = `${SUPABASE_URL}/storage/v1/object/${PHOTO_BUCKET}/${path}`;
-
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`,
-      'Content-Type': mime,          // ← явно говорим серверу тип файла
-      'x-upsert': 'false',
-      'cache-control': '3600',
-    },
-    body,
-  });
-
-  if (!res.ok) {
-    let detail = `${res.status}`;
-    try { detail += ' ' + (await res.text()); } catch { /* ignore */ }
-    throw new Error(detail);
-  }
-
-  return `${SUPABASE_URL}/storage/v1/object/public/${PHOTO_BUCKET}/${path}`;
-}
-
 // Терпеливая проверка: сервер отдаёт картинку как картинку?
+// Возвращает true, если ответ 200 и Content-Type — любой image/*.
 async function verifyServedImage(url) {
   for (let i = 1; i <= 3; i++) {
     // даём Storage время раздать новый файл
@@ -825,6 +817,7 @@ async function verifyServedImage(url) {
       const ct = (res.headers.get('content-type') || '').split(';')[0].trim();
       console.info(`[uploadPhoto] проверка ${i} →`, res.status, ct);
       if (res.ok && ct.startsWith('image/')) return true;
+      // 200, но не image (json/octet-stream) — подождём ещё, вдруг кэш
     } catch (e) {
       console.warn('[uploadPhoto] проверка сорвалась:', e);
     }
@@ -833,6 +826,7 @@ async function verifyServedImage(url) {
 }
 
 async function uploadPhoto(file, teaType, teaName = null) {
+  const bucketName = 'tea-photos';
   const seoType = getSeoTypeName(teaType);
   const baseName = teaName ? seoSlugify(teaName) : 'tea';
 
@@ -843,19 +837,45 @@ async function uploadPhoto(file, teaType, teaName = null) {
     const path = seoType
       ? `${seoType}/${baseName}-${Date.now()}.${e}`
       : `${baseName}-${Date.now()}.${e}`;
-    try {
-      const publicUrl = await rawStorageUpload(path, f, m);
-      return { publicUrl };
-    } catch (err) {
-      return { error: err };
-    }
+    const { error } = await supabase.storage
+      .from(bucketName)
+      .upload(path, f, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: m,
+      });
+    if (error) return { error };
+    const { data: { publicUrl } } = supabase.storage
+      .from(bucketName)
+      .getPublicUrl(path);
+    return { publicUrl };
   };
 
   // 1) Грузим ОРИГИНАЛ — webp/avif остаются собой (вес + SEO)
-  const res = await doUpload(file, mime, ext);
-  if (res.error) {
+  let res = await doUpload(file, mime, ext);
+
+  // 1.5) Бакет отверг формат/размер → конвертим в JPEG и повторяем
+  if (res.error && isFormatOrSizeError(res.error)) {
+    console.warn('[uploadPhoto] оригинал отклонён:', res.error.message);
+    try {
+      const jpeg = await convertToJpeg(file);
+      const retry = await doUpload(jpeg, 'image/jpeg', 'jpg');
+      if (!retry.error) {
+        showToast('ℹ️ Хранилище не приняло формат — сохранено как JPG');
+        res = retry;
+      } else {
+        showToast('Ошибка загрузки фото: ' + res.error.message, 'warn');
+        return null;
+      }
+    } catch (e) {
+      console.warn('[uploadPhoto] конвертация не удалась:', e);
+      showToast('Ошибка загрузки фото: ' + res.error.message, 'warn');
+      return null;
+    }
+  } else if (res.error) {
+    // Полный текст ошибки — чтобы видеть причину (квота, права и т.д.)
     showToast('Ошибка загрузки фото: ' + res.error.message, 'warn');
-    console.error('[uploadPhoto] оригинал отклонён:', res.error.message);
+    console.error('[uploadPhoto]', res.error);
     return null;
   }
 
@@ -899,6 +919,28 @@ async function init() {
     $('#moderateApproveBtn')?.addEventListener('click', approveCurrentTea);
     $('#moderateRejectBtn')?.addEventListener('click', openRejectOverlay);
   }
+
+  // ЭТАП 0: загрузка фото из модалки модерации (ранее обработчика не было)
+  $('#moderatePhotoInput')?.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const teaType = $('#moderateType').value;
+    const teaName = $('#moderateName').value.trim();
+
+    const btn = $('#moderatePhotoUploadBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Загрузка...'; }
+
+    const photoUrl = await uploadPhoto(file, teaType, teaName);
+    if (photoUrl) {
+      $('#moderatePhoto').value = photoUrl;
+      const img = $('#moderateCurrentPhoto');
+      if (img) { img.src = photoUrl; img.classList.remove('hidden'); }
+      showToast('✅ Фото загружено');
+    }
+
+    if (btn) { btn.disabled = false; btn.textContent = 'Загрузить фото'; }
+  });
 
   const rejOv = $('#rejectOverlay');
   if (rejOv) {
@@ -1052,4 +1094,4 @@ async function init() {
   }
 }
 
-init(); 
+init();

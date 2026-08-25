@@ -3,6 +3,7 @@
    Стили личной полки
    Блок А: qty-row переделан (кол-во / ~заваривания),
    добавлена иконка журнала и модалка журнала чая.
+   ЭТАП 0: блок «Архив» (низ страницы) + мобильный порядок блоков.
    ============================================================ */
 
 /* Страховка от горизонтального скролла страницы */
@@ -452,6 +453,52 @@ body.page-shelf {
 }
 
 /* ------------------------------------------------------------
+   ЭТАП 0: Архив (закончившиеся чаи) — нижний блок на всю ширину
+   ------------------------------------------------------------ */
+#archivePanel {
+  grid-column: 1 / -1;
+  border-style: dashed;
+}
+
+.archrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 9px var(--space-1);
+  border-bottom: 1px dashed var(--line);
+}
+
+.archrow:last-child {
+  border-bottom: none;
+}
+
+.archrow .wn {
+  flex: 1;
+  min-width: 0;
+}
+
+.archrow b {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 13.5px;
+}
+
+.archrow span {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.arch-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex: none;
+}
+
+/* ------------------------------------------------------------
    Journal
    ------------------------------------------------------------ */
 .jentry {
@@ -567,12 +614,32 @@ body.page-shelf {
 
 /* ------------------------------------------------------------
    Shelf responsive
+   ЭТАП 0: мобильный порядок блоков через display:contents + order:
+   Что докупить → полка → Избранное → Журнал → Модерация → Архив
    ------------------------------------------------------------ */
 @media (max-width: 960px) {
   .shelf-layout {
-    grid-template-columns: minmax(0, 1fr);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
   }
 
+  /* «распаковываем» колонки, чтобы order работал сквозь них */
+  .shelf-layout > aside,
+  .shelf-layout > .shelf-main {
+    display: contents;
+  }
+
+  #shoppingPanel       { order: 1; }
+  .shelf-main .toolbar { order: 2; }
+  #shelfGrid           { order: 3; }
+  #tisanesPanel        { order: 4; }
+  #unknownsPanel       { order: 5; }
+  #favoritesPanel      { order: 6; }
+  #journalPanel        { order: 7; }
+  #moderationPanel     { order: 8; }
+  #archivePanel        { order: 9; }
+  
   .stats {
     grid-template-columns: 1fr 1fr;
   }
@@ -600,4 +667,158 @@ body.page-shelf {
     flex: 1;
     justify-content: center;
   }
+}
+
+/* ------------------------------------------------------------
+   ЭТАП 2: Тизаны
+   ------------------------------------------------------------ */
+.panel-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.tisanes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
+  gap: var(--space-3);
+}
+
+.tisane-card {
+  border-color: var(--green);
+  background: linear-gradient(180deg, var(--green-soft), var(--surface));
+}
+
+.pill-tisane {
+  background: var(--green-soft);
+  color: var(--green-d);
+}
+
+.tisane-comp {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #5C543F;
+}
+
+.tisane-props {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--green-d);
+}
+
+.herb-list {
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.herb-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+}
+
+.herb-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--green);
+  flex: none;
+}
+
+.herb-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.herb-pending {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.herb-star {
+  font-size: 18px;
+  padding: 0 4px;
+}
+
+.unit-radio input {
+  accent-color: var(--green);
+}
+
+.tisane-result p {
+  margin: 0 0 var(--space-2);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+/* ------------------------------------------------------------
+   ЭТАП 3: Неизвестные чаи
+   ------------------------------------------------------------ */
+.unknown-card {
+  border: 2px dashed #C9BEA6;
+  background: var(--surface2);
+}
+
+.unknown-card.is-finished {
+  opacity: 0.6;
+}
+
+.pill-unknown {
+  background: #ECE7DA;
+  color: #776D58;
+}
+
+.unknown-photo {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+}
+
+.warn-note {
+  background: var(--amber-soft);
+  border: 1px solid #E5C68F;
+  color: #8A5A16;
+  border-radius: var(--radius-xs);
+  padding: var(--space-2) var(--space-3);
+  font-size: 12.5px;
+  font-weight: 700;
+  margin-bottom: var(--space-3);
+}
+
+.identify-row {
+  cursor: pointer;
+  border-radius: var(--radius-xs);
+}
+
+.identify-row.sel {
+  background: var(--green-soft);
+  outline: 1px solid var(--green);
+}
+
+/* ------------------------------------------------------------
+   ЭТАП 4: модалка завершения + архив журналов
+   ------------------------------------------------------------ */
+.stack-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: var(--space-2) 0 var(--space-3);
+}
+
+.head-actions {
+  display: flex;
+  gap: 8px;
+  flex: none;
+}
+
+.danger-text {
+  color: var(--red);
 }
