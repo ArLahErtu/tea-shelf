@@ -760,10 +760,9 @@ function initPropose() {
 }
 
 // ============================================================
-// ФОТО v5: оригинал (webp/avif — вес и SEO) + терпеливая проверка.
-// Storage раздаёт новые файлы с задержкой 1-2 с, поэтому проверка
-// делает до 3 попыток GET с паузами. Если бакет отверг формат/
-// размер — автоконвертация в JPEG и повтор вместо ошибки.
+// ФОТО v6: сырой fetch с явным Content-Type (обходим капризный
+// storage-js, который мог отправить application/json).
+// Терпеливая проверка отдачи + автоконвертация в JPEG как запас.
 // ============================================================
 
 const MIME_BY_EXT = {
@@ -807,17 +806,14 @@ async function convertToJpeg(file, maxSide = 1600) {
 }
 
 // Терпеливая проверка: сервер отдаёт картинку как картинку?
-// Возвращает true, если ответ 200 и Content-Type — любой image/*.
 async function verifyServedImage(url) {
   for (let i = 1; i <= 3; i++) {
-    // даём Storage время раздать новый файл
     await new Promise((r) => setTimeout(r, 1200));
     try {
       const res = await fetch(url, { cache: 'no-store' });
       const ct = (res.headers.get('content-type') || '').split(';')[0].trim();
       console.info(`[uploadPhoto] проверка ${i} →`, res.status, ct);
       if (res.ok && ct.startsWith('image/')) return true;
-      // 200, но не image (json/octet-stream) — подождём ещё, вдруг кэш
     } catch (e) {
       console.warn('[uploadPhoto] проверка сорвалась:', e);
     }
@@ -825,31 +821,41 @@ async function verifyServedImage(url) {
   return false;
 }
 
+// Сырой аплоад: сами контролируем Content-Type на 100%
+async function rawUpload(path, blob, mime) {
+  const st = supabase.storage;
+  const url = `${st.url}/object/tea-photos/${path}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      ...st.headers,               // apikey + Authorization
+      'Content-Type': mime,        // ЯВНЫЙ тип — никакого application/json
+      'x-upsert': 'false',
+      'cache-control': 'public, max-age=3600',
+    },
+    body: blob,
+  });
+  if (!res.ok) {
+    let msg = `HTTP ${res.status}`;
+    try { const j = await res.json(); msg = j.message || j.error || msg; } catch (e) { /* noop */ }
+    return { error: { message: msg, statusCode: res.status } };
+  }
+  const { data } = st.from('tea-photos').getPublicUrl(path);
+  return { publicUrl: data.publicUrl };
+}
+
 async function uploadPhoto(file, teaType, teaName = null) {
-  const bucketName = 'tea-photos';
   const seoType = getSeoTypeName(teaType);
   const baseName = teaName ? seoSlugify(teaName) : 'tea';
 
   const ext = file.name.split('.').pop().toLowerCase();
   const mime = file.type || MIME_BY_EXT[ext] || 'image/jpeg';
 
-  const doUpload = async (f, m, e) => {
-    const path = seoType
+  const doUpload = (f, m, e) => rawUpload(
+    seoType
       ? `${seoType}/${baseName}-${Date.now()}.${e}`
-      : `${baseName}-${Date.now()}.${e}`;
-    const { error } = await supabase.storage
-      .from(bucketName)
-      .upload(path, f, {
-        cacheControl: '3600',
-        upsert: false,
-        contentType: m,
-      });
-    if (error) return { error };
-    const { data: { publicUrl } } = supabase.storage
-      .from(bucketName)
-      .getPublicUrl(path);
-    return { publicUrl };
-  };
+      : `${baseName}-${Date.now()}.${e}`,
+    f, m);
 
   // 1) Грузим ОРИГИНАЛ — webp/avif остаются собой (вес + SEO)
   let res = await doUpload(file, mime, ext);
@@ -873,7 +879,6 @@ async function uploadPhoto(file, teaType, teaName = null) {
       return null;
     }
   } else if (res.error) {
-    // Полный текст ошибки — чтобы видеть причину (квота, права и т.д.)
     showToast('Ошибка загрузки фото: ' + res.error.message, 'warn');
     console.error('[uploadPhoto]', res.error);
     return null;

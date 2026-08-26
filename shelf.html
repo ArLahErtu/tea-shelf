@@ -182,6 +182,10 @@
 
         <div class="shelf-main">
           <div class="toolbar" role="group" aria-label="Фильтры и сортировка полки">
+            <input
+              type="search" id="shelfSearch" class="sel shelf-search"
+              placeholder="Поиск по названию…" aria-label="Поиск по полке"
+            >
             <div class="tabs" aria-label="Фильтр по остатку">
               <button class="tab active" type="button" data-status="all" aria-pressed="true">Все <span class="cnt" id="countAll">0</span></button>
               <button class="tab" type="button" data-status="low" aria-pressed="false">Мало <span class="cnt" id="countLow">0</span></button>

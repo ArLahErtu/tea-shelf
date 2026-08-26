@@ -1,12 +1,8 @@
 /* ============================================================
-   pages/shelf.css
-   Стили личной полки
-   Блок А: qty-row переделан (кол-во / ~заваривания),
-   добавлена иконка журнала и модалка журнала чая.
-   ЭТАП 0: блок «Архив» (низ страницы) + мобильный порядок блоков.
+   pages/shelf.css — полка: карточки, архив, тизаны, неизвестные,
+   журнал, модалки. ЭТАП 0–4 + фикс мобильной вёрстки (ширины).
    ============================================================ */
 
-/* Страховка от горизонтального скролла страницы */
 body.page-shelf {
   overflow-x: clip;
 }
@@ -44,7 +40,6 @@ body.page-shelf {
 
 /* ------------------------------------------------------------
    Shelf layout
-   minmax(0, 1fr) позволяет колонкам сжиматься вместо распирания
    ------------------------------------------------------------ */
 .shelf-layout {
   display: grid;
@@ -86,6 +81,7 @@ body.page-shelf {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  flex-wrap: wrap;
 }
 
 .pill {
@@ -105,20 +101,11 @@ body.page-shelf {
   background: currentColor;
 }
 
-.pill-active {
-  background: var(--green-soft);
-  color: var(--green-d);
-}
-
-.pill-low {
-  background: var(--amber-soft);
-  color: #8A5A16;
-}
-
-.pill-finished {
-  background: #ECE7DA;
-  color: #776D58;
-}
+.pill-active { background: var(--green-soft); color: var(--green-d); }
+.pill-low    { background: var(--amber-soft); color: #8A5A16; }
+.pill-finished { background: #ECE7DA; color: #776D58; }
+.pill-tisane { background: var(--green-soft); color: var(--green-d); }
+.pill-unknown { background: #ECE7DA; color: #776D58; }
 
 .rate-badge {
   font-size: 11.5px;
@@ -133,25 +120,14 @@ body.page-shelf {
   gap: var(--space-1);
 }
 
-.fav-btn {
-  color: #C9BEA6;
-}
-
-.fav-btn.on {
-  color: var(--amber);
-}
-
-.fav-btn svg {
-  fill: currentColor;
-  stroke: none;
-}
+.fav-btn { color: #C9BEA6; }
+.fav-btn.on { color: var(--amber); }
+.fav-btn svg { fill: currentColor; stroke: none; }
 
 /* ------------------------------------------------------------
    Card dropdown menu
    ------------------------------------------------------------ */
-.menu-wrap {
-  position: relative;
-}
+.menu-wrap { position: relative; }
 
 .menu {
   position: absolute;
@@ -181,13 +157,8 @@ body.page-shelf {
   color: var(--ink);
 }
 
-.menu button:hover {
-  background: var(--surface2);
-}
-
-.menu button.danger {
-  color: var(--red);
-}
+.menu button:hover { background: var(--surface2); }
+.menu button.danger { color: var(--red); }
 
 .menu button svg {
   width: 15px;
@@ -200,8 +171,7 @@ body.page-shelf {
 }
 
 /* ------------------------------------------------------------
-   Quantity / progress — Блок А
-   Одинаковый вес: «100 г / ~14 завариваний»
+   Quantity / progress
    ------------------------------------------------------------ */
 .card-name {
   overflow: hidden;
@@ -210,14 +180,13 @@ body.page-shelf {
   font-size: 19px;
 }
 
-.card-name:hover {
-  color: var(--green-d);
-}
+.card-name:hover { color: var(--green-d); }
 
 .qty-row {
   display: flex;
   align-items: baseline;
   gap: var(--space-2);
+  flex-wrap: wrap;
 }
 
 .qty-val {
@@ -241,7 +210,6 @@ body.page-shelf {
   user-select: none;
 }
 
-/* Иконка журнала на карточке */
 .journal-btn {
   width: 26px;
   height: 26px;
@@ -279,17 +247,9 @@ body.page-shelf {
   transition: width 0.4s;
 }
 
-.bar-active {
-  background: linear-gradient(90deg, #5E8A57, var(--green));
-}
-
-.bar-low {
-  background: linear-gradient(90deg, #DFA244, var(--amber));
-}
-
-.bar-finished {
-  background: #C9BEA6;
-}
+.bar-active   { background: linear-gradient(90deg, #5E8A57, var(--green)); }
+.bar-low      { background: linear-gradient(90deg, #DFA244, var(--amber)); }
+.bar-finished { background: #C9BEA6; }
 
 .card-actions {
   display: flex;
@@ -300,7 +260,7 @@ body.page-shelf {
 }
 
 /* ------------------------------------------------------------
-   Модалка журнала конкретного чая — Блок А
+   Модалка журнала чая
    ------------------------------------------------------------ */
 .journal-tea-list {
   max-height: 420px;
@@ -316,11 +276,10 @@ body.page-shelf {
   gap: var(--space-2);
   padding: var(--space-2) var(--space-1);
   border-bottom: 1px dashed var(--line);
+  flex-wrap: wrap;
 }
 
-.buyrow:last-of-type {
-  border-bottom: none;
-}
+.buyrow:last-of-type { border-bottom: none; }
 
 .buy-check input {
   width: 17px;
@@ -329,10 +288,7 @@ body.page-shelf {
   flex: none;
 }
 
-.buy-info {
-  flex: 1;
-  min-width: 0;
-}
+.buy-info { flex: 1; min-width: 0; }
 
 .buy-info b {
   display: block;
@@ -342,18 +298,10 @@ body.page-shelf {
   font-size: 14px;
 }
 
-.buy-info span {
-  font-size: 12px;
-  font-weight: 700;
-}
+.buy-info span { font-size: 12px; font-weight: 700; }
 
-.st-fin {
-  color: #A79B82;
-}
-
-.st-low {
-  color: var(--amber);
-}
+.st-fin { color: #A79B82; }
+.st-low { color: var(--amber); }
 
 .buy-amt {
   display: flex;
@@ -374,10 +322,7 @@ body.page-shelf {
   outline: none;
 }
 
-.buy-amt input:focus {
-  border-color: var(--green);
-  background: #fff;
-}
+.buy-amt input:focus { border-color: var(--green); background: #fff; }
 
 .buy-amt em {
   font-style: normal;
@@ -398,9 +343,7 @@ body.page-shelf {
   color: var(--green-d);
 }
 
-.buy-foot {
-  margin-top: var(--space-3);
-}
+.buy-foot { margin-top: var(--space-3); }
 
 /* ------------------------------------------------------------
    Wishlist / moderation rows
@@ -415,15 +358,10 @@ body.page-shelf {
 }
 
 .wrow:last-child,
-.modrow:last-of-type {
-  border-bottom: none;
-}
+.modrow:last-of-type { border-bottom: none; }
 
 .wrow .wn,
-.modrow .wn {
-  flex: 1;
-  min-width: 0;
-}
+.modrow .wn { flex: 1; min-width: 0; }
 
 .wrow b,
 .modrow b {
@@ -453,7 +391,7 @@ body.page-shelf {
 }
 
 /* ------------------------------------------------------------
-   ЭТАП 0: Архив (закончившиеся чаи) — нижний блок на всю ширину
+   Архив (закончившиеся чаи) — нижний блок на всю ширину
    ------------------------------------------------------------ */
 #archivePanel {
   grid-column: 1 / -1;
@@ -466,16 +404,12 @@ body.page-shelf {
   gap: var(--space-2);
   padding: 9px var(--space-1);
   border-bottom: 1px dashed var(--line);
+  flex-wrap: wrap;
 }
 
-.archrow:last-child {
-  border-bottom: none;
-}
+.archrow:last-child { border-bottom: none; }
 
-.archrow .wn {
-  flex: 1;
-  min-width: 0;
-}
+.archrow .wn { flex: 1; min-width: 0; }
 
 .archrow b {
   display: block;
@@ -496,187 +430,25 @@ body.page-shelf {
   align-items: center;
   gap: var(--space-1);
   flex: none;
-}
-
-/* ------------------------------------------------------------
-   Journal
-   ------------------------------------------------------------ */
-.jentry {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-1);
-  border-bottom: 1px dashed var(--line);
-}
-
-.jentry:last-child {
-  border-bottom: none;
-}
-
-.jdate {
-  min-width: 64px;
-  padding-top: var(--space-1);
-  font-size: 11.5px;
-  font-weight: 800;
-  color: var(--muted);
-}
-
-.jbody {
-  flex: 1;
-  min-width: 0;
-}
-
-.jbody b {
-  font-size: 14px;
-}
-
-.jbody .jm {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--muted);
-}
-
-.jnote {
-  margin-top: var(--space-1);
-  font-size: 13px;
-  line-height: 1.5;
-  color: #5C543F;
-}
-
-.jstars {
-  font-size: 13px;
-  letter-spacing: 1px;
-  color: var(--amber);
-}
-
-/* ------------------------------------------------------------
-   Rating / presets
-   ------------------------------------------------------------ */
-.stars-input {
-  display: flex;
-  gap: 6px;
-  margin: var(--space-1) 0;
-}
-
-.star-btn {
-  background: none;
-  border: none;
-  font-size: 26px;
-  line-height: 1;
-  color: #D8CDB4;
-  transition: 0.12s;
-}
-
-.star-btn.on {
-  color: var(--amber);
-}
-
-.star-btn:hover {
-  transform: scale(1.15);
-}
-
-.presets {
-  display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-bottom: var(--space-3);
-}
-
-.preset {
-  border: 1px solid var(--line);
-  background: var(--surface2);
-  border-radius: var(--radius-xs);
-  padding: 9px 14px;
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.preset.sel {
-  background: var(--green-soft);
-  border-color: var(--green);
-  color: var(--green-d);
-}
-
-.previz {
-  background: var(--surface2);
-  border: 1px dashed var(--line);
-  border-radius: var(--radius-sm);
-  padding: var(--space-3);
-  margin-bottom: var(--space-3);
-  font-size: 13.5px;
-  font-weight: 700;
-  line-height: 1.6;
-}
-
-.previz b {
-  color: var(--green-d);
 }
 
 /* ------------------------------------------------------------
-   Shelf responsive
-   ЭТАП 0: мобильный порядок блоков через display:contents + order:
-   Что докупить → полка → Избранное → Журнал → Модерация → Архив
-   ------------------------------------------------------------ */
-@media (max-width: 960px) {
-  .shelf-layout {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-
-  /* «распаковываем» колонки, чтобы order работал сквозь них */
-  .shelf-layout > aside,
-  .shelf-layout > .shelf-main {
-    display: contents;
-  }
-
-  #shoppingPanel       { order: 1; }
-  .shelf-main .toolbar { order: 2; }
-  #shelfGrid           { order: 3; }
-  #tisanesPanel        { order: 4; }
-  #unknownsPanel       { order: 5; }
-  #favoritesPanel      { order: 6; }
-  #journalPanel        { order: 7; }
-  #moderationPanel     { order: 8; }
-  #archivePanel        { order: 9; }
-  
-  .stats {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-@media (max-width: 640px) {
-  .toolbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .tabs {
-    width: 100%;
-  }
-
-  .shelf-layout .sel {
-    width: 100%;
-  }
-
-  #shelfGrid {
-    grid-template-columns: repeat(auto-fill, minmax(min(290px, 100%), 1fr));
-  }
-
-  .card-actions .btn {
-    flex: 1;
-    justify-content: center;
-  }
-}
-
-/* ------------------------------------------------------------
-   ЭТАП 2: Тизаны
+   Тизаны
    ------------------------------------------------------------ */
 .panel-head-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.head-actions {
+  display: flex;
+  gap: 8px;
+  flex: none;
+  flex-wrap: wrap;
 }
 
 .tisanes-grid {
@@ -688,11 +460,6 @@ body.page-shelf {
 .tisane-card {
   border-color: var(--green);
   background: linear-gradient(180deg, var(--green-soft), var(--surface));
-}
-
-.pill-tisane {
-  background: var(--green-soft);
-  color: var(--green-d);
 }
 
 .tisane-comp {
@@ -748,10 +515,6 @@ body.page-shelf {
   padding: 0 4px;
 }
 
-.unit-radio input {
-  accent-color: var(--green);
-}
-
 .tisane-result p {
   margin: 0 0 var(--space-2);
   font-size: 14px;
@@ -759,21 +522,14 @@ body.page-shelf {
 }
 
 /* ------------------------------------------------------------
-   ЭТАП 3: Неизвестные чаи
+   Неизвестные чаи
    ------------------------------------------------------------ */
 .unknown-card {
   border: 2px dashed #C9BEA6;
   background: var(--surface2);
 }
 
-.unknown-card.is-finished {
-  opacity: 0.6;
-}
-
-.pill-unknown {
-  background: #ECE7DA;
-  color: #776D58;
-}
+.unknown-card.is-finished { opacity: 0.6; }
 
 .unknown-photo {
   width: 100%;
@@ -813,12 +569,194 @@ body.page-shelf {
   margin: var(--space-2) 0 var(--space-3);
 }
 
-.head-actions {
+.danger-text { color: var(--red); }
+
+/* ------------------------------------------------------------
+   Journal
+   ------------------------------------------------------------ */
+.jentry {
   display: flex;
-  gap: 8px;
-  flex: none;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-1);
+  border-bottom: 1px dashed var(--line);
+  flex-wrap: wrap;
 }
 
-.danger-text {
-  color: var(--red);
+.jentry:last-child { border-bottom: none; }
+
+.jdate {
+  min-width: 64px;
+  padding-top: var(--space-1);
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--muted);
+}
+
+.jbody { flex: 1; min-width: 0; }
+.jbody b { font-size: 14px; }
+
+.jbody .jm {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.jnote {
+  margin-top: var(--space-1);
+  font-size: 13px;
+  line-height: 1.5;
+  color: #5C543F;
+}
+
+.jstars {
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: var(--amber);
+}
+
+/* ------------------------------------------------------------
+   Rating / presets
+   ------------------------------------------------------------ */
+.stars-input {
+  display: flex;
+  gap: 6px;
+  margin: var(--space-1) 0;
+}
+
+.star-btn {
+  background: none;
+  border: none;
+  font-size: 26px;
+  line-height: 1;
+  color: #D8CDB4;
+  transition: 0.12s;
+}
+
+.star-btn.on { color: var(--amber); }
+.star-btn:hover { transform: scale(1.15); }
+
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.preset {
+  border: 1px solid var(--line);
+  background: var(--surface2);
+  border-radius: var(--radius-xs);
+  padding: 9px 14px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.preset.sel {
+  background: var(--green-soft);
+  border-color: var(--green);
+  color: var(--green-d);
+}
+
+.previz {
+  background: var(--surface2);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  margin-bottom: var(--space-3);
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+.previz b { color: var(--green-d); }
+
+/* ------------------------------------------------------------
+   Shelf responsive — ФИКС ЭТАПА 0+: жёсткие ширины,
+   чтобы блоки не были «то уже, то шире» страницы
+   ------------------------------------------------------------ */
+@media (max-width: 960px) {
+  .shelf-layout {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  /* «распаковываем» колонки, чтобы order работал сквозь них */
+  .shelf-layout > aside,
+  .shelf-layout > .shelf-main {
+    display: contents;
+  }
+
+  /* ВСЕ распакованные дети — принудительно по ширине контейнера */
+  #shoppingPanel,
+  #favoritesPanel,
+  #moderationPanel,
+  #tisanesPanel,
+  #unknownsPanel,
+  #journalPanel,
+  #archivePanel,
+  .shelf-main .toolbar,
+  #shelfGrid {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* мобильный порядок блоков */
+  #shoppingPanel       { order: 1; }
+  .shelf-main .toolbar { order: 2; }
+  #shelfGrid           { order: 3; }
+  #tisanesPanel        { order: 4; }
+  #unknownsPanel       { order: 5; }
+  #favoritesPanel      { order: 6; }
+  #journalPanel        { order: 7; }
+  #moderationPanel     { order: 8; }
+  #archivePanel        { order: 9; }
+
+  .stats { grid-template-columns: 1fr 1fr; }
+
+  /* фильтрация: колонкой, поиск отдельной строкой */
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+  }
+
+  .shelf-search { width: 100%; }
+
+  .tabs {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .shelf-layout .sel {
+    width: 100%;
+    min-width: 0;
+  }
+
+  #shelfGrid {
+    grid-template-columns: repeat(auto-fill, minmax(min(290px, 100%), 1fr));
+  }
+
+  .tisanes-grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .card-actions .btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .panel-head-row { flex-wrap: wrap; }
+
+  .head-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .arch-actions { width: 100%; }
 }

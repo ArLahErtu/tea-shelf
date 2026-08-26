@@ -26,7 +26,7 @@ let brewRow = null;
 let brewRating = 0;
 let currentRow = null;
 
-const filters = { status: 'all', type: 'all', sort: 'ending' };
+const filters = { status: 'all', type: 'all', sort: 'ending', q: '' };
 
 const statusOf = (r) =>
   r.amount <= 0 ? 'finished'
@@ -190,6 +190,7 @@ function renderGrid() {
   }
 
   const list = active
+    .filter((r) => !filters.q || (r.tea.name || '').toLowerCase().includes(filters.q))
     .filter((r) => filters.status === 'all' || statusOf(r) === filters.status)
     .filter((r) =>
       filters.type === 'all' || r.tea.type === TYPE_TO_DB[filters.type])
@@ -623,6 +624,13 @@ function initFilters() {
     });
   });
 
+    let searchTimer = null;
+  $('#shelfSearch').addEventListener('input', (e) => {
+    filters.q = e.target.value.trim().toLowerCase();
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(renderGrid, 300);
+  });
+  
   $('#shelfTypeFilter').addEventListener('change', (e) => { filters.type = e.target.value; renderGrid(); });
   $('#shelfSort').addEventListener('change', (e) => { filters.sort = e.target.value; renderGrid(); });
 }
