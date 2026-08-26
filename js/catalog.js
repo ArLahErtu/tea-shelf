@@ -760,9 +760,11 @@ function initPropose() {
 }
 
 // ============================================================
-// ФОТО v6: сырой fetch с явным Content-Type (обходим капризный
-// storage-js, который мог отправить application/json).
-// Терпеливая проверка отдачи + автоконвертация в JPEG как запас.
+// ФОТО v7: грузим через storage-js БЕЗ явного Content-Type.
+// В браузере storage-js сам собирает FormData и шлёт MIME из
+// file.type — явный заголовок ломал multipart (400 Invalid
+// Content-Type / application/json). Мы лишь гарантируем, что
+// у File проставлен type, и держим запасную конвертацию в JPEG.
 // ============================================================
 
 const MIME_BY_EXT = {
@@ -774,7 +776,7 @@ const MIME_BY_EXT = {
   gif: 'image/gif',
 };
 
-// Бакет отверг формат/размер (а не сеть/права)?
+// Ошибка формата/размера (а не сеть/права)?
 function isFormatOrSizeError(err) {
   const msg = String(err?.message || '').toLowerCase();
   return /mime|content-?type|invalid request|exceeded the allowed size|too large/.test(msg)
@@ -821,41 +823,31 @@ async function verifyServedImage(url) {
   return false;
 }
 
-// Сырой аплоад: сами контролируем Content-Type на 100%
-async function rawUpload(path, blob, mime) {
-  const st = supabase.storage;
-  const url = `${st.url}/object/tea-photos/${path}`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      ...st.headers,               // apikey + Authorization
-      'Content-Type': mime,        // ЯВНЫЙ тип — никакого application/json
-      'x-upsert': 'false',
-      'cache-control': 'public, max-age=3600',
-    },
-    body: blob,
-  });
-  if (!res.ok) {
-    let msg = `HTTP ${res.status}`;
-    try { const j = await res.json(); msg = j.message || j.error || msg; } catch (e) { /* noop */ }
-    return { error: { message: msg, statusCode: res.status } };
-  }
-  const { data } = st.from('tea-photos').getPublicUrl(path);
-  return { publicUrl: data.publicUrl };
-}
-
 async function uploadPhoto(file, teaType, teaName = null) {
+  const bucketName = 'tea-photos';
   const seoType = getSeoTypeName(teaType);
   const baseName = teaName ? seoSlugify(teaName) : 'tea';
 
   const ext = file.name.split('.').pop().toLowerCase();
   const mime = file.type || MIME_BY_EXT[ext] || 'image/jpeg';
 
-  const doUpload = (f, m, e) => rawUpload(
-    seoType
+  const doUpload = async (f, m, e) => {
+    const path = seoType
       ? `${seoType}/${baseName}-${Date.now()}.${e}`
-      : `${baseName}-${Date.now()}.${e}`,
-    f, m);
+      : `${baseName}-${Date.now()}.${e}`;
+
+    // Гарантируем корректный MIME в FormData, если браузер не знал тип
+    const safe = f.type ? f : new File([f], `${baseName}-${Date.now()}.${e}`, { type: m });
+
+    // ВАЖНО: без опции contentType — multipart собирается сам
+    const { error } = await supabase.storage
+      .from(bucketName)
+      .upload(path, safe, { cacheControl: '3600', upsert: false });
+    if (error) return { error };
+
+    const { data } = supabase.storage.from(bucketName).getPublicUrl(path);
+    return { publicUrl: data.publicUrl };
+  };
 
   // 1) Грузим ОРИГИНАЛ — webp/avif остаются собой (вес + SEO)
   let res = await doUpload(file, mime, ext);
