@@ -36,7 +36,7 @@ export async function reloadUnknowns() {
     unknowns = [];
   } else {
     // ЭТАП 4: автоочистка просроченных (дублирует pg_cron)
-    await supabase.rpc('cleanup_finished_unknown_teas').catch(() => {});
+    try { await supabase.rpc('cleanup_finished_unknown_teas'); } catch (e) { /* noop */ }
 
     const { data } = await supabase.from('unknown_teas')
       .select('*')
