@@ -19,7 +19,7 @@
 // ============================================================
 import { initCommon } from './common.js';
 import { supabase } from './supabaseClient.js';
-import { TABLES } from './config.js';
+import { TABLES, SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
 import {
   $, $$, showToast, openOverlay, closeOverlay, wireOverlay,
   setInvalid, escapeHtml, plural, typeClass, TYPE_TO_DB, toTags, trackEvent,
@@ -760,12 +760,15 @@ function initPropose() {
 }
 
 // ============================================================
-// ФОТО v7: грузим через storage-js БЕЗ явного Content-Type.
-// В браузере storage-js сам собирает FormData и шлёт MIME из
-// file.type — явный заголовок ломал multipart (400 Invalid
-// Content-Type / application/json). Мы лишь гарантируем, что
-// у File проставлен type, и держим запасную конвертацию в JPEG.
+// ФОТО v8: сырой fetch с ЯВНЫМ Content-Type + сессионный токен
+// (проверенный рабочий механизм из v5). supabase-js терял тип
+// файла (application/json / octet-stream) — шлём сами в REST API.
+//   • оригиналы webp/avif сохраняются (вес + SEO);
+//   • терпеливая проверка отдачи (3 попытки);
+//   • конвертация в JPEG — только аварийно.
 // ============================================================
+
+const PHOTO_BUCKET = 'tea-photos';
 
 const MIME_BY_EXT = {
   jpg: 'image/jpeg',
@@ -780,7 +783,7 @@ const MIME_BY_EXT = {
 function isFormatOrSizeError(err) {
   const msg = String(err?.message || '').toLowerCase();
   return /mime|content-?type|invalid request|exceeded the allowed size|too large/.test(msg)
-    || ['413', '415'].includes(String(err?.statusCode));
+    || /413|415/.test(String(err?.message));
 }
 
 // Конвертация в JPEG (запасной путь) + даунскейл больших оригиналов
@@ -807,6 +810,32 @@ async function convertToJpeg(file, maxSide = 1600) {
   });
 }
 
+// Прямая загрузка в Storage через REST API (без supabase-js upload)
+async function rawStorageUpload(path, body, mime) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const url = `${SUPABASE_URL}/storage/v1/object/${PHOTO_BUCKET}/${path}`;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`,
+      'Content-Type': mime,          // ← явно говорим серверу тип файла
+      'x-upsert': 'false',
+      'cache-control': 'public, max-age=3600',
+    },
+    body,
+  });
+
+  if (!res.ok) {
+    let detail = `${res.status}`;
+    try { detail += ' ' + (await res.text()); } catch (e) { /* ignore */ }
+    throw new Error(detail);
+  }
+
+  return `${SUPABASE_URL}/storage/v1/object/public/${PHOTO_BUCKET}/${path}`;
+}
+
 // Терпеливая проверка: сервер отдаёт картинку как картинку?
 async function verifyServedImage(url) {
   for (let i = 1; i <= 3; i++) {
@@ -824,7 +853,6 @@ async function verifyServedImage(url) {
 }
 
 async function uploadPhoto(file, teaType, teaName = null) {
-  const bucketName = 'tea-photos';
   const seoType = getSeoTypeName(teaType);
   const baseName = teaName ? seoSlugify(teaName) : 'tea';
 
@@ -835,18 +863,11 @@ async function uploadPhoto(file, teaType, teaName = null) {
     const path = seoType
       ? `${seoType}/${baseName}-${Date.now()}.${e}`
       : `${baseName}-${Date.now()}.${e}`;
-
-    // Гарантируем корректный MIME в FormData, если браузер не знал тип
-    const safe = f.type ? f : new File([f], `${baseName}-${Date.now()}.${e}`, { type: m });
-
-    // ВАЖНО: без опции contentType — multipart собирается сам
-    const { error } = await supabase.storage
-      .from(bucketName)
-      .upload(path, safe, { cacheControl: '3600', upsert: false });
-    if (error) return { error };
-
-    const { data } = supabase.storage.from(bucketName).getPublicUrl(path);
-    return { publicUrl: data.publicUrl };
+    try {
+      return { publicUrl: await rawStorageUpload(path, f, m) };
+    } catch (err) {
+      return { error: err };
+    }
   };
 
   // 1) Грузим ОРИГИНАЛ — webp/avif остаются собой (вес + SEO)
