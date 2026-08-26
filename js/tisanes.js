@@ -4,13 +4,13 @@
 // экран результата, модалки заваривания и журнала.
 // RPC: tisane_find_or_create, brew_tisane, suggest_herb.
 // ============================================================
-import { supabase } from '../../tea-shelf-test/js/supabaseClient.js';
+import { supabase } from './supabaseClient.js';
 import {
   $, $$, showToast, openOverlay, closeOverlay, wireOverlay,
   escapeHtml, UNIT_LABELS,
-} from '../../tea-shelf-test/js/ui.js';
-import { getUser } from '../../tea-shelf-test/js/auth.js';
-import { openAmountModal } from '../../tea-shelf-test/js/amountModal.js';
+} from './ui.js';
+import { getUser } from './auth.js';
+import { openAmountModal } from './amountModal.js';
 
 let herbs = [];
 let myTisanes = [];
@@ -22,7 +22,6 @@ const herbById = new Map();
 const nameByUserTisaneId = new Map();
 const selected = new Map(); // herb_id -> { primary }
 
-// ---------- Имена ----------
 function tisaneName(row) {
   const num = row.tisane_catalog?.tisane_number ?? '–';
   return row.custom_name || row.tisane_catalog?.name || `Тизан #${num}`;
@@ -356,7 +355,6 @@ function injectMarkup() {
               <option value="sachet">пакетики</option>
               <option value="pcs">упаковки</option>
             </select>
-          </div>
           </div>
         </div>
         <div class="modal-foot">

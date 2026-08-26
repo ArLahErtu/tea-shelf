@@ -1,15 +1,16 @@
 // ============================================================
-// unknowns.js — ЭТАП 3: неизвестные чаи на полке.
+// unknowns.js — ЭТАПЫ 3–4: неизвестные чаи на полке.
 // Секция «❓ Неизвестные», форма с фото и предупреждением о
 // 30 днях, пунктирные карточки, заваривание (brew_unknown),
-// опознание (identify_unknown_tea), журнал.
+// опознание (identify_unknown_tea), журнал, модалка завершения,
+// архив журналов + CSV, напоминания 7/1 день.
 // ============================================================
-import { supabase } from '../../tea-shelf-test/js/supabaseClient.js';
+import { supabase } from './supabaseClient.js';
 import {
   $, $$, showToast, openOverlay, closeOverlay, wireOverlay,
   escapeHtml, UNIT_LABELS,
-} from '../../tea-shelf-test/js/ui.js';
-import { getUser } from '../../tea-shelf-test/js/auth.js';
+} from './ui.js';
+import { getUser } from './auth.js';
 
 let unknowns = [];
 let injected = false;
@@ -18,6 +19,7 @@ let brewRating = 0;
 let identifyRow = null;
 let identifyTeaId = null;
 let pendingPhotoUrl = null;
+let finishedRow = null;
 
 const nameByUnknownId = new Map();
 
@@ -30,7 +32,12 @@ export function unknownJournalName(j) {
 // ---------- Загрузка ----------
 export async function reloadUnknowns() {
   const user = getUser();
-  if (!user) { unknowns = []; } else {
+  if (!user) {
+    unknowns = [];
+  } else {
+    // ЭТАП 4: автоочистка просроченных (дублирует pg_cron)
+    await supabase.rpc('cleanup_finished_unknown_teas').catch(() => {});
+
     const { data } = await supabase.from('unknown_teas')
       .select('*')
       .eq('user_id', user.id)
@@ -38,9 +45,6 @@ export async function reloadUnknowns() {
       .order('unknown_number');
     unknowns = data || [];
   }
-  // ЭТАП 4: автоочистка просроченных (дублирует pg_cron)
-  await supabase.rpc('cleanup_finished_unknown_teas').catch(() => {});
-
   nameByUnknownId.clear();
   unknowns.forEach((r) =>
     nameByUnknownId.set(r.id, `${r.name || 'Неизвестный чай'} #${r.unknown_number}`));
@@ -58,7 +62,7 @@ export function renderUnknowns() {
     return;
   }
 
-  // ЭТАП 4: напоминания «7 дней / 1 день» (если пользователь не просил напомнить позже)
+  // ЭТАП 4: напоминания «7 дней / 1 день»
   unknowns.forEach((r) => {
     if (r.status !== 'finished' || !r.finished_at) return;
     if (r.remind_at && new Date(r.remind_at) > new Date()) return;
@@ -198,7 +202,7 @@ async function submitUnknownBrew() {
     p_note: $('#unknownBrewNote').value.trim() || null,
   });
   if (error) return showToast('Ошибка: ' + error.message, 'warn');
-  
+
   closeOverlay($('#unknownBrewOverlay'));
   const left = Number(data);
   await reloadUnknowns();
@@ -208,8 +212,6 @@ async function submitUnknownBrew() {
   } else {
     showToast(`Заваривание записано ☕ Осталось ${left} ${UNIT_LABELS[brewRow.quantity_unit] || 'г'}`);
   }
-  await reloadUnknowns();
-  renderUnknowns();
 }
 
 // ---------- Опознание ----------
@@ -274,7 +276,6 @@ async function confirmIdentify() {
   showToast(`Неизвестный чай #${identifyRow.unknown_number} опознан! Остатки перенесены на «${teaName}».`);
   await reloadUnknowns();
   renderUnknowns();
-  // полка изменилась (перенос остатка) — просим shelf.js перерисоваться
   window.dispatchEvent(new Event('tea-shelf-changed'));
 }
 
@@ -342,6 +343,124 @@ async function submitUnknownForm(e) {
   $('#unknownPhotoPreview').classList.add('hidden');
   await reloadUnknowns();
   renderUnknowns();
+}
+
+// ---------- ЭТАП 4: модалка завершения ----------
+function openFinishedModal(r) {
+  finishedRow = r;
+  $('#finishedUnknownName').textContent =
+    `${r.name || 'Неизвестный чай'} #${r.unknown_number}`;
+  $('#finishedManualRow').classList.add('hidden');
+  $('#finishedManualName').value = '';
+  const del = $('#finishedDeleteBtn');
+  delete del.dataset.armed;
+  del.textContent = '🗑 Удалить сейчас';
+  openOverlay($('#unknownFinishedOverlay'));
+}
+
+async function finishedAction(action) {
+  if (!finishedRow) return;
+  const r = finishedRow;
+
+  if (action === 'remind') {
+    const { error } = await supabase.from('unknown_teas')
+      .update({ remind_at: new Date(Date.now() + 7 * 864e5).toISOString() })
+      .eq('id', r.id);
+    if (error) return showToast('Ошибка: ' + error.message, 'warn');
+    closeOverlay($('#unknownFinishedOverlay'));
+    showToast('⏰ Напомним через 7 дней');
+    await reloadUnknowns();
+    renderUnknowns();
+    return;
+  }
+
+  const { error } = await supabase.rpc('unknown_lifecycle_action', {
+    p_unknown_id: r.id,
+    p_action: action, // 'archive' | 'delete'
+  });
+  if (error) return showToast('Ошибка: ' + error.message, 'warn');
+
+  closeOverlay($('#unknownFinishedOverlay'));
+  showToast(action === 'archive'
+    ? 'Запись перенесена в архив'
+    : `Неизвестный чай #${r.unknown_number} удалён. Журнал завариваний сохранён в архиве.`);
+  await reloadUnknowns();
+  renderUnknowns();
+}
+
+async function finishedManualIdentify() {
+  const q = $('#finishedManualName').value.trim();
+  if (!q || !finishedRow) return;
+  const { data } = await supabase.from('tea_catalog')
+    .select('id, name').eq('status', 'published')
+    .ilike('name', q).limit(1);
+  const tea = (data || [])[0];
+  if (!tea) return showToast('Такой чай не найден в каталоге', 'warn');
+
+  const { error } = await supabase.rpc('identify_unknown_tea', {
+    p_unknown_id: finishedRow.id,
+    p_tea_id: Number(tea.id),
+  });
+  if (error) return showToast('Ошибка: ' + error.message, 'warn');
+
+  closeOverlay($('#unknownFinishedOverlay'));
+  showToast(`Неизвестный чай #${finishedRow.unknown_number} опознан! Остатки перенесены на «${tea.name}».`);
+  await reloadUnknowns();
+  renderUnknowns();
+  window.dispatchEvent(new Event('tea-shelf-changed'));
+}
+
+// ---------- ЭТАП 4: архив журналов + CSV ----------
+async function openArchiveOverlay() {
+  const list = $('#archiveOvList');
+  list.innerHTML = '<p class="hint">Загружаем…</p>';
+  openOverlay($('#unknownArchiveOverlay'));
+
+  const user = getUser();
+  const { data } = await supabase.from('brew_journal_archive')
+    .select('*').eq('user_id', user.id)
+    .order('created_at', { ascending: false });
+
+  const rows = data || [];
+  list.innerHTML = '';
+  if (!rows.length) {
+    list.innerHTML = '<p class="hint">Архив пуст.</p>';
+    return;
+  }
+  rows.forEach((a) => {
+    const node = document.createElement('div');
+    node.className = 'jentry';
+    node.innerHTML = `
+      <div class="jdate">${new Date(a.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: '2-digit' })}</div>
+      <div class="jbody">
+        <b>${escapeHtml(a.source_ref)}</b>
+        <div class="jm">${(a.payload || []).length} записей</div>
+      </div>
+      <button class="btn btn-outline btn-sm" type="button">CSV</button>`;
+    node.querySelector('button').addEventListener('click', () => downloadCsv(a));
+    list.appendChild(node);
+  });
+}
+
+function downloadCsv(a) {
+  const rows = [['дата', 'чай', 'количество', 'единица', 'оценка', 'заметка']];
+  (a.payload || []).forEach((e) => rows.push([
+    e.created_at ? new Date(e.created_at).toLocaleDateString('ru-RU') : '',
+    a.source_ref,
+    e.amount ?? '',
+    e.unit ?? '',
+    e.rating ?? '',
+    e.note ?? '',
+  ]));
+  const csv = rows
+    .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(';'))
+    .join('\n');
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `journal-${a.source_ref.replace(/[^\wа-яё-]+/gi, '_')}.csv`;
+  link.click();
+  URL.revokeObjectURL(link.href);
 }
 
 // ---------- Инъекция разметки ----------
@@ -413,6 +532,46 @@ function injectMarkup() {
     </div>
   </div>
 
+  <div class="overlay" id="unknownFinishedOverlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="finishedTitle">
+      <div class="modal-head">
+        <h2 id="finishedTitle">Неизвестный чай закончился</h2>
+        <button class="icon-btn" id="finishedClose" type="button" aria-label="Закрыть">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <p class="modal-sub" id="finishedUnknownName">—</p>
+      <p class="hint">Хотите опознать его перед удалением?</p>
+      <div class="stack-actions">
+        <button class="btn btn-outline" type="button" id="finishedIdentifyBtn">🔍 Найти в каталоге</button>
+        <button class="btn btn-outline" type="button" id="finishedManualToggle">✍️ Ввести название вручную</button>
+        <div class="row2 hidden" id="finishedManualRow">
+          <input id="finishedManualName" type="text" placeholder="Название чая из каталога">
+          <button class="btn btn-sm" type="button" id="finishedManualSubmit">Опознать</button>
+        </div>
+        <button class="btn btn-outline" type="button" id="finishedAiBtn">📷 Фото для ИИ-идентификации</button>
+      </div>
+      <p class="hint">Если не опознать:</p>
+      <div class="stack-actions">
+        <button class="btn btn-outline" type="button" id="finishedArchiveBtn">📦 Перенести в архив</button>
+        <button class="btn btn-outline" type="button" id="finishedRemindBtn">⏰ Напомнить через 7 дней</button>
+        <button class="btn btn-ghost danger-text" type="button" id="finishedDeleteBtn">🗑 Удалить сейчас</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="unknownArchiveOverlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="archiveOvTitle">
+      <div class="modal-head">
+        <h2 id="archiveOvTitle">📚 Архив журналов</h2>
+        <button class="icon-btn" id="archiveOvClose" type="button" aria-label="Закрыть">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <div id="archiveOvList" class="journal-tea-list"></div>
+    </div>
+  </div>
+
   <div class="overlay" id="unknownIdentifyOverlay" hidden>
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="identifyTitle">
       <div class="modal-head">
@@ -467,45 +626,6 @@ function injectMarkup() {
           <button class="btn btn-primary" type="submit">Заварил</button>
         </div>
       </form>
-    </div>
-  </div>
-    <div class="overlay" id="unknownFinishedOverlay" hidden>
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="finishedTitle">
-      <div class="modal-head">
-        <h2 id="finishedTitle">Неизвестный чай закончился</h2>
-        <button class="icon-btn" id="finishedClose" type="button" aria-label="Закрыть">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
-        </button>
-      </div>
-      <p class="modal-sub" id="finishedUnknownName">—</p>
-      <p class="hint">Хотите опознать его перед удалением?</p>
-      <div class="stack-actions">
-        <button class="btn btn-outline" type="button" id="finishedIdentifyBtn">🔍 Найти в каталоге</button>
-        <button class="btn btn-outline" type="button" id="finishedManualToggle">✍️ Ввести название вручную</button>
-        <div class="row2 hidden" id="finishedManualRow">
-          <input id="finishedManualName" type="text" placeholder="Название чая из каталога">
-          <button class="btn btn-sm" type="button" id="finishedManualSubmit">Опознать</button>
-        </div>
-        <button class="btn btn-outline" type="button" id="finishedAiBtn">📷 Фото для ИИ-идентификации</button>
-      </div>
-      <p class="hint">Если не опознать:</p>
-      <div class="stack-actions">
-        <button class="btn btn-outline" type="button" id="finishedArchiveBtn">📦 Перенести в архив</button>
-        <button class="btn btn-outline" type="button" id="finishedRemindBtn">⏰ Напомнить через 7 дней</button>
-        <button class="btn btn-ghost danger-text" type="button" id="finishedDeleteBtn">🗑 Удалить сейчас</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="overlay" id="unknownArchiveOverlay" hidden>
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="archiveOvTitle">
-      <div class="modal-head">
-        <h2 id="archiveOvTitle">📚 Архив журналов</h2>
-        <button class="icon-btn" id="archiveOvClose" type="button" aria-label="Закрыть">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
-        </button>
-      </div>
-      <div id="archiveOvList" class="journal-tea-list"></div>
     </div>
   </div>
 
@@ -582,7 +702,8 @@ export async function initUnknowns() {
     // Журнал
     wireOverlay($('#unknownJournalOverlay'));
     $('#unknownJournalClose').addEventListener('click', () => closeOverlay($('#unknownJournalOverlay')));
-        // ЭТАП 4: модалка завершения
+
+    // ЭТАП 4: модалка завершения
     $('#finishedClose').addEventListener('click', () => closeOverlay($('#unknownFinishedOverlay')));
     $('#finishedIdentifyBtn').addEventListener('click', () => {
       const r = finishedRow;
@@ -624,125 +745,4 @@ export async function initUnknowns() {
 
   await reloadUnknowns();
   renderUnknowns();
-}
-
-// ============================================================
-// ЭТАП 4: модалка завершения, архив журналов, CSV
-// ============================================================
-let finishedRow = null;
-
-function openFinishedModal(r) {
-  finishedRow = r;
-  $('#finishedUnknownName').textContent =
-    `${r.name || 'Неизвестный чай'} #${r.unknown_number}`;
-  $('#finishedManualRow').classList.add('hidden');
-  $('#finishedManualName').value = '';
-  const del = $('#finishedDeleteBtn');
-  delete del.dataset.armed;
-  del.textContent = '🗑 Удалить сейчас';
-  openOverlay($('#unknownFinishedOverlay'));
-}
-
-async function finishedAction(action) {
-  if (!finishedRow) return;
-  const r = finishedRow;
-
-  if (action === 'remind') {
-    const { error } = await supabase.from('unknown_teas')
-      .update({ remind_at: new Date(Date.now() + 7 * 864e5).toISOString() })
-      .eq('id', r.id);
-    if (error) return showToast('Ошибка: ' + error.message, 'warn');
-    closeOverlay($('#unknownFinishedOverlay'));
-    showToast('⏰ Напомним через 7 дней');
-    await reloadUnknowns();
-    renderUnknowns();
-    return;
-  }
-
-  const { error } = await supabase.rpc('unknown_lifecycle_action', {
-    p_unknown_id: r.id,
-    p_action: action, // 'archive' | 'delete'
-  });
-  if (error) return showToast('Ошибка: ' + error.message, 'warn');
-
-  closeOverlay($('#unknownFinishedOverlay'));
-  showToast(action === 'archive'
-    ? 'Запись перенесена в архив'
-    : `Неизвестный чай #${r.unknown_number} удалён. Журнал завариваний сохранён в архиве.`);
-  await reloadUnknowns();
-  renderUnknowns();
-}
-
-async function finishedManualIdentify() {
-  const q = $('#finishedManualName').value.trim();
-  if (!q || !finishedRow) return;
-  const { data } = await supabase.from('tea_catalog')
-    .select('id, name').eq('status', 'published')
-    .ilike('name', q).limit(1);
-  const tea = (data || [])[0];
-  if (!tea) return showToast('Такой чай не найден в каталоге', 'warn');
-
-  const { error } = await supabase.rpc('identify_unknown_tea', {
-    p_unknown_id: finishedRow.id,
-    p_tea_id: Number(tea.id),
-  });
-  if (error) return showToast('Ошибка: ' + error.message, 'warn');
-
-  closeOverlay($('#unknownFinishedOverlay'));
-  showToast(`Неизвестный чай #${finishedRow.unknown_number} опознан! Остатки перенесены на «${tea.name}».`);
-  await reloadUnknowns();
-  renderUnknowns();
-  window.dispatchEvent(new Event('tea-shelf-changed'));
-}
-
-async function openArchiveOverlay() {
-  const list = $('#archiveOvList');
-  list.innerHTML = '<p class="hint">Загружаем…</p>';
-  openOverlay($('#unknownArchiveOverlay'));
-
-  const user = getUser();
-  const { data } = await supabase.from('brew_journal_archive')
-    .select('*').eq('user_id', user.id)
-    .order('created_at', { ascending: false });
-
-  const rows = data || [];
-  list.innerHTML = '';
-  if (!rows.length) {
-    list.innerHTML = '<p class="hint">Архив пуст.</p>';
-    return;
-  }
-  rows.forEach((a) => {
-    const node = document.createElement('div');
-    node.className = 'jentry';
-    node.innerHTML = `
-      <div class="jdate">${new Date(a.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: '2-digit' })}</div>
-      <div class="jbody">
-        <b>${escapeHtml(a.source_ref)}</b>
-        <div class="jm">${(a.payload || []).length} записей</div>
-      </div>
-      <button class="btn btn-outline btn-sm" type="button">CSV</button>`;
-    node.querySelector('button').addEventListener('click', () => downloadCsv(a));
-    list.appendChild(node);
-  });
-}
-
-function downloadCsv(a) {
-  const rows = [['дата', 'чай', 'количество', 'единица', 'оценка', 'заметка']];
-  (a.payload || []).forEach((e) => rows.push([
-    e.created_at ? new Date(e.created_at).toLocaleDateString('ru-RU') : '',
-    a.source_ref,
-    e.amount ?? '',
-    e.unit ?? '',
-    e.rating ?? '',
-    e.note ?? '',
-  ]));
-  const csv = rows
-    .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(';'))
-    .join('\n');
-  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = `journal-${a.source_ref.replace(/[^\wа-яё-]+/gi, '_')}.csv`;
-  link.click();
-  URL.revokeObjectURL(link.href);
 }
