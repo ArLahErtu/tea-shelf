@@ -14,8 +14,8 @@ import {
 import { getUser, onAuthChange } from './auth.js';
 import { openTeaModal } from './teaModal.js';
 import { initAmountModal, openAmountModal } from './amountModal.js';
-import { initTisanes, reloadTisanes, renderTisanes, tisaneJournalName } from '../../tea-shelf/js/tisanes.js';
-import { initUnknowns, reloadUnknowns, renderUnknowns, unknownJournalName } from '../../tea-shelf/js/unknowns.js';
+import { initTisanes, reloadTisanes, renderTisanes, tisaneJournalName } from '../../js/tisanes.js';
+import { initUnknowns, reloadUnknowns, renderUnknowns, unknownJournalName } from '../../js/unknowns.js';
 
 let shelf = [];
 let journal = [];
