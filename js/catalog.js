@@ -16,6 +16,7 @@
 //   Если бакет отверг формат/размер — автоконвертация в JPEG
 //   и повтор, пользователь ошибку не видит.
 //   ЭТАП 0: добавлен обработчик загрузки фото из модалки модерации.
+// ЭТАП 5: Тизаны в каталоге — отдельный тип, состав трав.
 // ============================================================
 import { initCommon } from './common.js';
 import { supabase } from './supabaseClient.js';
@@ -34,20 +35,30 @@ let published = [];   // загруженные страницы published
 let pending = [];     // мои pending-заявки (автор видит свои)
 let pendingAll = [];  // ВСЕ pending-заявки (только модератор, RPC)
 let teas = [];        // pending + published (для поиска по клику)
+let tisanes = [];     // тизаны из tisane_catalog
 let myShelf = new Set();
 let favorites = new Set();
 let currentTea = null;
 let currentUser = null;
-let currentModerationTea = null; // заявка, открытая в модалке модерации
-let moderationError = false;     // RPC упал — показываем тихий блок в сетке
+let currentModerationTea = null;
+let moderationError = false;
 
 let viewMode = 'catalog'; // 'catalog' | 'moderation'
 
-let loadedCount = 0;  // сколько published загружено в текущем запросе
-let canMore = false;  // возможно, в базе есть ещё
+let loadedCount = 0;
+let canMore = false;
 let loading = false;
 
 const state = { q: '', sort: 'popular', type: 'all' };
+
+// ---------- Справочник трав (для тизанов) ----------
+let herbsById = new Map();
+
+async function loadHerbs() {
+  const { data } = await supabase.from('herbs').select('*').order('name');
+  herbsById.clear();
+  (data || []).forEach((h) => herbsById.set(h.id, h));
+}
 
 // ---------- Устойчивость к сети ----------
 async function safeFetch(build, label = '') {
@@ -72,11 +83,9 @@ function pageQuery(offset) {
   let q = supabase.from(TABLES.catalog).select('*')
     .eq('status', 'published');
   if (state.type !== 'all') {
-    // ilike — регистронезависимо: 'Улун' из селекта найдёт 'улун' в БД
     q = q.ilike('type', state.type);
   }
   if (state.q) {
-    // Поиск по name, region И tags
     q = q.or(`name.ilike.%${state.q}%,region.ilike.%${state.q}%,tags.ilike.%${state.q}%`);
   }
   if (state.sort === 'popular') {
@@ -89,8 +98,24 @@ function pageQuery(offset) {
   return q.range(offset, offset + PAGE_SIZE - 1);
 }
 
+// ---------- Загрузка тизанов из tisane_catalog ----------
+function tisaneQuery(offset) {
+  let q = supabase.from('tisane_catalog').select('*');
+  if (state.q) {
+    const qq = state.q.toLowerCase();
+    // Фильтруем по названию или свойствам
+    q = q.or(`name.ilike.%${state.q}%`);
+  }
+  q = q.order('tisane_number', { ascending: true });
+  return q.range(offset, offset + PAGE_SIZE - 1);
+}
+
 function loadPublished(offset = 0) {
   return safeFetch(() => pageQuery(offset), `catalog page ${offset}`);
+}
+
+function loadTisanes(offset = 0) {
+  return safeFetch(() => tisaneQuery(offset), `tisane page ${offset}`);
 }
 
 // ---------- Модерация: загрузка ВСЕХ pending через RPC ----------
@@ -119,6 +144,8 @@ function syncUrlWithMode() {
 
 // ---------- Загрузка (старт / смена входа) ----------
 async function load() {
+  await loadHerbs(); // загружаем травы для тизанов
+
   const first = await loadPublished(0);
   if (first === null) {
     throw new Error('Нет соединения с базой. Проверь сеть/блокировщики и нажми «Повторить».');
@@ -127,11 +154,14 @@ async function load() {
   loadedCount = first.length;
   canMore = first.length === PAGE_SIZE;
 
+  // Загружаем тизаны
+  const firstTisanes = await loadTisanes(0);
+  tisanes = firstTisanes || [];
+
   pending = [];
   const user = getUser();
   currentUser = user;
 
-  // Тумблер режимов виден только при ВКЛЮЧЁННОМ режиме модератора
   $('#modeSwitch').classList.toggle('hidden', !isModerationActive());
 
   if (user) {
@@ -149,7 +179,6 @@ async function load() {
   }
   teas = pending.concat(published);
 
-  // Определяем вкладку: уже включена / пришли по ссылке с тумблера
   const params = new URLSearchParams(location.search);
   const wantModeration = isModerationActive() && (
     viewMode === 'moderation' || params.get('moderation') === '1'
@@ -186,6 +215,19 @@ async function refresh() {
     render();
     return;
   }
+
+  // Если выбран тип «Тизан» — загружаем тизаны
+  if (state.type === 'tisane') {
+    const first = await loadTisanes(0);
+    if (first === null) return showToast('Не удалось обновить список', 'warn');
+    tisanes = first;
+    loadedCount = first.length;
+    canMore = first.length === PAGE_SIZE;
+    render();
+    renderMore();
+    return;
+  }
+
   const first = await loadPublished(0);
   if (first === null) return showToast('Не удалось обновить список', 'warn');
   published = first;
@@ -203,6 +245,23 @@ async function loadMore() {
   const btn = $('#moreBtn');
   btn.disabled = true;
   btn.textContent = 'Загружаем…';
+
+  // Если тип «Тизан» — загружаем тизаны
+  if (state.type === 'tisane') {
+    const next = await loadTisanes(loadedCount);
+    loading = false;
+    if (next === null) {
+      btn.disabled = false;
+      btn.textContent = 'Показать ещё';
+      return showToast('Не удалось загрузить ещё. Нажмите снова', 'warn');
+    }
+    tisanes = tisanes.concat(next);
+    loadedCount += next.length;
+    canMore = next.length === PAGE_SIZE;
+    render();
+    renderMore();
+    return;
+  }
 
   const next = await loadPublished(loadedCount);
   loading = false;
@@ -243,15 +302,15 @@ function filterPending(list) {
       (t.tags || '').toLowerCase().includes(q));
   }
   if (state.type !== 'all') {
+    const dbType = TYPE_TO_DB[state.type] || state.type;
     res = res.filter((t) =>
-      String(t.type || '').toLowerCase() === state.type.toLowerCase());
+      String(t.type || '').toLowerCase() === dbType.toLowerCase());
   }
   if (state.sort === 'name') {
     res.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ru'));
   } else if (state.sort === 'popular') {
     res.sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
   } else {
-    // в tea_catalog нет created_at — новые заявки имеют больший id
     res.sort((a, b) => (b.id || 0) - (a.id || 0));
   }
   return res;
@@ -260,7 +319,6 @@ function filterPending(list) {
 // ---------- Транслитерация и SEO-оптимизация ----------
 function transliterate(text) {
   if (!text) return '';
-
   const ru = {
     'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd',
     'е': 'e', 'ё': 'yo', 'ж': 'zh', 'з': 'z', 'и': 'i',
@@ -270,7 +328,6 @@ function transliterate(text) {
     'ш': 'sh', 'щ': 'shch', 'ъ': '', 'ы': 'y', 'ь': '',
     'э': 'e', 'ю': 'yu', 'я': 'ya'
   };
-
   return text.toLowerCase()
     .split('')
     .map(char => ru[char] || char)
@@ -279,47 +336,34 @@ function transliterate(text) {
 
 function seoSlugify(text) {
   if (!text) return 'tea';
-
   return transliterate(text)
-    .replace(/[^\w\s-]/g, '')           // удаляем спецсимволы
-    .replace(/\s+/g, '-')               // пробелы → дефисы
-    .replace(/-+/g, '-')                // множественные дефисы → один
-    .replace(/^-+|-+$/g, '')            // убираем дефисы с краёв
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
     .toLowerCase()
-    .slice(0, 60);                      // ограничиваем длину
+    .slice(0, 60);
 }
 
-// ---------- SEO-оптимизация типа чая для URL ----------
 function getSeoTypeName(type) {
   if (!type) return 'other';
-
-  // Словарь транслитерации для типов
   const typeMap = {
-    'зелёный': 'green',
-    'зеленый': 'green',
-    'чёрный': 'black',
-    'черный': 'black',
-    'улун': 'oolong',
-    'пуэр': 'puerh',
-    'белый': 'white',
-    'жёлтый': 'yellow',
-    'желтый': 'yellow',
-    'красный': 'red',
-    'хэй ча': 'hei-cha',
-    'хэйча': 'hei-cha',
-    'цветочный': 'floral',
-    'матте': 'matte',
-    'матча': 'matcha',
-    'травяной': 'herbal',
-    'смесь': 'blend',
-    'купаж': 'blend',
+    'зелёный': 'green', 'зеленый': 'green',
+    'чёрный': 'black', 'черный': 'black',
+    'улун': 'oolong', 'пуэр': 'puerh',
+    'белый': 'white', 'жёлтый': 'yellow', 'желтый': 'yellow',
+    'красный': 'red', 'хэй ча': 'hei-cha', 'хэйча': 'hei-cha',
+    'цветочный': 'floral', 'матте': 'matte', 'матча': 'matcha',
+    'травяной': 'herbal', 'смесь': 'blend', 'купаж': 'blend',
+    'тизан': 'tisane',
   };
-
   const lowerType = type.toLowerCase();
   return typeMap[lowerType] || lowerType.replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
 }
 
-// ---------- Рендер ----------
+// ============================================================
+// РЕНДЕР КАРТОЧКИ ЧАЯ (обычный чай из tea_catalog)
+// ============================================================
 function cardNode(tea) {
   const node = $('#teaCardTemplate').content.firstElementChild.cloneNode(true);
   node.dataset.teaId = tea.id;
@@ -365,9 +409,6 @@ function cardNode(tea) {
   node.querySelector('.heart').classList.toggle('hidden', inModeration);
   node.querySelector('.heart').classList.toggle('on', favorites.has(tea.id));
 
-  // Кнопка редактирования (только в режиме каталога и при ВКЛ-тумблере):
-  // - Модератор может редактировать ВСЕ чаи
-  // - Автор может редактировать ТОЛЬКО pending чаи (даже без тумблера)
   const canEdit = !inModeration && (
     isModerationActive() || (tea.author_id === currentUser?.id && tea.status === 'pending')
   );
@@ -387,12 +428,56 @@ function cardNode(tea) {
   return node;
 }
 
+// ============================================================
+// РЕНДЕР КАРТОЧКИ ТИЗАНА (из tisane_catalog)
+// ============================================================
+function tisaneCardNode(tisane) {
+  const node = document.createElement('article');
+  node.className = 'tcard';
+  node.dataset.tisaneId = tisane.id;
+
+  const comp = (tisane.composition || [])
+    .map((c) => {
+      const herb = herbsById.get(c.herb_id);
+      const name = herb ? escapeHtml(herb.name) : '—';
+      return c.is_primary ? `<b>${name}</b>` : name;
+    })
+    .join(', ');
+
+  const props = (tisane.properties || []);
+  const displayName = tisane.name || `Тизан #${tisane.tisane_number}`;
+
+  node.innerHTML = `
+    <div class="tmedia">
+      <div class="ph" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M5 20c0-8 5-13 14-15-1 9-6 14-14 15Z"/></svg>
+      </div>
+      <div class="media-top">
+        <span class="typechip tc-tisane">Тизан</span>
+      </div>
+    </div>
+    <div class="tbody">
+      <h3 class="tname">${escapeHtml(displayName)}</h3>
+      <p class="tdesc">${comp || 'Состав не указан'}</p>
+      ${props.length ? `<div class="tagrow">${props.map((p) => `<span class="tag">${escapeHtml(p)}</span>`).join('')}</div>` : ''}
+    </div>
+    <div class="tfoot">
+      <span class="pop">#${tisane.tisane_number}</span>
+      <button class="btn btn-outline btn-sm" type="button" data-action="add-tisane-to-shelf">На полку</button>
+    </div>`;
+
+  return node;
+}
+
+// ============================================================
+// РЕНДЕР СЕТКИ
+// ============================================================
 function render() {
   const grid = $('#catalogGrid');
   grid.setAttribute('aria-busy', 'false');
   grid.innerHTML = '';
 
-  // ----- Режим модерации: показываем ВСЕ pending -----
+  // ----- Режим модерации -----
   if (viewMode === 'moderation') {
     if (moderationError) {
       grid.innerHTML = `<div class="empty grid-col-span">
@@ -413,8 +498,21 @@ function render() {
     return;
   }
 
-  // ----- Обычный режим каталога -----
-  const list = teas; // фильтрация/сортировка уже выполнены сервером
+  // ----- Режим каталога: тизаны -----
+  if (state.type === 'tisane') {
+    if (!tisanes.length) {
+      grid.innerHTML = `<div class="empty grid-col-span">
+        <h3>Тизанов пока нет</h3>
+        <p>Создайте первый сбор на странице «Полка» — он появится здесь.</p>
+      </div>`;
+      return;
+    }
+    tisanes.forEach((t) => grid.appendChild(tisaneCardNode(t)));
+    return;
+  }
+
+  // ----- Режим каталога: обычный чай -----
+  const list = teas;
   if (!list.length) {
     grid.innerHTML = `<div class="empty grid-col-span">
       <h3>Ничего не найдено</h3>
@@ -454,7 +552,7 @@ async function toggleFavorite(tea) {
   render();
 }
 
-// ---------- Действия ----------
+// ---------- Добавление обычного чая на полку ----------
 async function addToShelf(tea, payload) {
   const user = getUser();
   if (!user) return;
@@ -468,7 +566,6 @@ async function addToShelf(tea, payload) {
     low_threshold: payload.threshold,
   });
   if (error) {
-    // 23505 = unique_violation: чай уже на полке (страховка БД)
     if (error.code === '23505') {
       myShelf.add(tea.id);
       render();
@@ -479,7 +576,7 @@ async function addToShelf(tea, payload) {
   myShelf.add(tea.id);
   showToast(`«${tea.name}» добавлен на полку`);
   trackEvent('tea_added_to_shelf', { tea_id: tea.id, tea_name: tea.name, unit: payload.unit });
-  $('#addToShelfBtn')?.classList.add('hidden'); // чай уже на полке — кнопка модалки гаснет
+  $('#addToShelfBtn')?.classList.add('hidden');
   render();
 }
 
@@ -489,6 +586,47 @@ function requestAdd(tea) {
     mode: 'add',
     teaName: tea.name,
     onSubmit: (p) => addToShelf(tea, p),
+  });
+}
+
+// ---------- Добавление тизана на полку ----------
+async function addToShelfTisane(tisane) {
+  const user = getUser();
+  if (!user) { showToast('Сначала войдите', 'warn'); return; }
+
+  const displayName = tisane.name || `Тизан #${tisane.tisane_number}`;
+
+  openAmountModal({
+    mode: 'add',
+    teaName: displayName,
+    onSubmit: async (p) => {
+      // Проверяем, есть ли уже такой тизан у пользователя
+      const { data: existing } = await supabase.from('user_tisanes')
+        .select('id, quantity')
+        .eq('user_id', user.id)
+        .eq('tisane_catalog_id', tisane.id)
+        .maybeSingle();
+
+      if (existing) {
+        // Обновляем количество
+        const { error } = await supabase.from('user_tisanes')
+          .update({ quantity: Number(existing.quantity) + p.amount })
+          .eq('id', existing.id);
+        if (error) return showToast('Ошибка: ' + error.message, 'warn');
+        showToast(`«${displayName}» пополнен на ${p.amount} ${p.unit === 'g' ? 'г' : p.unit}`);
+      } else {
+        // Создаём новую запись
+        const { error } = await supabase.from('user_tisanes').insert({
+          user_id: user.id,
+          tisane_catalog_id: tisane.id,
+          quantity: p.amount,
+          quantity_unit: p.unit,
+        });
+        if (error) return showToast('Ошибка: ' + error.message, 'warn');
+        showToast(`«${displayName}» добавлен на полку`);
+      }
+      trackEvent('tea_added_to_shelf', { tisane_id: tisane.id, unit: p.unit });
+    },
   });
 }
 
@@ -502,7 +640,6 @@ function openModerateModal(tea) {
 
   $('#moderateName').value = tea.name || '';
 
-  // Подбираем option селекта по значению в нижнем регистре
   const typeSel = $('#moderateType');
   const want = String(tea.type || '').toLowerCase();
   const opt = [...typeSel.options].find((o) => o.value.toLowerCase() === want);
@@ -517,7 +654,6 @@ function openModerateModal(tea) {
   $('#moderateTags').value = tea.tags || '';
   $('#moderatePhoto').value = tea.photo_url || '';
 
-  // Текущее фото в модалке модерации
   const img = $('#moderateCurrentPhoto');
   if (img) {
     if (tea.photo_url) {
@@ -534,7 +670,6 @@ function openModerateModal(tea) {
   openOverlay(ov);
 }
 
-// Предупреждение, если чай с таким названием уже опубликован
 async function checkDuplicate(tea) {
   const name = (tea.name || '').trim();
   if (!name) return;
@@ -548,7 +683,6 @@ async function checkDuplicate(tea) {
   $('#moderateDuplicateWarn').classList.toggle('hidden', !(data && data.length));
 }
 
-// Собираем отредактированные поля из модалки модерации
 function collectModerateData() {
   const data = {
     name: $('#moderateName').value.trim(),
@@ -644,8 +778,7 @@ async function rejectCurrentTea() {
 }
 
 // ============================================================
-// РЕДАКТИРОВАНИЕ карточки (модератор с вкл. тумблером — любые,
-// автор — свои pending)
+// РЕДАКТИРОВАНИЕ карточки
 // ============================================================
 function openEditTeaModal(tea) {
   const ov = $('#editTeaOverlay');
@@ -669,7 +802,6 @@ function openEditTeaModal(tea) {
   $('#editTeaTags').value = tea.tags || '';
   $('#editTeaPhotoUrl').value = tea.photo_url || '';
 
-  // Показываем текущее фото
   const img = $('#editTeaCurrentPhoto');
   if (tea.photo_url) {
     img.src = tea.photo_url;
@@ -713,7 +845,7 @@ async function saveEditedTea(formData) {
   }
 
   showToast('✅ Чай обновлён');
-  await load(); // перезагружаем каталог
+  await load();
   return true;
 }
 
@@ -761,32 +893,20 @@ function initPropose() {
 
 // ============================================================
 // ФОТО v8: сырой fetch с ЯВНЫМ Content-Type + сессионный токен
-// (проверенный рабочий механизм из v5). supabase-js терял тип
-// файла (application/json / octet-stream) — шлём сами в REST API.
-//   • оригиналы webp/avif сохраняются (вес + SEO);
-//   • терпеливая проверка отдачи (3 попытки);
-//   • конвертация в JPEG — только аварийно.
 // ============================================================
-
 const PHOTO_BUCKET = 'tea-photos';
 
 const MIME_BY_EXT = {
-  jpg: 'image/jpeg',
-  jpeg: 'image/jpeg',
-  png: 'image/png',
-  webp: 'image/webp',
-  avif: 'image/avif',
-  gif: 'image/gif',
+  jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
+  webp: 'image/webp', avif: 'image/avif', gif: 'image/gif',
 };
 
-// Ошибка формата/размера (а не сеть/права)?
 function isFormatOrSizeError(err) {
   const msg = String(err?.message || '').toLowerCase();
   return /mime|content-?type|invalid request|exceeded the allowed size|too large/.test(msg)
     || /413|415/.test(String(err?.message));
 }
 
-// Конвертация в JPEG (запасной путь) + даунскейл больших оригиналов
 async function convertToJpeg(file, maxSide = 1600) {
   const bitmap = await createImageBitmap(file);
   const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
@@ -797,7 +917,7 @@ async function convertToJpeg(file, maxSide = 1600) {
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#ffffff'; // прозрачность webp/avif → белый фон
+  ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, w, h);
   ctx.drawImage(bitmap, 0, 0, w, h);
   bitmap.close?.();
@@ -810,7 +930,6 @@ async function convertToJpeg(file, maxSide = 1600) {
   });
 }
 
-// Прямая загрузка в Storage через REST API (без supabase-js upload)
 async function rawStorageUpload(path, body, mime) {
   const { data: { session } } = await supabase.auth.getSession();
   const url = `${SUPABASE_URL}/storage/v1/object/${PHOTO_BUCKET}/${path}`;
@@ -820,7 +939,7 @@ async function rawStorageUpload(path, body, mime) {
     headers: {
       apikey: SUPABASE_ANON_KEY,
       Authorization: `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`,
-      'Content-Type': mime,          // ← явно говорим серверу тип файла
+      'Content-Type': mime,
       'x-upsert': 'false',
       'cache-control': 'public, max-age=3600',
     },
@@ -836,7 +955,6 @@ async function rawStorageUpload(path, body, mime) {
   return `${SUPABASE_URL}/storage/v1/object/public/${PHOTO_BUCKET}/${path}`;
 }
 
-// Терпеливая проверка: сервер отдаёт картинку как картинку?
 async function verifyServedImage(url) {
   for (let i = 1; i <= 3; i++) {
     await new Promise((r) => setTimeout(r, 1200));
@@ -870,10 +988,8 @@ async function uploadPhoto(file, teaType, teaName = null) {
     }
   };
 
-  // 1) Грузим ОРИГИНАЛ — webp/avif остаются собой (вес + SEO)
   let res = await doUpload(file, mime, ext);
 
-  // 1.5) Бакет отверг формат/размер → конвертим в JPEG и повторяем
   if (res.error && isFormatOrSizeError(res.error)) {
     console.warn('[uploadPhoto] оригинал отклонён:', res.error.message);
     try {
@@ -897,17 +1013,15 @@ async function uploadPhoto(file, teaType, teaName = null) {
     return null;
   }
 
-  // 2) Терпеливо проверяем, что сервер отдаёт файл как картинку
   const servedOk = await verifyServedImage(res.publicUrl);
   if (servedOk) return res.publicUrl;
 
-  // 3) Сервер так и не отдал картинку → конвертируем в JPEG
   try {
     const jpeg = await convertToJpeg(file);
     const res2 = await doUpload(jpeg, 'image/jpeg', 'jpg');
     if (res2.error) {
       showToast('Ошибка загрузки фото: ' + res2.error.message, 'warn');
-      return res.publicUrl; // последний шанс — оригинал
+      return res.publicUrl;
     }
     showToast('ℹ️ Сервер не принял формат — сохранено как JPG');
     return res2.publicUrl;
@@ -917,7 +1031,9 @@ async function uploadPhoto(file, teaType, teaName = null) {
   }
 }
 
-// ---------- Старт ----------
+// ============================================================
+// ИНИЦИАЛИЗАЦИЯ
+// ============================================================
 async function init() {
   await initCommon();
   initAmountModal();
@@ -929,7 +1045,7 @@ async function init() {
     setMode(btn.dataset.mode);
   });
 
-  // ----- Модалка модерации (одобрить / отклонить) -----
+  // ----- Модалка модерации -----
   const modOv = $('#moderateOverlay');
   if (modOv) {
     wireOverlay(modOv);
@@ -938,7 +1054,7 @@ async function init() {
     $('#moderateRejectBtn')?.addEventListener('click', openRejectOverlay);
   }
 
-  // ЭТАП 0: загрузка фото из модалки модерации (ранее обработчика не было)
+  // Загрузка фото из модалки модерации
   $('#moderatePhotoInput')?.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -971,14 +1087,13 @@ async function init() {
     });
   }
 
-  // ----- Инициализация модалки редактирования -----
+  // ----- Модалка редактирования -----
   const editOv = $('#editTeaOverlay');
   if (editOv) {
     wireOverlay(editOv);
     $('#editTeaClose')?.addEventListener('click', () => closeOverlay(editOv));
     $('#editTeaCancel')?.addEventListener('click', () => closeOverlay(editOv));
 
-    // Обработка загрузки фото
     $('#editTeaPhotoInput')?.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
@@ -1003,7 +1118,6 @@ async function init() {
       btn.textContent = 'Загрузить фото';
     });
 
-    // Сохранение изменений
     $('#editTeaForm')?.addEventListener('submit', async (e) => {
       e.preventDefault();
 
@@ -1028,7 +1142,7 @@ async function init() {
     });
   }
 
-  // Поиск с дебаунсом: запрос к БД через 350 мс после последней буквы
+  // Поиск с дебаунсом
   let searchTimer = null;
   $('#catalogSearch').addEventListener('input', (e) => {
     state.q = e.target.value.trim().toLowerCase();
@@ -1036,7 +1150,7 @@ async function init() {
     searchTimer = setTimeout(refresh, 350);
   });
 
-  // Неделя 4: фильтр по типу
+  // Фильтр по типу
   $('#catalogTypeFilter')?.addEventListener('change', (e) => {
     state.type = e.target.value;
     refresh();
@@ -1049,8 +1163,24 @@ async function init() {
 
   $('#moreBtn').addEventListener('click', loadMore);
 
+  // Клик по сетке
   const grid = $('#catalogGrid');
   grid.addEventListener('click', (e) => {
+    // Клик по карточке тизана
+    const tisaneCard = e.target.closest('[data-tisane-id]');
+    if (tisaneCard) {
+      const tisane = tisanes.find((t) => String(t.id) === tisaneCard.dataset.tisaneId);
+      if (!tisane) return;
+
+      if (e.target.closest('[data-action="add-tisane-to-shelf"]')) {
+        return addToShelfTisane(tisane);
+      }
+      // Клик по карточке тизана — пока просто показываем информацию
+      // (можно добавить модалку с деталями позже)
+      return;
+    }
+
+    // Клик по карточке обычного чая
     const card = e.target.closest('.tcard');
     if (!card) return;
     const tea = (viewMode === 'moderation' ? pendingAll : teas)
@@ -1059,10 +1189,8 @@ async function init() {
 
     if (e.target.closest('[data-action="add-to-shelf"]')) return requestAdd(tea);
     if (e.target.closest('.heart')) return toggleFavorite(tea);
-    // Игнорируем клик по кнопке редактирования
     if (e.target.closest('.edit-tea-btn')) return;
 
-    // В режиме модерации клик по карточке = проверка заявки
     if (viewMode === 'moderation') {
       openModerateModal(tea);
       return;
@@ -1072,25 +1200,20 @@ async function init() {
     openTeaModal(tea, teas);
     trackEvent('tea_card_opened', { tea_id: tea.id, tea_name: tea.name });
     syncFavBtn(tea);
-    // кнопка «На полку» в модалке: скрыта, если чай уже на полке или pending
     $('#addToShelfBtn')?.classList.toggle('hidden',
       myShelf.has(tea.id) || tea.status === 'pending');
   });
 
-  // Кнопка «На полку» внутри карточки чая
   $('#addToShelfBtn')?.addEventListener('click', () => {
     if (currentTea) requestAdd(currentTea);
   });
 
-  // Кнопка избранного внутри карточки чая
   $('#wishlistBtn')?.addEventListener('click', () => {
     if (currentTea) toggleFavorite(currentTea);
   });
 
   initPropose();
 
-  // Перезагрузка при входе/выходе и при переключении тумблера.
-  // Если режим выключили или прав больше нет — уходим из модерации.
   onAuthChange(() => {
     if (viewMode === 'moderation' && !isModerationActive()) {
       viewMode = 'catalog';

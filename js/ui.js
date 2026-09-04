@@ -185,6 +185,7 @@ export const TYPE_TO_DB = {
   matcha: 'матча',
   herbal: 'травяной',
   blend:  'смесь',
+  tisane: 'тизан',
 };
 
 export const TYPE_LABELS = {
@@ -201,6 +202,7 @@ export const TYPE_LABELS = {
   matcha: 'Матча',
   herbal: 'Травяной',
   blend:  'Смесь',
+  tisane: 'Тизан',
 };
 
 export const TYPE_CLASS = {
@@ -222,6 +224,7 @@ export const TYPE_CLASS = {
   'травяной': 'tc-herbal',
   'смесь':    'tc-blend',
   'купаж':    'tc-blend',
+  'тизан':    'tc-tisane',
 };
 
 export function typeClass(type) {
