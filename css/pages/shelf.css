@@ -760,3 +760,86 @@ body.page-shelf {
 
   .arch-actions { width: 100%; }
 }
+
+/* ------------------------------------------------------------
+   Кнопки в заголовке полки
+   ------------------------------------------------------------ */
+.head-btns {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* ------------------------------------------------------------
+   Архив: вкладки
+   ------------------------------------------------------------ */
+.archive-tabs {
+  display: flex;
+  gap: var(--space-1);
+  border-bottom: 1px solid var(--line);
+  margin-bottom: var(--space-3);
+}
+
+.archive-tab {
+  padding: var(--space-2) var(--space-3);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.archive-tab:hover {
+  color: var(--text);
+}
+
+.archive-tab.active {
+  color: var(--green-d);
+  border-bottom-color: var(--green-d);
+}
+
+.archive-section {
+  min-height: 60px;
+}
+
+/* ------------------------------------------------------------
+   Архив: строки (переиспользуем .archrow)
+   ------------------------------------------------------------ */
+.archrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 9px var(--space-1);
+  border-bottom: 1px dashed var(--line);
+  flex-wrap: wrap;
+}
+
+.archrow:last-child { border-bottom: none; }
+
+.archrow .wn { flex: 1; min-width: 0; }
+
+.archrow b {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 13.5px;
+}
+
+.archrow span {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.arch-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex: none;
+  flex-wrap: wrap;
+}

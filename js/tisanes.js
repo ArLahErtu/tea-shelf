@@ -1,9 +1,9 @@
 // ============================================================
-// tisanes.js — ЭТАП 2: тизаны (травяные сборы) на полке.
-// Сам инъектит разметку: секция «🌿 Тизаны», форма добавления,
+// tisanes.js — тизаны (травяные сборы) на полке.
+// Сам инъектит разметку: секция «Тизаны», форма добавления,
 // экран результата, модалки заваривания и журнала.
 // RPC: tisane_find_or_create, brew_tisane, suggest_herb.
-// ЭТАП 6: тизаны при нуле уходят в архив внутри секции.
+// Архив тизанов вынесен в общую модалку архива (shelf.js).
 // ============================================================
 import { supabase } from './supabaseClient.js';
 import {
@@ -15,14 +15,14 @@ import { openAmountModal } from './amountModal.js';
 
 // ---------- Модульное состояние ----------
 let herbs = [];
-let myTisanes = [];       // все тизаны пользователя
-let activeTisanes = [];   // quantity > 0
-let finishedTisanes = []; // quantity <= 0 (архив)
+let myTisanes = [];
+let activeTisanes = [];
+let finishedTisanes = [];
 let herbById = new Map();
 let nameByUserTisaneId = new Map();
 let brewRow = null;
 let brewRating = 0;
-let selected = new Map(); // herb_id → { primary: bool }
+let selected = new Map();
 
 // ---------- Имя тизана ----------
 function tisaneName(r) {
@@ -54,7 +54,6 @@ export async function reloadTisanes() {
   nameByUserTisaneId.clear();
   myTisanes.forEach((r) => nameByUserTisaneId.set(r.id, tisaneName(r)));
 
-  // Разделяем на активные и закончившиеся
   activeTisanes = myTisanes.filter((r) => Number(r.quantity) > 0);
   finishedTisanes = myTisanes.filter((r) => Number(r.quantity) <= 0);
 }
@@ -64,7 +63,7 @@ export function tisaneJournalName(userTisaneId) {
   return nameByUserTisaneId.get(userTisaneId) || 'Тизан';
 }
 
-// ---------- Секция на полке: активные тизаны ----------
+// ---------- Секция на полке: только активные тизаны ----------
 export function renderTisanes() {
   const grid = $('#tisanesGrid');
   if (!grid) return;
@@ -73,61 +72,18 @@ export function renderTisanes() {
 
   if (!getUser()) {
     grid.innerHTML = '<p class="hint">Раздел доступен после входа.</p>';
-    renderTisaneArchive();
     return;
   }
   if (!activeTisanes.length) {
     grid.innerHTML = '<p class="hint">Пока нет тизанов. Соберите первый сбор — минимум две травы.</p>';
-  } else {
-    activeTisanes
-      .slice()
-      .sort((a, b) =>
-        (a.tisane_catalog?.tisane_number || 0) - (b.tisane_catalog?.tisane_number || 0))
-      .forEach((r) => grid.appendChild(tisaneCard(r)));
-  }
-
-  renderTisaneArchive();
-}
-
-// ---------- Архив тизанов (закончившиеся) ----------
-function renderTisaneArchive() {
-  const box = $('#tisanesArchiveList');
-  const countEl = $('#tisanesArchiveCount');
-  if (!box) return;
-
-  if (countEl) countEl.textContent = finishedTisanes.length;
-
-  box.innerHTML = '';
-  if (!finishedTisanes.length) {
-    box.innerHTML = '<p class="hint">Пока пусто. Когда тизан закончится, он переедет сюда.</p>';
     return;
   }
 
-  finishedTisanes
+  activeTisanes
+    .slice()
     .sort((a, b) =>
-      (b.tisane_catalog?.tisane_number || 0) - (a.tisane_catalog?.tisane_number || 0))
-    .forEach((r) => box.appendChild(tisaneArchiveRow(r)));
-}
-
-function tisaneArchiveRow(r) {
-  const node = document.createElement('div');
-  node.className = 'archrow';
-  node.dataset.tisaneId = r.id;
-
-  const name = tisaneName(r);
-  const unit = UNIT_LABELS[r.quantity_unit] || 'г';
-
-  node.innerHTML = `
-    <div class="wn">
-      <b>${escapeHtml(name)}</b>
-      <span>Закончился · ${Number(r.quantity)} ${unit}</span>
-    </div>
-    <div class="arch-actions">
-      <button class="btn btn-outline btn-sm" type="button" data-action="restock">Пополнить</button>
-      <button class="btn btn-ghost btn-sm" type="button" data-action="journal">📖 Журнал</button>
-      <button class="btn btn-ghost btn-sm danger-text" type="button" data-action="remove">Удалить</button>
-    </div>`;
-  return node;
+      (a.tisane_catalog?.tisane_number || 0) - (b.tisane_catalog?.tisane_number || 0))
+    .forEach((r) => grid.appendChild(tisaneCard(r)));
 }
 
 // ---------- Карточка активного тизана ----------
@@ -158,7 +114,7 @@ function tisaneCard(r) {
     <div class="card-actions">
       <button class="btn btn-primary btn-sm" type="button" data-action="brew">Заварил</button>
       <button class="btn btn-outline btn-sm" type="button" data-action="restock">Пополнить</button>
-      <button class="btn btn-ghost btn-sm" type="button" data-action="journal">📖 Журнал</button>
+      <button class="btn btn-ghost btn-sm" type="button" data-action="journal">Журнал</button>
     </div>`;
   return node;
 }
@@ -179,50 +135,6 @@ function restockTisane(r) {
       renderTisanes();
     },
   });
-}
-
-// ---------- Удаление тизана из архива (со снапшотом журнала) ----------
-async function removeTisane(r) {
-  const confirmed = await askConfirm(
-    `Удалить «${tisaneName(r)}» из архива? Журнал завариваний будет сохранён в архиве журналов.`
-  );
-  if (!confirmed) return;
-
-  const user = getUser();
-  if (!user) return;
-
-  // 1. Получаем журнал завариваний этого тизана
-  const { data: journalEntries } = await supabase.from('brew_journal')
-    .select('*')
-    .eq('tisane_id', r.id)
-    .eq('user_id', user.id);
-
-  // 2. Сохраняем снапшот в brew_journal_archive
-  if (journalEntries && journalEntries.length) {
-    await supabase.from('brew_journal_archive').insert({
-      user_id: user.id,
-      source_type: 'tisane',
-      source_ref: tisaneName(r),
-      payload: journalEntries,
-    });
-  }
-
-  // 3. Удаляем записи журнала
-  await supabase.from('brew_journal')
-    .delete()
-    .eq('tisane_id', r.id)
-    .eq('user_id', user.id);
-
-  // 4. Удаляем тизан
-  const { error } = await supabase.from('user_tisanes')
-    .delete()
-    .eq('id', r.id);
-
-  if (error) return showToast('Ошибка удаления: ' + error.message, 'warn');
-
-  showToast(`«${tisaneName(r)}» удалён. Журнал сохранён в архиве.`);
-  await reloadTisanes();
-  renderTisanes();
 }
 
 // ---------- Заваривание ----------
@@ -260,7 +172,7 @@ async function submitTisaneBrew() {
   const num = brewRow.tisane_catalog?.tisane_number ?? '–';
   showToast(left <= 0
     ? `Тизан #${num} закончился и перемещён в архив.`
-    : `Заваривание записано ☕ Осталось ${left} ${UNIT_LABELS[brewRow.quantity_unit] || 'г'}`);
+    : `Заваривание записано. Осталось ${left} ${UNIT_LABELS[brewRow.quantity_unit] || 'г'}`);
 
   await reloadTisanes();
   renderTisanes();
@@ -270,7 +182,7 @@ async function submitTisaneBrew() {
 async function openTisaneJournal(r) {
   $('#tisaneJournalTeaName').textContent = tisaneName(r);
   const list = $('#tisaneJournalList');
-  list.innerHTML = '<p class="hint">Загружаем…</p>';
+  list.innerHTML = '<p class="hint">Загружаем...</p>';
   openOverlay($('#tisaneJournalOverlay'));
 
   const { data } = await supabase.from('brew_journal')
@@ -318,7 +230,7 @@ function renderHerbList(filter = '') {
           ${escapeHtml(h.name)}${h.is_approved ? '' : ' <em class="herb-pending">(ваша трава, на одобрении)</em>'}
         </label>
         <button type="button" class="star-btn herb-star ${sel && sel.primary ? 'on' : ''}"
-          data-primary="${h.id}" title="Основная трава" ${sel ? '' : 'hidden'}>★</button>`;
+          data-primary="${h.id}" title="Основная трава" ${sel ? '' : 'hidden'}>&#9733;</button>`;
       box.appendChild(row);
     });
 }
@@ -400,26 +312,18 @@ function showResult(rec, qty, unit) {
 function injectMarkup() {
   const journal = $('#journalPanel');
 
-  // Секция тизанов с архивом
+  // Секция тизанов (без архива — он в общей модалке)
   const section = document.createElement('section');
   section.className = 'panel tisanes-panel';
   section.id = 'tisanesPanel';
   section.setAttribute('aria-labelledby', 'tisanesTitle');
   section.innerHTML = `
     <div class="panel-head-row">
-      <h3 id="tisanesTitle">🌿 Тизаны <span class="cnt" id="tisanesCount">0</span></h3>
+      <h3 id="tisanesTitle">Тизаны <span class="cnt" id="tisanesCount">0</span></h3>
       <button class="btn btn-primary btn-sm" id="addTisaneBtn" type="button">+ Добавить тизан</button>
     </div>
     <p class="psub">Травяные сборы: минимум две травы, дубликаты определяются по составу.</p>
-    <div class="tisanes-grid" id="tisanesGrid"></div>
-
-    <!-- Архив тизанов -->
-    <div class="tisanes-archive" id="tisanesArchiveBlock">
-      <div class="panel-head-row">
-        <h4>📦 Архив тизанов <span class="cnt" id="tisanesArchiveCount">0</span></h4>
-      </div>
-      <div id="tisanesArchiveList"></div>
-    </div>`;
+    <div class="tisanes-grid" id="tisanesGrid"></div>`;
   journal.parentNode.insertBefore(section, journal);
 
   // Форма добавления тизана
@@ -442,7 +346,7 @@ function injectMarkup() {
         </div>
         <div class="field">
           <label>Травы (минимум 2) <span class="req">*</span></label>
-          <input type="search" id="tisaneHerbSearch" placeholder="Поиск травы…" class="sel">
+          <input type="search" id="tisaneHerbSearch" placeholder="Поиск травы..." class="sel">
           <div id="tisaneHerbList" class="herb-list"></div>
         </div>
         <button type="button" class="btn btn-outline btn-sm" id="addHerbBtn">+ Другая трава</button>
@@ -485,7 +389,7 @@ function injectMarkup() {
       <p><b>Количество:</b> <span id="tisaneResultQty"></span></p>
       <p><b>Свойства:</b> <span id="tisaneResultProps"></span></p>
       <div class="modal-foot">
-        <button class="btn btn-primary" type="button" id="tisaneResultOk">Отлично!</button>
+        <button class="btn btn-primary" type="button" id="tisaneResultOk">Отлично</button>
       </div>
     </div>`;
   document.body.appendChild(resultOv);
@@ -512,16 +416,16 @@ function injectMarkup() {
         <div class="field">
           <label>Оценка</label>
           <div class="stars" id="tisaneBrewStars">
-            ${[1,2,3,4,5].map((i) => `<button type="button" class="star-btn" data-star="${i}" aria-checked="false" aria-label="${i} звёзд">★</button>`).join('')}
+            ${[1,2,3,4,5].map((i) => `<button type="button" class="star-btn" data-star="${i}" aria-checked="false" aria-label="${i} звёзд">&#9733;</button>`).join('')}
           </div>
         </div>
         <div class="field">
           <label for="tisaneBrewNote">Заметка</label>
-          <textarea id="tisaneBrewNote" rows="2" placeholder="Вкус, аромат, впечатления…"></textarea>
+          <textarea id="tisaneBrewNote" rows="2" placeholder="Вкус, аромат, впечатления..."></textarea>
         </div>
         <div class="modal-foot">
           <button class="btn btn-ghost" type="button" id="tisaneBrewCancel">Отмена</button>
-          <button class="btn btn-primary" type="submit">Заварил ☕</button>
+          <button class="btn btn-primary" type="submit">Заварил</button>
         </div>
       </form>
     </div>`;
@@ -585,7 +489,6 @@ export async function initTisanes() {
       e.preventDefault();
       submitTisaneBrew();
     });
-    // Звёзды
     $('#tisaneBrewStars')?.addEventListener('click', (e) => {
       const btn = e.target.closest('.star-btn');
       if (!btn) return;
@@ -616,20 +519,6 @@ export async function initTisanes() {
     if (btn.dataset.action === 'brew') return openTisaneBrew(r);
     if (btn.dataset.action === 'restock') return restockTisane(r);
     if (btn.dataset.action === 'journal') return openTisaneJournal(r);
-  });
-
-  // Клики по архиву тизанов
-  $('#tisanesArchiveList')?.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-action]');
-    if (!btn) return;
-    const row = btn.closest('.archrow');
-    if (!row) return;
-    const r = finishedTisanes.find((t) => String(t.id) === row.dataset.tisaneId);
-    if (!r) return;
-
-    if (btn.dataset.action === 'restock') return restockTisane(r);
-    if (btn.dataset.action === 'journal') return openTisaneJournal(r);
-    if (btn.dataset.action === 'remove') return removeTisane(r);
   });
 
   await reloadTisanes();

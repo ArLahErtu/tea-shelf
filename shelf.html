@@ -112,18 +112,23 @@
 
       <div class="page-head">
         <div>
-          <p class="crumbs">Личный кабинет · Полка</p>
-          <h1>Моя чайная полка</h1>
-          <p class="sub">
-            Остатки и журнал привязаны к вашему аккаунту.
-            Клик по карточке — каталожная карточка чая.
-          </p>
+          <p class="crumbs">Личная полка · Остатки и заваривания</p>
+          <h1>Моя полка</h1>
+          <p class="sub">Учёт остатков, журнал завариваний и список покупок.</p>
         </div>
         <div class="head-btns">
           <a class="btn btn-primary" href="catalog.html">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
             Добавить из каталога
           </a>
+          <button class="btn btn-outline" id="openArchiveBtn" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4"/></svg>
+            Архив чая
+          </button>
+          <button class="btn btn-outline" id="openJournalArchiveBtn" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20V2H6.5A2.5 2.5 0 0 0 4 4.5v15z"/></svg>
+            Архив журналов
+          </button>
         </div>
       </div>
 
@@ -229,15 +234,6 @@
             </div>
           </section>
         </div>
-
-        <!-- ЭТАП 0: Архив закончившихся чаёв — самый нижний блок -->
-        <section class="panel archive-panel" id="archivePanel" aria-labelledby="archiveTitle">
-          <h3 id="archiveTitle">📦 Архив <span class="cnt" id="archiveCount">0</span></h3>
-          <p class="psub">Закончившиеся чаи. Журнал сохраняется. Пополните — и чай вернётся на полку.</p>
-          <div id="archiveList">
-            <p class="hint">Пока пусто. Когда чай закончится, он переедет сюда.</p>
-          </div>
-        </section>
 
       </div>
 
@@ -612,5 +608,43 @@
   </template>
 
   <script type="module" src="js/shelf.js"></script>
+
+  <!-- Архив чая (модалка с тремя вкладками) -->
+<div class="overlay" id="archiveOverlay" hidden>
+  <div class="modal wide" role="dialog" aria-modal="true" aria-labelledby="archiveModalTitle">
+    <div class="modal-head">
+      <h2 id="archiveModalTitle">Архив чая</h2>
+      <button class="icon-btn" id="archiveModalClose" type="button" aria-label="Закрыть">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+
+    <div class="archive-tabs" role="tablist">
+      <button class="archive-tab active" type="button" data-tab="tea" role="tab" aria-selected="true">Чай</button>
+      <button class="archive-tab" type="button" data-tab="tisane" role="tab" aria-selected="false">Тизаны</button>
+      <button class="archive-tab" type="button" data-tab="unknown" role="tab" aria-selected="false">Неизвестные</button>
+    </div>
+
+    <div class="archive-content">
+      <div id="archiveTeaList" class="archive-section" role="tabpanel"></div>
+      <div id="archiveTisaneList" class="archive-section hidden" role="tabpanel"></div>
+      <div id="archiveUnknownList" class="archive-section hidden" role="tabpanel"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Архив журналов -->
+<div class="overlay" id="journalArchiveOverlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="journalArchiveTitle">
+    <div class="modal-head">
+      <h2 id="journalArchiveTitle">Архив журналов</h2>
+      <button class="icon-btn" id="journalArchiveClose" type="button" aria-label="Закрыть">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <p class="modal-sub">Журналы завариваний удалённых чаёв, тизанов и неизвестных.</p>
+    <div id="journalArchiveList" class="journal-tea-list"></div>
+  </div>
+</div>
 </body>
 </html>
