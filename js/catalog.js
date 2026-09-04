@@ -165,18 +165,19 @@ async function load() {
   $('#modeSwitch').classList.toggle('hidden', !isModerationActive());
 
   if (user) {
-    const [p, sh, wl] = await Promise.all([
-      safeFetch(() => supabase.from(TABLES.catalog).select('*')
-        .eq('status', 'pending').eq('author_id', user.id), 'my pending'),
-      safeFetch(() => supabase.from(TABLES.shelf).select('tea_id')
-        .eq('user_id', user.id), 'shelf ids'),
-      safeFetch(() => supabase.from(TABLES.wishlist).select('tea_id')
-        .eq('user_id', user.id), 'favorites ids'),
-    ]);
-    pending = p || [];
-    myShelf = new Set((sh || []).map((r) => r.tea_id));
-    favorites = new Set((wl || []).map((r) => r.tea_id));
-  }
+      const [p, sh, wl] = await Promise.all([
+        safeFetch(() => supabase.from(TABLES.catalog).select('*')
+          .eq('status', 'pending').eq('author_id', user.id), 'my pending'),
+        safeFetch(() => supabase.from(TABLES.shelf).select('tea_id')
+          .eq('user_id', user.id)
+          .gt('amount', 0), 'shelf ids'),
+        safeFetch(() => supabase.from(TABLES.wishlist).select('tea_id')
+          .eq('user_id', user.id), 'favorites ids'),
+      ]);
+      pending = p || [];
+      myShelf = new Set((sh || []).map((r) => r.tea_id));
+      favorites = new Set((wl || []).map((r) => r.tea_id));
+    }
   teas = pending.concat(published);
 
   const params = new URLSearchParams(location.search);
