@@ -3,34 +3,32 @@
 // Сам инъектит разметку: секция «🌿 Тизаны», форма добавления,
 // экран результата, модалки заваривания и журнала.
 // RPC: tisane_find_or_create, brew_tisane, suggest_herb.
+// ЭТАП 6: тизаны при нуле уходят в архив внутри секции.
 // ============================================================
 import { supabase } from './supabaseClient.js';
 import {
   $, $$, showToast, openOverlay, closeOverlay, wireOverlay,
-  escapeHtml, UNIT_LABELS,
+  escapeHtml, plural, UNIT_LABELS, askConfirm, trackEvent,
 } from './ui.js';
 import { getUser } from './auth.js';
 import { openAmountModal } from './amountModal.js';
 
+// ---------- Модульное состояние ----------
 let herbs = [];
-let myTisanes = [];
-let injected = false;
+let myTisanes = [];       // все тизаны пользователя
+let activeTisanes = [];   // quantity > 0
+let finishedTisanes = []; // quantity <= 0 (архив)
+let herbById = new Map();
+let nameByUserTisaneId = new Map();
 let brewRow = null;
 let brewRating = 0;
+let selected = new Map(); // herb_id → { primary: bool }
 
-const herbById = new Map();
-const nameByUserTisaneId = new Map();
-const selected = new Map(); // herb_id -> { primary }
-
-function tisaneName(row) {
-  const num = row.tisane_catalog?.tisane_number ?? '–';
-  return row.custom_name || row.tisane_catalog?.name || `Тизан #${num}`;
-}
-
-// Имя для записей общего журнала (использует shelf.js)
-export function tisaneJournalName(j) {
-  if (!j.tisane_id) return null;
-  return nameByUserTisaneId.get(j.tisane_id) || 'Тизан';
+// ---------- Имя тизана ----------
+function tisaneName(r) {
+  if (r.custom_name) return r.custom_name;
+  if (r.tisane_catalog?.name) return r.tisane_catalog.name;
+  return `Тизан #${r.tisane_catalog?.tisane_number ?? '–'}`;
 }
 
 // ---------- Загрузка ----------
@@ -39,6 +37,8 @@ export async function reloadTisanes() {
   if (!user) {
     herbs = [];
     myTisanes = [];
+    activeTisanes = [];
+    finishedTisanes = [];
   } else {
     const [h, t] = await Promise.all([
       supabase.from('herbs').select('*').order('name'),
@@ -53,31 +53,84 @@ export async function reloadTisanes() {
   herbs.forEach((h) => herbById.set(h.id, h));
   nameByUserTisaneId.clear();
   myTisanes.forEach((r) => nameByUserTisaneId.set(r.id, tisaneName(r)));
+
+  // Разделяем на активные и закончившиеся
+  activeTisanes = myTisanes.filter((r) => Number(r.quantity) > 0);
+  finishedTisanes = myTisanes.filter((r) => Number(r.quantity) <= 0);
 }
 
-// ---------- Секция на полке ----------
+// ---------- Экспорт для журнала полки ----------
+export function tisaneJournalName(userTisaneId) {
+  return nameByUserTisaneId.get(userTisaneId) || 'Тизан';
+}
+
+// ---------- Секция на полке: активные тизаны ----------
 export function renderTisanes() {
   const grid = $('#tisanesGrid');
   if (!grid) return;
-  $('#tisanesCount').textContent = myTisanes.length;
+  $('#tisanesCount').textContent = activeTisanes.length;
   grid.innerHTML = '';
 
   if (!getUser()) {
     grid.innerHTML = '<p class="hint">Раздел доступен после входа.</p>';
+    renderTisaneArchive();
     return;
   }
-  if (!myTisanes.length) {
+  if (!activeTisanes.length) {
     grid.innerHTML = '<p class="hint">Пока нет тизанов. Соберите первый сбор — минимум две травы.</p>';
-    return;
+  } else {
+    activeTisanes
+      .slice()
+      .sort((a, b) =>
+        (a.tisane_catalog?.tisane_number || 0) - (b.tisane_catalog?.tisane_number || 0))
+      .forEach((r) => grid.appendChild(tisaneCard(r)));
   }
 
-  myTisanes
-    .slice()
-    .sort((a, b) =>
-      (a.tisane_catalog?.tisane_number || 0) - (b.tisane_catalog?.tisane_number || 0))
-    .forEach((r) => grid.appendChild(tisaneCard(r)));
+  renderTisaneArchive();
 }
 
+// ---------- Архив тизанов (закончившиеся) ----------
+function renderTisaneArchive() {
+  const box = $('#tisanesArchiveList');
+  const countEl = $('#tisanesArchiveCount');
+  if (!box) return;
+
+  if (countEl) countEl.textContent = finishedTisanes.length;
+
+  box.innerHTML = '';
+  if (!finishedTisanes.length) {
+    box.innerHTML = '<p class="hint">Пока пусто. Когда тизан закончится, он переедет сюда.</p>';
+    return;
+  }
+
+  finishedTisanes
+    .sort((a, b) =>
+      (b.tisane_catalog?.tisane_number || 0) - (a.tisane_catalog?.tisane_number || 0))
+    .forEach((r) => box.appendChild(tisaneArchiveRow(r)));
+}
+
+function tisaneArchiveRow(r) {
+  const node = document.createElement('div');
+  node.className = 'archrow';
+  node.dataset.tisaneId = r.id;
+
+  const name = tisaneName(r);
+  const unit = UNIT_LABELS[r.quantity_unit] || 'г';
+
+  node.innerHTML = `
+    <div class="wn">
+      <b>${escapeHtml(name)}</b>
+      <span>Закончился · ${Number(r.quantity)} ${unit}</span>
+    </div>
+    <div class="arch-actions">
+      <button class="btn btn-outline btn-sm" type="button" data-action="restock">Пополнить</button>
+      <button class="btn btn-ghost btn-sm" type="button" data-action="journal">📖 Журнал</button>
+      <button class="btn btn-ghost btn-sm danger-text" type="button" data-action="remove">Удалить</button>
+    </div>`;
+  return node;
+}
+
+// ---------- Карточка активного тизана ----------
 function tisaneCard(r) {
   const node = document.createElement('article');
   node.className = 'card tisane-card';
@@ -128,6 +181,50 @@ function restockTisane(r) {
   });
 }
 
+// ---------- Удаление тизана из архива (со снапшотом журнала) ----------
+async function removeTisane(r) {
+  const confirmed = await askConfirm(
+    `Удалить «${tisaneName(r)}» из архива? Журнал завариваний будет сохранён в архиве журналов.`
+  );
+  if (!confirmed) return;
+
+  const user = getUser();
+  if (!user) return;
+
+  // 1. Получаем журнал завариваний этого тизана
+  const { data: journalEntries } = await supabase.from('brew_journal')
+    .select('*')
+    .eq('tisane_id', r.id)
+    .eq('user_id', user.id);
+
+  // 2. Сохраняем снапшот в brew_journal_archive
+  if (journalEntries && journalEntries.length) {
+    await supabase.from('brew_journal_archive').insert({
+      user_id: user.id,
+      source_type: 'tisane',
+      source_ref: tisaneName(r),
+      payload: journalEntries,
+    });
+  }
+
+  // 3. Удаляем записи журнала
+  await supabase.from('brew_journal')
+    .delete()
+    .eq('tisane_id', r.id)
+    .eq('user_id', user.id);
+
+  // 4. Удаляем тизан
+  const { error } = await supabase.from('user_tisanes')
+    .delete()
+    .eq('id', r.id);
+
+  if (error) return showToast('Ошибка удаления: ' + error.message, 'warn');
+
+  showToast(`«${tisaneName(r)}» удалён. Журнал сохранён в архиве.`);
+  await reloadTisanes();
+  renderTisanes();
+}
+
 // ---------- Заваривание ----------
 function openTisaneBrew(r) {
   brewRow = r;
@@ -162,7 +259,7 @@ async function submitTisaneBrew() {
   const left = Number(data);
   const num = brewRow.tisane_catalog?.tisane_number ?? '–';
   showToast(left <= 0
-    ? `Тизан #${num} закончился.`
+    ? `Тизан #${num} закончился и перемещён в архив.`
     : `Заваривание записано ☕ Осталось ${left} ${UNIT_LABELS[brewRow.quantity_unit] || 'г'}`);
 
   await reloadTisanes();
@@ -276,33 +373,34 @@ async function submitTisaneForm(e) {
   renderHerbList();
 }
 
+// ---------- Экран результата ----------
 function showResult(rec, qty, unit) {
-  $('#tisaneResultTitle').textContent = rec.is_new
-    ? `🎉 Создан Тизан #${rec.tisane_number}!`
-    : `✅ Это Тизан #${rec.tisane_number}`;
+  const isNew = rec.is_new;
+  const num = rec.tisane_number;
+  $('#tisaneResultTitle').textContent = isNew
+    ? `Создан Тизан #${num}`
+    : `Это Тизан #${num}`;
+  $('#tisaneResultQty').textContent = `${qty} ${UNIT_LABELS[unit] || 'г'}`;
+
+  const props = (rec.properties || []).join(', ');
+  $('#tisaneResultProps').textContent = props || '—';
 
   const comp = (rec.composition || [])
     .map((c) => {
-      const n = escapeHtml(herbById.get(c.herb_id)?.name || '—');
-      return c.is_primary ? `★ ${n}` : n;
+      const name = herbById.get(c.herb_id)?.name || '—';
+      return c.is_primary ? `<b>${escapeHtml(name)}</b>` : escapeHtml(name);
     })
     .join(', ');
+  $('#tisaneResultComp').innerHTML = comp || '—';
 
-  const propsLine = (rec.properties && rec.properties.length)
-    ? `<p><b>Свойства:</b> ${escapeHtml(rec.properties.join(', '))}</p>`
-    : '';
-
-  $('#tisaneResultBody').innerHTML = `
-    <p><b>Состав:</b> ${comp}</p>
-    ${propsLine}
-    ${rec.is_new ? '<p>Добавлен в общий каталог тизанов.</p>' : ''}
-    <p>${qty} ${UNIT_LABELS[unit] || 'г'} — на вашу полку.</p>`;
   openOverlay($('#tisaneResultOverlay'));
 }
 
 // ---------- Инъекция разметки ----------
 function injectMarkup() {
   const journal = $('#journalPanel');
+
+  // Секция тизанов с архивом
   const section = document.createElement('section');
   section.className = 'panel tisanes-panel';
   section.id = 'tisanesPanel';
@@ -313,40 +411,45 @@ function injectMarkup() {
       <button class="btn btn-primary btn-sm" id="addTisaneBtn" type="button">+ Добавить тизан</button>
     </div>
     <p class="psub">Травяные сборы: минимум две травы, дубликаты определяются по составу.</p>
-    <div class="tisanes-grid" id="tisanesGrid"></div>`;
+    <div class="tisanes-grid" id="tisanesGrid"></div>
+
+    <!-- Архив тизанов -->
+    <div class="tisanes-archive" id="tisanesArchiveBlock">
+      <div class="panel-head-row">
+        <h4>📦 Архив тизанов <span class="cnt" id="tisanesArchiveCount">0</span></h4>
+      </div>
+      <div id="tisanesArchiveList"></div>
+    </div>`;
   journal.parentNode.insertBefore(section, journal);
 
-  const overlays = document.createElement('div');
-  overlays.innerHTML = `
-  <div class="overlay" id="tisaneOverlay" hidden>
+  // Форма добавления тизана
+  const formOv = document.createElement('div');
+  formOv.className = 'overlay';
+  formOv.id = 'tisaneOverlay';
+  formOv.hidden = true;
+  formOv.innerHTML = `
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="tisaneFormTitle">
       <div class="modal-head">
         <h2 id="tisaneFormTitle">Добавить тизан</h2>
-        <button class="icon-btn" id="tisaneClose" type="button" aria-label="Закрыть">
+        <button class="icon-btn" id="tisaneFormClose" type="button" aria-label="Закрыть">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
         </button>
       </div>
       <form id="tisaneForm" novalidate>
         <div class="field">
-          <label for="tisaneName">Название (опционально)</label>
-          <input id="tisaneName" type="text" maxlength="255" placeholder="Например, «Вечерний сбор»">
+          <label for="tisaneName">Название (необязательно)</label>
+          <input id="tisaneName" type="text" placeholder="Например: Вечерний сбор">
         </div>
         <div class="field">
-          <label for="tisaneHerbSearch">Состав (минимум 2 травы)</label>
-          <input id="tisaneHerbSearch" type="search" placeholder="Поиск травы…">
+          <label>Травы (минимум 2) <span class="req">*</span></label>
+          <input type="search" id="tisaneHerbSearch" placeholder="Поиск травы…" class="sel">
+          <div id="tisaneHerbList" class="herb-list"></div>
         </div>
-        <div class="herb-list" id="tisaneHerbList"></div>
-        <div class="field">
-          <button class="btn btn-outline btn-sm" type="button" id="tisaneNewHerbToggle">+ Добавить другую траву</button>
-          <div class="row2 hidden" id="tisaneNewHerbRow">
-            <input id="tisaneNewHerbName" type="text" placeholder="Название новой травы">
-            <button class="btn btn-sm" type="button" id="tisaneNewHerbSubmit">Добавить</button>
-          </div>
-        </div>
+        <button type="button" class="btn btn-outline btn-sm" id="addHerbBtn">+ Другая трава</button>
         <div class="row2">
           <div class="field">
-            <label for="tisaneQty">Количество на полку <span class="req">*</span></label>
-            <input id="tisaneQty" type="number" min="1" step="1" value="100" required>
+            <label for="tisaneQty">Количество <span class="req">*</span></label>
+            <input id="tisaneQty" type="number" min="1" step="1" value="50" required>
           </div>
           <div class="field">
             <label for="tisaneUnitSel">Единица</label>
@@ -358,30 +461,42 @@ function injectMarkup() {
           </div>
         </div>
         <div class="modal-foot">
-          <button class="btn btn-ghost" type="button" id="tisaneCancel">Отмена</button>
-          <button class="btn btn-primary" type="submit">Сохранить и добавить на полку</button>
+          <button class="btn btn-ghost" type="button" id="tisaneFormCancel">Отмена</button>
+          <button class="btn btn-primary" type="submit">Создать тизан</button>
         </div>
       </form>
-    </div>
-  </div>
+    </div>`;
+  document.body.appendChild(formOv);
 
-  <div class="overlay" id="tisaneResultOverlay" hidden>
+  // Экран результата
+  const resultOv = document.createElement('div');
+  resultOv.className = 'overlay';
+  resultOv.id = 'tisaneResultOverlay';
+  resultOv.hidden = true;
+  resultOv.innerHTML = `
     <div class="modal narrow" role="dialog" aria-modal="true" aria-labelledby="tisaneResultTitle">
       <div class="modal-head">
-        <h2 id="tisaneResultTitle">Тизан</h2>
+        <h2 id="tisaneResultTitle">Тизан создан</h2>
         <button class="icon-btn" id="tisaneResultClose" type="button" aria-label="Закрыть">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
         </button>
       </div>
-      <div id="tisaneResultBody" class="tisane-result"></div>
+      <p><b>Состав:</b> <span id="tisaneResultComp"></span></p>
+      <p><b>Количество:</b> <span id="tisaneResultQty"></span></p>
+      <p><b>Свойства:</b> <span id="tisaneResultProps"></span></p>
       <div class="modal-foot">
-        <button class="btn btn-primary" id="tisaneResultGoShelf" type="button">Перейти к полке</button>
+        <button class="btn btn-primary" type="button" id="tisaneResultOk">Отлично!</button>
       </div>
-    </div>
-  </div>
+    </div>`;
+  document.body.appendChild(resultOv);
 
-  <div class="overlay" id="tisaneBrewOverlay" hidden>
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="tisaneBrewTitle">
+  // Модалка заваривания
+  const brewOv = document.createElement('div');
+  brewOv.className = 'overlay';
+  brewOv.id = 'tisaneBrewOverlay';
+  brewOv.hidden = true;
+  brewOv.innerHTML = `
+    <div class="modal narrow" role="dialog" aria-modal="true" aria-labelledby="tisaneBrewTitle">
       <div class="modal-head">
         <h2 id="tisaneBrewTitle">Заварить тизан</h2>
         <button class="icon-btn" id="tisaneBrewClose" type="button" aria-label="Закрыть">
@@ -391,32 +506,33 @@ function injectMarkup() {
       <p class="modal-sub" id="tisaneBrewName">—</p>
       <form id="tisaneBrewForm" novalidate>
         <div class="field">
-          <label for="tisaneBrewAmount">Количество</label>
-          <input id="tisaneBrewAmount" type="number" inputmode="decimal" min="1" step="1" value="7" required>
-        </div>
-        <div class="field">
-          <label for="tisaneBrewNote">Заметка</label>
-          <textarea id="tisaneBrewNote" rows="3" maxlength="500" placeholder="Вкус, аромат, впечатления…"></textarea>
+          <label for="tisaneBrewAmount">Количество (г) <span class="req">*</span></label>
+          <input id="tisaneBrewAmount" type="number" min="1" step="0.5" value="5" required>
         </div>
         <div class="field">
           <label>Оценка</label>
-          <div class="stars-input" id="tisaneBrewStars" role="radiogroup" aria-label="Оценка заваривания">
-            <button class="star-btn" type="button" role="radio" aria-checked="false" data-value="1">★</button>
-            <button class="star-btn" type="button" role="radio" aria-checked="false" data-value="2">★</button>
-            <button class="star-btn" type="button" role="radio" aria-checked="false" data-value="3">★</button>
-            <button class="star-btn" type="button" role="radio" aria-checked="false" data-value="4">★</button>
-            <button class="star-btn" type="button" role="radio" aria-checked="false" data-value="5">★</button>
+          <div class="stars" id="tisaneBrewStars">
+            ${[1,2,3,4,5].map((i) => `<button type="button" class="star-btn" data-star="${i}" aria-checked="false" aria-label="${i} звёзд">★</button>`).join('')}
           </div>
         </div>
+        <div class="field">
+          <label for="tisaneBrewNote">Заметка</label>
+          <textarea id="tisaneBrewNote" rows="2" placeholder="Вкус, аромат, впечатления…"></textarea>
+        </div>
         <div class="modal-foot">
-          <button class="btn btn-ghost" id="tisaneBrewCancel" type="button">Отмена</button>
-          <button class="btn btn-primary" type="submit">Заварил</button>
+          <button class="btn btn-ghost" type="button" id="tisaneBrewCancel">Отмена</button>
+          <button class="btn btn-primary" type="submit">Заварил ☕</button>
         </div>
       </form>
-    </div>
-  </div>
+    </div>`;
+  document.body.appendChild(brewOv);
 
-  <div class="overlay" id="tisaneJournalOverlay" hidden>
+  // Модалка журнала тизана
+  const journalOv = document.createElement('div');
+  journalOv.className = 'overlay';
+  journalOv.id = 'tisaneJournalOverlay';
+  journalOv.hidden = true;
+  journalOv.innerHTML = `
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="tisaneJournalTitle">
       <div class="modal-head">
         <h2 id="tisaneJournalTitle">Журнал завариваний</h2>
@@ -426,112 +542,95 @@ function injectMarkup() {
       </div>
       <p class="modal-sub" id="tisaneJournalTeaName">—</p>
       <div id="tisaneJournalList" class="journal-tea-list"></div>
-    </div>
-  </div>`;
-  document.body.appendChild(overlays);
+    </div>`;
+  document.body.appendChild(journalOv);
 }
 
 // ---------- Старт ----------
 export async function initTisanes() {
-  if (!injected) {
-    injected = true;
-    injectMarkup();
+  injectMarkup();
 
-    $('#addTisaneBtn').addEventListener('click', () => {
-      if (!getUser()) return showToast('Сначала войдите', 'warn');
-      renderHerbList();
-      openOverlay($('#tisaneOverlay'));
-    });
-    $('#tisaneClose').addEventListener('click', () => closeOverlay($('#tisaneOverlay')));
-    $('#tisaneCancel').addEventListener('click', () => closeOverlay($('#tisaneOverlay')));
-    $('#tisaneForm').addEventListener('submit', submitTisaneForm);
+  // Кнопка добавления
+  $('#addTisaneBtn')?.addEventListener('click', () => {
+    if (!getUser()) return showToast('Сначала войдите', 'warn');
+    renderHerbList();
+    openOverlay($('#tisaneOverlay'));
+  });
 
-    $('#tisaneHerbSearch').addEventListener('input', (e) => renderHerbList(e.target.value));
+  // Форма тизана
+  const formOv = $('#tisaneOverlay');
+  if (formOv) {
+    wireOverlay(formOv);
+    $('#tisaneFormClose')?.addEventListener('click', () => closeOverlay(formOv));
+    $('#tisaneFormCancel')?.addEventListener('click', () => closeOverlay(formOv));
+    $('#tisaneForm')?.addEventListener('submit', submitTisaneForm);
+    $('#tisaneHerbSearch')?.addEventListener('input', (e) => renderHerbList(e.target.value));
+  }
 
-    $('#tisaneHerbList').addEventListener('change', (e) => {
-      const cb = e.target.closest('[data-herb]');
-      if (!cb) return;
-      const id = cb.dataset.herb;
-      const rowEl = cb.closest('.herb-row');
-      const star = rowEl ? rowEl.querySelector('.herb-star') : null;
-      if (cb.checked) {
-        selected.set(id, { primary: false });
-        if (star) star.hidden = false;
-      } else {
-        selected.delete(id);
-        if (star) { star.hidden = true; star.classList.remove('on'); }
-      }
-    });
+  // Результат
+  const resultOv = $('#tisaneResultOverlay');
+  if (resultOv) {
+    wireOverlay(resultOv);
+    $('#tisaneResultClose')?.addEventListener('click', () => closeOverlay(resultOv));
+    $('#tisaneResultOk')?.addEventListener('click', () => closeOverlay(resultOv));
+  }
 
-    $('#tisaneHerbList').addEventListener('click', (e) => {
-      const star = e.target.closest('.herb-star');
-      if (!star) return;
-      const id = star.dataset.primary;
-      const sel = selected.get(id);
-      if (!sel) return;
-      sel.primary = !sel.primary;
-      star.classList.toggle('on', sel.primary);
-    });
-
-    $('#tisaneNewHerbToggle').addEventListener('click', () => {
-      $('#tisaneNewHerbRow').classList.toggle('hidden');
-    });
-
-    $('#tisaneNewHerbSubmit').addEventListener('click', async () => {
-      const name = $('#tisaneNewHerbName').value.trim();
-      if (!name) return showToast('Введите название травы', 'warn');
-      const { data, error } = await supabase.rpc('suggest_herb', { p_name: name });
-      if (error) return showToast(error.message, 'warn');
-      const rec = Array.isArray(data) ? data[0] : data;
-      if (!herbById.has(rec.id)) {
-        herbs.push(rec);
-        herbById.set(rec.id, rec);
-      }
-      selected.set(rec.id, { primary: false });
-      renderHerbList($('#tisaneHerbSearch').value);
-      $('#tisaneNewHerbName').value = '';
-      showToast(rec.is_approved
-        ? `Трава «${rec.name}» добавлена в состав`
-        : `«${rec.name}» — ваша трава: станет общей после 5 голосов`);
-    });
-
-    $('#tisaneResultClose').addEventListener('click', () => closeOverlay($('#tisaneResultOverlay')));
-    $('#tisaneResultGoShelf').addEventListener('click', () => {
-      closeOverlay($('#tisaneResultOverlay'));
-      const panel = $('#tisanesPanel');
-      if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-
-    wireOverlay($('#tisaneBrewOverlay'));
-    $('#tisaneBrewClose').addEventListener('click', () => closeOverlay($('#tisaneBrewOverlay')));
-    $('#tisaneBrewCancel').addEventListener('click', () => closeOverlay($('#tisaneBrewOverlay')));
-    $('#tisaneBrewStars').addEventListener('click', (e) => {
-      const b = e.target.closest('.star-btn');
-      if (!b) return;
-      brewRating = Number(b.dataset.value);
-      $$('#tisaneBrewStars .star-btn').forEach((s) => {
-        s.classList.toggle('on', Number(s.dataset.value) <= brewRating);
-        s.setAttribute('aria-checked', String(s === b));
-      });
-    });
-    $('#tisaneBrewForm').addEventListener('submit', (e) => {
+  // Заваривание
+  const brewOv = $('#tisaneBrewOverlay');
+  if (brewOv) {
+    wireOverlay(brewOv);
+    $('#tisaneBrewClose')?.addEventListener('click', () => closeOverlay(brewOv));
+    $('#tisaneBrewCancel')?.addEventListener('click', () => closeOverlay(brewOv));
+    $('#tisaneBrewForm')?.addEventListener('submit', (e) => {
       e.preventDefault();
       submitTisaneBrew();
     });
-
-    wireOverlay($('#tisaneJournalOverlay'));
-    $('#tisaneJournalClose').addEventListener('click', () => closeOverlay($('#tisaneJournalOverlay')));
-
-    $('#tisanesGrid').addEventListener('click', (e) => {
-      const card = e.target.closest('.tisane-card');
-      if (!card) return;
-      const row = myTisanes.find((r) => r.id === card.dataset.tisaneId);
-      if (!row) return;
-      if (e.target.closest('[data-action="brew"]')) return openTisaneBrew(row);
-      if (e.target.closest('[data-action="restock"]')) return restockTisane(row);
-      if (e.target.closest('[data-action="journal"]')) return openTisaneJournal(row);
+    // Звёзды
+    $('#tisaneBrewStars')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('.star-btn');
+      if (!btn) return;
+      brewRating = Number(btn.dataset.star);
+      $$('#tisaneBrewStars .star-btn').forEach((s, i) => {
+        s.classList.toggle('on', i < brewRating);
+        s.setAttribute('aria-checked', String(i < brewRating));
+      });
     });
   }
+
+  // Журнал
+  const journalOv = $('#tisaneJournalOverlay');
+  if (journalOv) {
+    wireOverlay(journalOv);
+    $('#tisaneJournalClose')?.addEventListener('click', () => closeOverlay(journalOv));
+  }
+
+  // Клики по карточкам активных тизанов
+  $('#tisanesGrid')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const card = btn.closest('.tisane-card');
+    if (!card) return;
+    const r = activeTisanes.find((t) => String(t.id) === card.dataset.tisaneId);
+    if (!r) return;
+
+    if (btn.dataset.action === 'brew') return openTisaneBrew(r);
+    if (btn.dataset.action === 'restock') return restockTisane(r);
+    if (btn.dataset.action === 'journal') return openTisaneJournal(r);
+  });
+
+  // Клики по архиву тизанов
+  $('#tisanesArchiveList')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const row = btn.closest('.archrow');
+    if (!row) return;
+    const r = finishedTisanes.find((t) => String(t.id) === row.dataset.tisaneId);
+    if (!r) return;
+
+    if (btn.dataset.action === 'restock') return restockTisane(r);
+    if (btn.dataset.action === 'journal') return openTisaneJournal(r);
+    if (btn.dataset.action === 'remove') return removeTisane(r);
+  });
 
   await reloadTisanes();
   renderTisanes();
