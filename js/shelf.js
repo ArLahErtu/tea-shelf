@@ -27,6 +27,8 @@ let brewRating = 0;
 let currentRow = null;
 
 const filters = { status: 'all', type: 'all', sort: 'ending' };
+const expanded = { favorites: false, moderation: false };
+const COLLAPSE_LIMIT = 3;
 
 const statusOf = (r) =>
   r.amount <= 0 ? 'finished'
@@ -103,25 +105,6 @@ function shoppingRowNode(r) {
   return node;
 }
 
-function renderShopping() {
-  const box = $('#shoppingList');
-  if (!box) return;
-  const rows = shelf.filter((r) => statusOf(r) !== 'available');
-  $('#shoppingCount').textContent = rows.length;
-  box.innerHTML = '';
-
-  if (!rows.length) {
-    box.innerHTML = '<p class="hint">Список пуст. Когда чай закончится или его станет мало, он появится здесь.</p>';
-    const btn = $('#restockSelectedBtn');
-    if (btn) btn.disabled = true;
-    return;
-  }
-
-  rows.forEach((r) => box.appendChild(shoppingRowNode(r)));
-  const btn = $('#restockSelectedBtn');
-  if (btn) btn.disabled = false;
-}
-
 async function restockFromContainer(container) {
   const jobs = [];
   $$('.buyrow', container).forEach((node) => {
@@ -140,16 +123,6 @@ async function restockFromContainer(container) {
   await load();
   renderAll();
   return true;
-}
-
-function initRestock() {
-  $('#restockSelectedBtn')?.addEventListener('click', async () => {
-    const ok = await restockFromContainer($('#shoppingList'));
-    if (ok) {
-      $('#shoppingSuccess')?.classList.remove('hidden');
-      setTimeout(() => $('#shoppingSuccess')?.classList.add('hidden'), 3000);
-    }
-  });
 }
 
 // ---------- Модальное окно пополнения (кнопка «Посмотреть») ----------
@@ -190,7 +163,7 @@ function ensureRestockModal() {
 function openRestockModal() {
   ensureRestockModal();
   const box = $('#restockModalList');
-  const rows = shelf.filter((r) => statusOf(r) !== 'available');
+  const rows = shelf.filter((r) => statusOf(r) === 'low');
   box.innerHTML = '';
   if (!rows.length) {
     box.innerHTML = '<p class="hint">Всё в порядке — ничего не заканчивается.</p>';
@@ -201,6 +174,16 @@ function openRestockModal() {
 }
 
 // ---------- Избранное ----------
+function favoritesRowNode(t) {
+  const node = document.createElement('div');
+  node.className = 'wrow';
+  node.dataset.teaId = t.id;
+  node.innerHTML = `<div class="wn"><b>${escapeHtml(t.name)}</b>
+    <span>${escapeHtml(t.region || 'Избранное')}</span></div>
+    <button class="btn btn-outline btn-sm" type="button" data-action="add-from-favorites">На полку</button>`;
+  return node;
+}
+
 function renderFavorites() {
   const box = $('#favoritesList');
   if (!box) return;
@@ -213,29 +196,23 @@ function renderFavorites() {
     return;
   }
 
-  const tpl = $('#favoritesRowTemplate');
-  if (!tpl) {
-    teas.forEach((t) => {
-      const node = document.createElement('div');
-      node.className = 'wrow';
-      node.dataset.teaId = t.id;
-      node.innerHTML = `<div class="wn"><b>${escapeHtml(t.name)}</b>
-        <span>${escapeHtml(t.region || 'Избранное')}</span></div>
-        <button class="btn btn-outline btn-sm" type="button" data-action="add-from-favorites">На полку</button>`;
-      box.appendChild(node);
-    });
-    return;
+  const list = expanded.favorites ? teas : teas.slice(0, COLLAPSE_LIMIT);
+  list.forEach((t) => box.appendChild(favoritesRowNode(t)));
+
+  if (teas.length > COLLAPSE_LIMIT) {
+    box.appendChild(collapseBtn('favorites', teas.length));
   }
-  teas.forEach((t) => {
-    const node = tpl.content.firstElementChild.cloneNode(true);
-    node.dataset.teaId = t.id;
-    node.querySelector('b').textContent = t.name;
-    node.querySelector('span').textContent = t.region || 'Избранное';
-    box.appendChild(node);
-  });
 }
 
 // ---------- Модерация ----------
+function moderationRowNode(r) {
+  const node = document.createElement('div');
+  node.className = 'mrow';
+  node.innerHTML = `<div class="wn"><b>${escapeHtml(r.name)}</b>
+    <span>Заявка от ${r.created_at ? formatDate(r.created_at) : '—'}</span></div>`;
+  return node;
+}
+
 function renderModeration() {
   const box = $('#moderationList');
   if (!box) return;
@@ -247,24 +224,23 @@ function renderModeration() {
     return;
   }
 
-  const tpl = $('#moderationRowTemplate');
-  if (!tpl) {
-    requests.forEach((r) => {
-      const node = document.createElement('div');
-      node.className = 'mrow';
-      node.innerHTML = `<div class="wn"><b>${escapeHtml(r.name)}</b>
-        <span>Заявка от ${r.created_at ? formatDate(r.created_at) : '—'}</span></div>`;
-      box.appendChild(node);
-    });
-    return;
+  const list = expanded.moderation ? requests : requests.slice(0, COLLAPSE_LIMIT);
+  list.forEach((r) => box.appendChild(moderationRowNode(r)));
+
+  if (requests.length > COLLAPSE_LIMIT) {
+    box.appendChild(collapseBtn('moderation', requests.length));
   }
-  requests.forEach((r) => {
-    const node = tpl.content.firstElementChild.cloneNode(true);
-    node.querySelector('b').textContent = r.name;
-    node.querySelector('span').textContent =
-      'Заявка от ' + (r.created_at ? formatDate(r.created_at) : '—');
-    box.appendChild(node);
-  });
+}
+
+function collapseBtn(key, total) {
+  const btn = document.createElement('button');
+  btn.className = 'btn btn-outline btn-sm';
+  btn.type = 'button';
+  btn.dataset.collapse = key;
+  btn.textContent = expanded[key]
+    ? 'Свернуть'
+    : `Показать ещё (${total - COLLAPSE_LIMIT})`;
+  return btn;
 }
 
 // ---------- Сетка полки ----------
@@ -375,14 +351,13 @@ function cardNode(r) {
 
 function renderAll() {
   renderStats();
-  renderShopping();
   renderFavorites();
   renderModeration();
   renderGrid();
   renderTisanes();
   renderUnknowns();
 
-  const low = shelf.filter((r) => statusOf(r) !== 'available').length;
+  const low = shelf.filter((r) => statusOf(r) === 'low').length;
   $('#shelfBanner')?.classList.toggle('hidden', !low);
   if (low && $('#shelfBannerText')) {
     $('#shelfBannerText').textContent =
@@ -1117,8 +1092,15 @@ async function init() {
   initAmountModal();
   initFilters();
   initBrew();
-  initRestock();
   initFavorites();
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-collapse]');
+    if (!btn) return;
+    const key = btn.dataset.collapse;
+    expanded[key] = !expanded[key];
+    if (key === 'favorites') renderFavorites();
+    if (key === 'moderation') renderModeration();
+  });
   initJournalOverlay();
   ensureArchiveModals();
 
