@@ -35,11 +35,15 @@ async function render() {
 
   const { data } = await supabase.from('profiles')
     .select('*').eq('user_id', user.id).maybeSingle();
-  profile = data || null;
 
-  if (!profile) {
+  if (data) {
+    profile = data;
+  } else {
+    // upsert защищает от ошибки 409, если строка уже существует
+    await supabase.from('profiles')
+      .upsert({ user_id: user.id }, { onConflict: 'user_id' });
     const { data: created } = await supabase.from('profiles')
-      .insert({ user_id: user.id }).select().maybeSingle();
+      .select('*').eq('user_id', user.id).maybeSingle();
     profile = created || null;
   }
 
@@ -98,7 +102,7 @@ async function onAvatarFile(e) {
       user_id: user.id,
       avatar_url: publicUrl,
       updated_at: new Date().toISOString(),
-    });
+    }, { onConflict: 'user_id' });
   if (error) return showToast('Ошибка сохранения: ' + error.message, 'warn');
 
   profile = { ...(profile || { user_id: user.id }), avatar_url: publicUrl };
