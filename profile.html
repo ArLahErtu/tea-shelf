@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Чайная полка - Профиль</title>
+  <meta name="description" content="Профиль Чайной полки: почта, пароль, фото профиля и удаление аккаунта.">
+  <link rel="canonical" href="https://tea-shelf.vercel.app/profile.html">
+  <meta name="theme-color" content="#2F5D3C">
+
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="img/icon-192.png">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Prata&display=swap"
+    rel="stylesheet"
+  >
+
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/pages/profile.css">
+  <link rel="stylesheet" href="css/chatbot.css">
+</head>
+
+<body class="page-profile" data-page="profile">
+
+  <header class="topbar">
+    <div class="wrap topbar-in">
+
+      <a class="brand" href="index.html" aria-label="Чайная полка — на главную">
+        <span class="logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M5 20c0-8 5-13 14-15-1 9-6 14-14 15Z"/></svg>
+        </span>
+        <span class="btxt">Чайная полка</span>
+      </a>
+
+      <nav class="nav" aria-label="Основная навигация">
+        <a href="index.html">Главная</a>
+        <a href="shelf.html">Полка</a>
+        <a href="catalog.html">Каталог</a>
+      </nav>
+
+      <div class="top-actions">
+        <span class="db-chip demo" id="dbStatus" role="status" aria-live="polite">
+          <i aria-hidden="true"></i>подключение…
+        </span>
+
+        <button class="btn btn-outline btn-sm" id="authOpen" type="button">Вход</button>
+
+        <div class="avatar-btn hidden" id="userArea">
+          <button
+            class="avatar"
+            id="avatarBtn"
+            type="button"
+            aria-haspopup="true"
+            aria-expanded="false"
+            aria-label="Меню пользователя"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/>
+              <path d="M4 20c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5"/>
+            </svg>
+          </button>
+
+          <div class="user-menu hidden" id="userMenu">
+            <p class="um-mail" id="userEmail">user@example.com</p>
+            <a href="shelf.html">Моя полка</a>
+            <a href="profile.html">Профиль</a>
+            <button type="button" id="openModerationBtn" class="hidden">Режим модератора</button>
+            <button class="danger" id="logoutBtn" type="button">Выйти</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="wrap">
+
+      <div class="page-head">
+        <div>
+          <p class="crumbs">Личный кабинет</p>
+          <h1>Профиль</h1>
+          <p class="sub">Почта, пароль, фото профиля и управление аккаунтом.</p>
+        </div>
+      </div>
+
+      <div class="panel hidden" id="profileGuest">
+        <h3>Профиль доступен после входа</h3>
+        <p class="hint">Войдите, чтобы управлять почтой, паролем и фото профиля.</p>
+      </div>
+
+      <div class="profile-layout hidden" id="profileContent">
+
+        <section class="panel">
+          <div class="profile-top">
+            <div class="avatar-big" id="profileAvatar">?</div>
+            <div>
+              <p class="profile-email" id="profileEmail">—</p>
+              <p class="hint" id="profileSince"></p>
+            </div>
+          </div>
+          <div class="profile-actions">
+            <label class="btn btn-outline btn-sm" for="avatarInput">Загрузить фото</label>
+            <input type="file" id="avatarInput" accept="image/*" hidden>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h3>Смена пароля</h3>
+          <form id="passwordForm" novalidate>
+            <div class="field">
+              <label for="curPass">Текущий пароль</label>
+              <input id="curPass" type="password" autocomplete="current-password" required>
+              <p class="err">Укажите текущий пароль</p>
+            </div>
+            <div class="row2">
+              <div class="field">
+                <label for="newPass">Новый пароль</label>
+                <input id="newPass" type="password" minlength="6" autocomplete="new-password" required>
+                <p class="err">Минимум 6 символов</p>
+              </div>
+              <div class="field">
+                <label for="repeatPass">Повторите новый пароль</label>
+                <input id="repeatPass" type="password" autocomplete="new-password" required>
+                <p class="err">Пароли не совпадают</p>
+              </div>
+            </div>
+            <button class="btn btn-primary" type="submit">Обновить пароль</button>
+          </form>
+        </section>
+
+        <section class="panel">
+          <h3>Смена почты</h3>
+          <form id="emailForm" novalidate>
+            <div class="field">
+              <label for="newEmail">Новый email</label>
+              <input id="newEmail" type="email" required>
+              <p class="err">Укажите корректный email</p>
+            </div>
+            <p class="hint">На новый адрес придёт письмо со ссылкой для подтверждения.</p>
+            <button class="btn btn-primary" type="submit">Обновить почту</button>
+          </form>
+        </section>
+
+        <section class="panel danger-panel">
+          <h3>Опасная зона</h3>
+          <p class="hint">Удаление аккаунта стирает полку, журналы, тизаны, неизвестные чаи и заявки. Действие необратимо.</p>
+          <button class="btn btn-danger" id="deleteAccountBtn" type="button">Удалить аккаунт</button>
+        </section>
+
+      </div>
+
+    </div>
+  </main>
+
+  <footer>
+    <div class="wrap">© 2026 «Чайная полка»</div>
+  </footer>
+
+  <!-- Вход / регистрация -->
+  <div class="overlay" id="authOverlay" hidden>
+    <div class="modal narrow" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+      <div class="modal-head">
+        <h2 id="authTitle">Вход</h2>
+        <button class="icon-btn" id="authClose" type="button" aria-label="Закрыть окно входа">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+
+      <div class="auth-tabs" aria-label="Выбор режима входа">
+        <button type="button" class="active" id="tabLogin">Вход</button>
+        <button type="button" id="tabRegister">Регистрация</button>
+      </div>
+
+      <div class="global-err" id="authError" role="alert"></div>
+
+      <form id="authForm" novalidate>
+        <div class="field hidden" id="fieldName">
+          <label for="authName">Имя</label>
+          <input id="authName" name="name" type="text" autocomplete="name" placeholder="Укажите имя">
+          <p class="err">Укажите имя</p>
+        </div>
+
+        <div class="field" id="fieldEmail">
+          <label for="authEmail">Email <span class="req">*</span></label>
+          <input
+            id="authEmail" name="email" type="email" required autocomplete="email"
+            placeholder="Укажите корректный email"
+          >
+          <p class="err">Укажите корректный email</p>
+        </div>
+
+        <div class="field" id="fieldPassword">
+          <label for="authPassword">Пароль <span class="req">*</span></label>
+          <input
+            id="authPassword" name="password" type="password" required minlength="6"
+            autocomplete="current-password" placeholder="Пароль — минимум 6 символов"
+          >
+          <p class="err">Пароль — минимум 6 символов</p>
+        </div>
+
+        <button class="btn btn-primary" id="authSubmit" type="submit">Войти</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="toasts" aria-live="polite"></div>
+
+  <script type="module" src="js/profile.js"></script>
+</body>
+</html>

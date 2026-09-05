@@ -2,12 +2,7 @@
 // auth.js — управление авторизацией + роли пользователей
 // Блок 1: загрузка роли (admin/moderator/user)
 // Блок 2: кнопка режима модератора + переход в каталог
-// ФИКС (этап 3): «Режим модератора» — ТУМБЛЕР:
-//   • ВЫКЛ — админ/модератор пользуется сервисом как обычный
-//     пользователь (чистый интерфейс, «На полку» и т.д.);
-//   • ВКЛ — карандаши редактирования, тумблер «Каталог/Модерация»;
-//   • строка роли из меню пользователя убрана (юзверю не нужно
-//     знать, кто он).
+// ЭТАП 7: аватар профиля в шапке, экспорт refreshUserAvatar.
 // ============================================================
 import { supabase, isConfigured } from './supabaseClient.js';
 import {
@@ -18,7 +13,6 @@ import { SHOW_DEMO_ACCOUNTS } from './config.js';
 
 let currentUser = null;
 let currentUserRole = 'user';
-// Режим модератора: активен только при роли И включённом тумблере
 let moderationActive = localStorage.getItem('tea_shelf_mode') === 'moderator';
 const listeners = [];
 
@@ -31,6 +25,23 @@ export const isAdmin = () => currentUserRole === 'admin';
 export function onAuthChange(fn) { listeners.push(fn); }
 function emit() { listeners.forEach((fn) => fn(currentUser, currentUserRole)); }
 
+// ---------- Аватар профиля в шапке ----------
+async function loadAvatarInto(btn, userId) {
+  try {
+    const { data } = await supabase.from('profiles')
+      .select('avatar_url').eq('user_id', userId).maybeSingle();
+    if (data?.avatar_url && document.body.contains(btn)) {
+      btn.innerHTML = `<img class="avatar-img" src="${data.avatar_url}" alt="">`;
+    }
+  } catch (e) { /* остаются инициалы */ }
+}
+
+export function refreshUserAvatar() {
+  const btn = $('#avatarBtn');
+  if (!btn || !currentUser) return;
+  loadAvatarInto(btn, currentUser.id);
+}
+
 // ---------- Тумблер режима модератора ----------
 export function toggleModerationMode() {
   if (!hasModeratorRole()) {
@@ -41,7 +52,7 @@ export function toggleModerationMode() {
   if (moderationActive) localStorage.setItem('tea_shelf_mode', 'moderator');
   else localStorage.removeItem('tea_shelf_mode');
   renderState();
-  emit(); // страницы (каталог) подхватят изменение без ручного reload
+  emit();
   return moderationActive;
 }
 
@@ -62,7 +73,6 @@ async function refreshUser() {
   const { data } = await supabase.auth.getSession();
   currentUser = data.session?.user ?? null;
 
-  // Блок 1: загружаем роль пользователя
   if (currentUser) {
     try {
       const { data: roleData, error } = await supabase
@@ -103,16 +113,19 @@ function renderState() {
     const initials = name.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 
     $('#userEmail').textContent = email;
-    $('#avatarBtn').textContent = initials || '?';
 
-    // Тумблер «Режим модератора»: виден только обладателям роли,
-    // текст и состояние зависят от того, включён ли режим сейчас.
+    const avatarBtn = $('#avatarBtn');
+    if (avatarBtn) {
+      avatarBtn.textContent = initials || '?';
+      loadAvatarInto(avatarBtn, currentUser.id);
+    }
+
     const modBtn = $('#openModerationBtn');
     if (modBtn) {
       modBtn.classList.toggle('hidden', !hasModeratorRole());
       modBtn.textContent = isModerationActive()
-        ? '👤 Выйти из режима модератора'
-        : '🛡️ Режим модератора';
+        ? 'Выйти из режима модератора'
+        : 'Режим модератора';
     }
   } else {
     openBtn.classList.remove('hidden');
@@ -129,7 +142,7 @@ const PRIVACY_HTML = `
   <p style="margin:0 0 12px;">Сервис «Чайная полка» (далее — сервис) собирает только данные, необходимые для его работы, и не передаёт их третьим лицам. Регистрируясь, вы даёте согласие на обработку перечисленных ниже данных.</p>
 
   <h3 style="margin:0 0 6px;">2. Какие данные мы собираем</h3>
-  <p style="margin:0 0 12px;">— Аккаунт: email и имя.<br>— Записи полки: добавленные чаи, остатки, журнал завариваний с оценками и заметками.<br>— Заявки на добавление чая в общий каталог.</p>
+  <p style="margin:0 0 12px;">— Аккаунт: email и имя.<br>— Профиль: фото по желанию.<br>— Записи полки: добавленные чаи, остатки, журнал завариваний с оценками и заметками.<br>— Заявки на добавление чая в общий каталог.</p>
 
   <h3 style="margin:0 0 6px;">3. Зачем они нужны</h3>
   <p style="margin:0 0 12px;">Чтобы вести вашу личную полку и журнал, рассматривать заявки в каталог и улучшать сервис. Данные не используются для рекламы и не продаются.</p>
@@ -138,10 +151,10 @@ const PRIVACY_HTML = `
   <p style="margin:0 0 12px;">Данные хранятся в защищённой облачной базе Supabase. Ваши записи видите только вы. Администрация сервиса видит заявки для модерации. Одобренный чай публикуется в каталоге без указания ваших контактов.</p>
 
   <h3 style="margin:0 0 6px;">5. Аналитика</h3>
-  <p style="margin:0 0 12px;">Сервис использует аналитику без cookie (Vercel Analytics, PostHog): она фиксирует обезличенные действия — визиты и нажатия кнопок — и не позволяет идентифицировать личность.</p>
+  <p style="margin:0 0 12px;">Сервис использует аналитику (Vercel Analytics и Яндекс Метрика): она фиксирует обезличенные действия — визиты и нажатия кнопок — и не позволяет идентифицировать личность.</p>
 
   <h3 style="margin:0 0 6px;">6. Ваши права</h3>
-  <p style="margin:0 0 0;">Вы можете удалить чаи с полки, отозвать заявки, а также запросить удаление аккаунта и всех данных — напишите нам через ссылку «Обратная связь» внизу страницы.</p>
+  <p style="margin:0 0 0;">Вы можете удалить чаи с полки, отозвать заявки, а также самостоятельно удалить аккаунт и все данные в профиле (кнопка «Удалить аккаунт»).</p>
 `;
 
 let privacyOv = null;
@@ -203,7 +216,6 @@ export async function initAuth() {
   if (demo) demo.classList.toggle('hidden', !SHOW_DEMO_ACCOUNTS);
   if (overlay) wireOverlay(overlay);
 
-  // Юзеру не нужно знать свою роль — убираем строку из меню полностью
   $('#userRoleBadge')?.remove();
 
   injectConsent();
@@ -261,17 +273,14 @@ export async function initAuth() {
     showToast('Вы вышли из аккаунта');
   });
 
-  // ТУМБЛЕР режима модератора:
-  // ВКЛ  → переходим в каталог с открытой модерацией;
-  // ВЫКЛ → возвращаем обычный пользовательский интерфейс.
   $('#openModerationBtn')?.addEventListener('click', () => {
     const active = toggleModerationMode();
     userMenu?.classList.add('hidden');
     if (active) {
-      showToast('🛡️ Режим модератора активирован');
+      showToast('Режим модератора активирован');
       window.location.href = 'catalog.html?moderation=1';
     } else {
-      showToast('👤 Вы в обычном режиме');
+      showToast('Вы в обычном режиме');
       window.location.reload();
     }
   });
