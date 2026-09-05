@@ -451,6 +451,7 @@ function injectMarkup() {
 }
 
 // ---------- Старт ----------
+// ---------- Старт ----------
 export async function initTisanes() {
   injectMarkup();
 
@@ -469,6 +470,43 @@ export async function initTisanes() {
     $('#tisaneFormCancel')?.addEventListener('click', () => closeOverlay(formOv));
     $('#tisaneForm')?.addEventListener('submit', submitTisaneForm);
     $('#tisaneHerbSearch')?.addEventListener('input', (e) => renderHerbList(e.target.value));
+
+    // Чекбоксы трав: синхронизируем набор selected
+    $('#tisaneHerbList')?.addEventListener('change', (e) => {
+      const cb = e.target.closest('input[data-herb]');
+      if (!cb) return;
+      const id = cb.dataset.herb;
+      const row = cb.closest('.herb-row');
+      const star = row?.querySelector('[data-primary]');
+      if (cb.checked) {
+        selected.set(id, { primary: false });
+      } else {
+        selected.delete(id);
+        if (star) star.classList.remove('on');
+      }
+      if (star) star.hidden = !cb.checked;
+    });
+
+    // Звёздочка — основная трава
+    $('#tisaneHerbList')?.addEventListener('click', (e) => {
+      const star = e.target.closest('[data-primary]');
+      if (!star) return;
+      const sel = selected.get(star.dataset.primary);
+      if (!sel) return;
+      sel.primary = !sel.primary;
+      star.classList.toggle('on', sel.primary);
+    });
+
+    // «+ Другая трава» — предложить новую траву
+    $('#addHerbBtn')?.addEventListener('click', async () => {
+      const name = prompt('Название новой травы:');
+      if (!name || !name.trim()) return;
+      const { error } = await supabase.rpc('suggest_herb', { p_name: name.trim() });
+      if (error) return showToast(error.message, 'warn');
+      showToast('Трава добавлена и появится после одобрения (5 голосов)');
+      await reloadTisanes();
+      renderHerbList($('#tisaneHerbSearch')?.value || '');
+    });
   }
 
   // Результат

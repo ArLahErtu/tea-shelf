@@ -726,12 +726,12 @@ async function approveCurrentTea() {
   });
 
   btn.disabled = false;
-  btn.textContent = '✅ Одобрить';
+  btn.textContent = ' Одобрить';
 
   if (error) return showToast('Ошибка одобрения: ' + error.message, 'warn');
 
   closeOverlay($('#moderateOverlay'));
-  showToast(`✅ «${edited.name}» опубликован в каталоге`);
+  showToast(` «${edited.name}» опубликован в каталоге`);
   trackEvent('tea_approved', { tea_id: tea.id, tea_name: edited.name });
 
   await Promise.all([loadModeration(), refresh()]);
@@ -845,7 +845,7 @@ async function saveEditedTea(formData) {
     return false;
   }
 
-  showToast('✅ Чай обновлён');
+  showToast(' Чай обновлён');
   await load();
   return true;
 }
@@ -882,7 +882,12 @@ function initPropose() {
       status: 'pending',
       author_id: user.id,
     });
-    if (error) return showToast('Ошибка заявки: ' + error.message, 'warn');
+    if (error) {
+      const msg = error.code === '23505'
+        ? 'Сбой нумерации в базе. Повторите позже или напишите нам.'
+        : 'Ошибка заявки: ' + error.message;
+      return showToast(msg, 'warn');
+    }
 
     closeOverlay(ov);
     e.target.reset();
@@ -997,7 +1002,7 @@ async function uploadPhoto(file, teaType, teaName = null) {
       const jpeg = await convertToJpeg(file);
       const retry = await doUpload(jpeg, 'image/jpeg', 'jpg');
       if (!retry.error) {
-        showToast('ℹ️ Хранилище не приняло формат — сохранено как JPG');
+        showToast('Хранилище не приняло формат — сохранено как JPG');
         res = retry;
       } else {
         showToast('Ошибка загрузки фото: ' + res.error.message, 'warn');
@@ -1024,7 +1029,7 @@ async function uploadPhoto(file, teaType, teaName = null) {
       showToast('Ошибка загрузки фото: ' + res2.error.message, 'warn');
       return res.publicUrl;
     }
-    showToast('ℹ️ Сервер не принял формат — сохранено как JPG');
+    showToast('Сервер не принял формат — сохранено как JPG');
     return res2.publicUrl;
   } catch (e) {
     console.warn('[uploadPhoto] конвертация не удалась:', e);
@@ -1071,7 +1076,7 @@ async function init() {
       $('#moderatePhoto').value = photoUrl;
       const img = $('#moderateCurrentPhoto');
       if (img) { img.src = photoUrl; img.classList.remove('hidden'); }
-      showToast('✅ Фото загружено');
+      showToast(' Фото загружено');
     }
 
     if (btn) { btn.disabled = false; btn.textContent = 'Загрузить фото'; }
@@ -1112,7 +1117,7 @@ async function init() {
         const img = $('#editTeaCurrentPhoto');
         img.src = photoUrl;
         img.classList.remove('hidden');
-        showToast('✅ Фото загружено');
+        showToast(' Фото загружено');
       }
 
       btn.disabled = false;
