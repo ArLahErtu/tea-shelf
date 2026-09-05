@@ -19,7 +19,6 @@ export async function initCommon() {
   await initAuth();        // шапка + модалка входа
   initAmountModal();       // модалка количества — теперь на каждой странице
   initChatbot();           // FAB + окно бота
-  initFeedbackLink();      // ссылка на Google Form в футере
   // УВЕДОМЛЕНИЯ О МОДЕРАЦИИ убраны отсюда: теперь их шлёт chatbot.js
   // при первом открытии чата (красивое сообщение с кнопкой
   // «Добавить на полку», без спама тостами на всех страницах).
@@ -53,16 +52,40 @@ function initAnalytics() {
 }
 initAnalytics();
 
-// ---------- Обратная связь: ссылка в футере ----------
-function initFeedbackLink() {
-  if (!FEEDBACK_URL) return;
-  const wrap = document.querySelector('footer .wrap');
-  if (!wrap) return;
-  const a = document.createElement('a');
-  a.href = FEEDBACK_URL;
-  a.target = '_blank';
-  a.rel = 'noopener';
-  a.textContent = 'Обратная связь';
-  a.style.textDecoration = 'underline';
-  wrap.appendChild(a);
+// ---------- Форма обратной связи в футере ----------
+function initFooterFeedback() {
+  const form = document.getElementById('footerFeedbackForm');
+  if (!form) return;
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const formData = new FormData(form);
+    const name = (formData.get('name') || '').toString().trim();
+    const email = (formData.get('email') || '').toString().trim();
+    const message = (formData.get('message') || '').toString().trim();
+
+    if (!name || !email || !message) {
+      alert('Заполните все поля');
+      return;
+    }
+
+    const subject = encodeURIComponent(`Обратная связь от ${name}`);
+    const body = encodeURIComponent(`Имя: ${name}\nEmail: ${email}\n\nСообщение:\n${message}`);
+    const mailto = `mailto:busyatv3@gmail.com?subject=${subject}&body=${body}`;
+
+    window.location.href = mailto;
+    form.reset();
+  });
 }
+
+initFooterFeedback();
+
+// ---------- Ссылка «Обратная связь» в футере ----------
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-footer-feedback]');
+  if (!el) return;
+  e.preventDefault();
+  if (typeof FEEDBACK_URL === 'string' && FEEDBACK_URL) {
+    window.open(FEEDBACK_URL, '_blank', 'noopener');
+  }
+});

@@ -193,23 +193,6 @@ function openPrivacy() {
   openOverlay(privacyOv);
 }
 
-// ---------- Ссылка на политику в подвале (постоянный доступ, 152-ФЗ) ----------
-function injectFooterPrivacy() {
-  const wrap = document.querySelector('footer .wrap');
-  if (!wrap || $('#privacyFooterLink')) return;
-  const a = document.createElement('a');
-  a.href = '#';
-  a.id = 'privacyFooterLink';
-  a.textContent = 'Политика конфиденциальности';
-  a.style.marginLeft = '12px';
-  a.style.textDecoration = 'underline';
-  a.addEventListener('click', (e) => {
-    e.preventDefault();
-    openPrivacy();
-  });
-  wrap.appendChild(a);
-}
-
 function injectConsent() {
   const anchor = $('#fieldPassword');
   if (!anchor || $('#consentLine')) return;
@@ -239,10 +222,9 @@ export async function initAuth() {
   $('#userRoleBadge')?.remove();
 
   injectConsent();
-  injectFooterPrivacy();
-
+  
   document.addEventListener('click', (e) => {
-    if (e.target.closest('#privacyOpen')) {
+    if (e.target.closest('#privacyOpen') || e.target.closest('[data-action="open-privacy"]')) {
       e.preventDefault();
       openPrivacy();
     }
