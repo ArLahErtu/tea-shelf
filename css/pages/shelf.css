@@ -881,3 +881,5 @@ body.page-shelf {
 
 /* Кнопка «Показать ещё / Свернуть» */
 [data-collapse] { margin-top: var(--space-2); }
+
+.custom-herb-row { margin: 0 0 8px; }

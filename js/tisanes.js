@@ -349,6 +349,7 @@ function injectMarkup() {
           <input type="search" id="tisaneHerbSearch" placeholder="Поиск травы..." class="sel">
           <div id="tisaneHerbList" class="herb-list"></div>
         </div>
+        <div id="tisaneCustomHerbRows"></div>
         <button type="button" class="btn btn-outline btn-sm" id="addHerbBtn">+ Другая трава</button>
         <div class="row2">
           <div class="field">
@@ -450,7 +451,28 @@ function injectMarkup() {
   document.body.appendChild(journalOv);
 }
 
-// ---------- Старт ----------
+// ---------- Своя трава: строка ввода вместо всплывающего окна ----------
+async function submitCustomHerb(row) {
+  const input = row.querySelector('input');
+  const name = (input.value || '').trim();
+  if (!name) return showToast('Введите название травы', 'warn');
+
+  const btn = row.querySelector('button');
+  btn.disabled = true;
+
+  const { data, error } = await supabase.rpc('suggest_herb', { p_name: name });
+  if (error) {
+    btn.disabled = false;
+    return showToast(error.message, 'warn');
+  }
+
+  await reloadTisanes();
+  if (data) selected.set(data, { primary: false });
+  renderHerbList($('#tisaneHerbSearch')?.value || '');
+  row.remove();
+  showToast('Трава добавлена в список. Одобрение — после 5 голосов');
+}
+
 // ---------- Старт ----------
 export async function initTisanes() {
   injectMarkup();
@@ -497,15 +519,20 @@ export async function initTisanes() {
       star.classList.toggle('on', sel.primary);
     });
 
-    // «+ Другая трава» — предложить новую траву
-    $('#addHerbBtn')?.addEventListener('click', async () => {
-      const name = prompt('Название новой травы:');
-      if (!name || !name.trim()) return;
-      const { error } = await supabase.rpc('suggest_herb', { p_name: name.trim() });
-      if (error) return showToast(error.message, 'warn');
-      showToast('Трава добавлена и появится после одобрения (5 голосов)');
-      await reloadTisanes();
-      renderHerbList($('#tisaneHerbSearch')?.value || '');
+    // «+ Другая трава» — добавляет заполняющуюся строку
+    $('#addHerbBtn')?.addEventListener('click', () => {
+      const box = $('#tisaneCustomHerbRows');
+      const row = document.createElement('div');
+      row.className = 'row2 custom-herb-row';
+      row.innerHTML = `
+        <input type="text" placeholder="Название новой травы" maxlength="60">
+        <button type="button" class="btn btn-primary btn-sm">Добавить</button>`;
+      box.appendChild(row);
+      row.querySelector('input').focus();
+      row.querySelector('button').addEventListener('click', () => submitCustomHerb(row));
+      row.querySelector('input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); submitCustomHerb(row); }
+      });
     });
   }
 
