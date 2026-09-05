@@ -371,31 +371,7 @@ function cardNode(r) {
   return node;
 }
 
-// ---------- Журнал (общий) ----------
-function renderJournal() {
-  const box = $('#journalList');
-  if (!box) return;
-  box.innerHTML = '';
 
-  if (!journal.length) {
-    box.innerHTML = '<p class="hint">Записи появятся после первого заваривания.</p>';
-    return;
-  }
-
-  journal.slice(0, 20).forEach((j) => {
-    const node = document.createElement('div');
-    node.className = 'jentry';
-    node.innerHTML = `
-      <div class="jdate">${j.created_at ? formatDate(j.created_at) : '—'}</div>
-      <div class="jbody">
-        <b>${escapeHtml(journalName(j))}</b>
-        <div class="jm">${j.amount} ${UNIT_LABELS[j.unit] || 'г'}</div>
-        ${j.note ? `<div class="jnote">${escapeHtml(j.note)}</div>` : ''}
-        ${j.rating ? `<div class="jstars">${'★'.repeat(j.rating)}${'☆'.repeat(5 - j.rating)}</div>` : ''}
-      </div>`;
-    box.appendChild(node);
-  });
-}
 
 function renderAll() {
   renderStats();
@@ -405,7 +381,6 @@ function renderAll() {
   renderGrid();
   renderTisanes();
   renderUnknowns();
-  renderJournal();
 
   const low = shelf.filter((r) => statusOf(r) !== 'available').length;
   $('#shelfBanner')?.classList.toggle('hidden', !low);
@@ -804,32 +779,93 @@ function journalArchiveRow(a) {
   return node;
 }
 
+// ---------- Строка текущего журнала ----------
+function liveJournalRow(j) {
+  const node = document.createElement('div');
+  node.className = 'jentry';
+  node.innerHTML = `
+    <div class="jdate">${j.created_at ? formatDate(j.created_at) : '—'}</div>
+    <div class="jbody">
+      <b>${escapeHtml(journalName(j))}</b>
+      <div class="jm">${j.amount} ${UNIT_LABELS[j.unit] || 'г'}</div>
+      ${j.note ? `<div class="jnote">${escapeHtml(j.note)}</div>` : ''}
+      ${j.rating ? `<div class="jstars">${'★'.repeat(j.rating)}${'☆'.repeat(5 - j.rating)}</div>` : ''}
+    </div>`;
+  return node;
+}
+
+// ============================================================
+// ЖУРНАЛ ЗАВАРИВАНИЙ (модалка «Архив журналов»): ВСЕ журналы —
+// текущие записи + архив удалённых, по вкладкам чай/тизаны/неизвестные
+// ============================================================
 async function openJournalArchiveModal() {
   ensureArchiveModals();
   const user = getUser();
   if (!user) return;
 
-  const { data } = await supabase.from('brew_journal_archive')
+  // Текущие (живые) журналы
+  const { data: live } = await supabase.from(TABLES.journal)
     .select('*').eq('user_id', user.id)
     .order('created_at', { ascending: false });
-  const rows = data || [];
+  const liveRows = live || [];
 
-  const groups = {
-    tea: rows.filter((r) => r.source_type === 'tea' || !r.source_type),
-    tisane: rows.filter((r) => r.source_type === 'tisane'),
-    unknown: rows.filter((r) => r.source_type === 'unknown'),
+  const liveGroups = {
+    tea: liveRows.filter((j) => j.tea_id),
+    tisane: liveRows.filter((j) => j.tisane_id),
+    unknown: liveRows.filter((j) => j.unknown_id),
   };
 
-  Object.entries({ tea: '#journalArchiveTea', tisane: '#journalArchiveTisane', unknown: '#journalArchiveUnknown' })
-    .forEach(([key, sel]) => {
-      const box = $(sel);
-      box.innerHTML = '';
-      if (!groups[key].length) {
-        box.innerHTML = '<p class="hint">Нет записей.</p>';
-      } else {
-        groups[key].forEach((a) => box.appendChild(journalArchiveRow(a)));
-      }
-    });
+  // Архивные снапшоты удалённых
+  const { data: arch } = await supabase.from('brew_journal_archive')
+    .select('*').eq('user_id', user.id)
+    .order('created_at', { ascending: false });
+  const archRows = arch || [];
+
+  const archGroups = {
+    tea: archRows.filter((r) => r.source_type === 'tea' || !r.source_type),
+    tisane: archRows.filter((r) => r.source_type === 'tisane'),
+    unknown: archRows.filter((r) => r.source_type === 'unknown'),
+  };
+
+  const sections = {
+    tea: '#journalArchiveTea',
+    tisane: '#journalArchiveTisane',
+    unknown: '#journalArchiveUnknown',
+  };
+
+  Object.entries(sections).forEach(([key, sel]) => {
+    const box = $(sel);
+    box.innerHTML = '';
+
+    const liveTitle = document.createElement('p');
+    liveTitle.className = 'hint';
+    liveTitle.textContent = 'Текущий журнал';
+    box.appendChild(liveTitle);
+
+    if (!liveGroups[key].length) {
+      const empty = document.createElement('p');
+      empty.className = 'hint';
+      empty.textContent = 'Нет записей.';
+      box.appendChild(empty);
+    } else {
+      liveGroups[key].slice(0, 50).forEach((j) => box.appendChild(liveJournalRow(j)));
+    }
+
+    const archTitle = document.createElement('p');
+    archTitle.className = 'hint';
+    archTitle.style.marginTop = '12px';
+    archTitle.textContent = 'Архив (удалённые)';
+    box.appendChild(archTitle);
+
+    if (!archGroups[key].length) {
+      const empty = document.createElement('p');
+      empty.className = 'hint';
+      empty.textContent = 'Архив пуст.';
+      box.appendChild(empty);
+    } else {
+      archGroups[key].forEach((a) => box.appendChild(journalArchiveRow(a)));
+    }
+  });
 
   openOverlay($('#journalArchiveOverlay'));
 }

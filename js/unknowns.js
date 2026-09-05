@@ -457,7 +457,7 @@ async function finishedManualIdentify() {
 
 // ---------- Инъекция разметки ----------
 function injectMarkup() {
-  const journal = $('#journalPanel');
+  const journal = $('#shelfGrid');
   const section = document.createElement('section');
   section.className = 'panel unknowns-panel';
   section.id = 'unknownsPanel';
@@ -469,7 +469,7 @@ function injectMarkup() {
     </div>
     <p class="psub">Временные записи для чаёв, которые ещё предстоит опознать.</p>
     <div class="tisanes-grid" id="unknownsGrid"></div>`;
-  journal.parentNode.insertBefore(section, journal);
+  journal.parentNode.insertBefore(section, journal.nextSibling);
 
   const overlays = document.createElement('div');
   overlays.innerHTML = `

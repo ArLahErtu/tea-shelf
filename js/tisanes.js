@@ -310,7 +310,7 @@ function showResult(rec, qty, unit) {
 
 // ---------- Инъекция разметки ----------
 function injectMarkup() {
-  const journal = $('#journalPanel');
+  const journal = $('#shelfGrid');
 
   // Секция тизанов (без архива — он в общей модалке)
   const section = document.createElement('section');
@@ -324,7 +324,7 @@ function injectMarkup() {
     </div>
     <p class="psub">Травяные сборы: минимум две травы, дубликаты определяются по составу.</p>
     <div class="tisanes-grid" id="tisanesGrid"></div>`;
-  journal.parentNode.insertBefore(section, journal);
+  journal.parentNode.insertBefore(section, journal.nextSibling);
 
   // Форма добавления тизана
   const formOv = document.createElement('div');
