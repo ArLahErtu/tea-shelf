@@ -219,7 +219,7 @@ svg {
 }
 
 /* ------------------------------------------------------------
-   Футер — та же логика выравнивания, что и хэдер
+   Футер — выравнивание как у хедера (.wrap + flex по краям)
    ------------------------------------------------------------ */
 footer {
   background: var(--surface2);
@@ -228,27 +228,29 @@ footer {
   margin-top: var(--space-5);
 }
 
-.footer-grid {
+footer .footer-grid {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: var(--space-4);
   flex-wrap: wrap;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.footer-brand .brand { margin-bottom: var(--space-2); }
+footer .footer-brand .brand { margin-bottom: var(--space-2); }
 
-.footer-email {
+footer .footer-email {
   display: inline-block;
   font-size: 19.5px;
   font-weight: 800;
   margin: 0;
 }
 
-.footer-email a { color: var(--green-d); text-decoration: none; }
-.footer-email a:hover { text-decoration: underline; }
+footer .footer-email a { color: var(--green-d); text-decoration: none; }
+footer .footer-email a:hover { text-decoration: underline; }
 
-.footer-email .hint {
+footer .footer-email .hint {
   display: block;
   font-size: 12px;
   font-weight: 500;
@@ -257,7 +259,7 @@ footer {
   margin-top: 4px;
 }
 
-.footer-col h4 {
+footer .footer-col h4 {
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -266,7 +268,7 @@ footer {
   font-weight: 800;
 }
 
-.footer-col ul {
+footer .footer-col ul {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -275,8 +277,8 @@ footer {
   gap: 6px;
 }
 
-.footer-col a,
-.footer-col button.footer-link {
+footer .footer-col a,
+footer .footer-col button.footer-link {
   color: var(--text);
   text-decoration: none;
   font-size: 14px;
@@ -289,12 +291,12 @@ footer {
   text-align: left;
 }
 
-.footer-col a:hover,
-.footer-col button.footer-link:hover {
+footer .footer-col a:hover,
+footer .footer-col button.footer-link:hover {
   color: var(--green-d);
   text-decoration: underline;
 }
 
 @media (max-width: 720px) {
-  .footer-grid { flex-direction: column; }
+  footer .footer-grid { flex-direction: column; }
 }
