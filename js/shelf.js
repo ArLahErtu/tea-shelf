@@ -431,7 +431,16 @@ function initJournalOverlay() {
 // ============================================================
 // АРХИВ ЧАЯ: модальное окно с тремя вкладками
 // ============================================================
+// ---------- Модалки архива: создание и защита от старой разметки ----------
+let archiveModalsWired = false;
+
 function ensureArchiveModals() {
+  // Если в HTML остались старые версии модалок с другой разметкой — удаляем
+  const oldArchive = $('#archiveOverlay');
+  if (oldArchive && !$('#archiveTeaList')) oldArchive.remove();
+  const oldJournal = $('#journalArchiveOverlay');
+  if (oldJournal && !$('#journalArchiveTea')) oldJournal.remove();
+
   if (!$('#archiveOverlay')) {
     const ov = document.createElement('div');
     ov.className = 'overlay';
@@ -467,12 +476,12 @@ function ensureArchiveModals() {
     ov.innerHTML = `
       <div class="modal" role="dialog" aria-modal="true" aria-labelledby="journalArchiveTitle">
         <div class="modal-head">
-          <h2 id="journalArchiveTitle">Архив журналов</h2>
+          <h2 id="journalArchiveTitle">Журналы завариваний</h2>
           <button class="icon-btn" id="journalArchiveClose" type="button" aria-label="Закрыть">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
           </button>
         </div>
-        <p class="modal-sub">Журналы завариваний удалённых чаёв, тизанов и неизвестных.</p>
+        <p class="modal-sub">Все журналы завариваний: текущие записи и архив удалённых.</p>
         <div class="archive-tabs" role="tablist">
           <button class="archive-tab active" type="button" data-tab="tea" role="tab" aria-selected="true">Чай</button>
           <button class="archive-tab" type="button" data-tab="tisane" role="tab" aria-selected="false">Тизаны</button>
@@ -484,6 +493,10 @@ function ensureArchiveModals() {
       </div>`;
     document.body.appendChild(ov);
   }
+
+  // Вешаем обработчики только один раз
+  if (archiveModalsWired) return;
+  archiveModalsWired = true;
 
   wireOverlay($('#archiveOverlay'));
   $('#archiveModalClose')?.addEventListener('click', () => closeOverlay($('#archiveOverlay')));
