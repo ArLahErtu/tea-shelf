@@ -209,7 +209,7 @@ function moderationRowNode(r) {
   const node = document.createElement('div');
   node.className = 'mrow';
   node.innerHTML = `<div class="wn"><b>${escapeHtml(r.name)}</b>
-    <span>Заявка от ${r.created_at ? formatDate(r.created_at) : '—'}</span></div>`;
+    <span>${r.created_at ? 'Заявка от ' + formatDate(r.created_at) : 'На модерации'}</span></div>`;
   return node;
 }
 

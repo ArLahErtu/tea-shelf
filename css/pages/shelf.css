@@ -843,3 +843,41 @@ body.page-shelf {
   flex: none;
   flex-wrap: wrap;
 }
+
+/* ------------------------------------------------------------
+   Строки «Избранное» и «Ждёт модерации»
+   ------------------------------------------------------------ */
+.wrow,
+.mrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 9px var(--space-1);
+  border-bottom: 1px dashed var(--line);
+  flex-wrap: wrap;
+}
+
+.wrow:last-child,
+.mrow:last-child { border-bottom: none; }
+
+.wrow .wn,
+.mrow .wn { flex: 1; min-width: 0; }
+
+.wrow b,
+.mrow b {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 13.5px;
+}
+
+.wrow span,
+.mrow span {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+/* Кнопка «Показать ещё / Свернуть» */
+[data-collapse] { margin-top: var(--space-2); }
