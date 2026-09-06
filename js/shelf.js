@@ -96,55 +96,60 @@ function showOfflineBanner(timestamp) {
 }
 
 // ---------- Загрузка ----------
+// ---------- Загрузка ----------
+function applyOfflineSnapshot() {
+  const user = getUser();
+  const snapshot = loadOfflineSnapshot();
+  if (!snapshot || !user || snapshot.user_id !== user.id) return false;
+
+  shelf = snapshot.shelf || [];
+  journal = snapshot.journal || [];
+  catalogAll = snapshot.catalog || [];
+  favorites = snapshot.favorites || [];
+  requests = [];
+  showOfflineBanner(snapshot.timestamp);
+  return true;
+}
+
 async function load() {
   const user = getUser();
   if (!user) { shelf = []; journal = []; requests = []; favorites = []; return; }
 
-  try {
-    const [sh, j, rq, cat, fav] = await Promise.all([
-      supabase.from(TABLES.shelf).select('*').eq('user_id', user.id),
-      supabase.from(TABLES.journal).select('*').eq('user_id', user.id)
-        .order('created_at', { ascending: false }),
-      supabase.from(TABLES.catalog).select('*')
-        .eq('status', 'pending').eq('author_id', user.id),
-      supabase.from(TABLES.catalog).select('*'),
-      supabase.from(TABLES.wishlist).select('tea_id').eq('user_id', user.id),
-    ]);
+  const [sh, j, rq, cat, fav] = await Promise.all([
+    supabase.from(TABLES.shelf).select('*').eq('user_id', user.id),
+    supabase.from(TABLES.journal).select('*').eq('user_id', user.id)
+      .order('created_at', { ascending: false }),
+    supabase.from(TABLES.catalog).select('*')
+      .eq('status', 'pending').eq('author_id', user.id),
+    supabase.from(TABLES.catalog).select('*'),
+    supabase.from(TABLES.wishlist).select('tea_id').eq('user_id', user.id),
+  ]);
 
-    const uid = user.id;
-    catalogAll = (cat.data || [])
-      .filter((t) => t.status === 'published' || t.author_id === uid);
-
-    const teaById = new Map(catalogAll.map((t) => [t.id, t]));
-    shelf = (sh.data || []).map((r) => ({
-      ...r,
-      tea: teaById.get(r.tea_id) || { name: 'Чай', type: '—', region: '' },
-    }));
-    journal = j.data || [];
-    requests = rq.data || [];
-    favorites = (fav.data || []).map((r) => r.tea_id);
-    
-    // ОФЛАЙН: сохраняем снапшот после успешной загрузки
-    saveOfflineSnapshot();
-    // Убираем баннер, если он был
-    document.querySelector('.offline-banner')?.remove();
-    
-  } catch (err) {
-    // ОФЛАЙН: при ошибке пытаемся загрузить из снапшота
-    console.warn('[load] Ошибка загрузки, пробуем офлайн:', err.message);
-    const snapshot = loadOfflineSnapshot();
-    if (snapshot && snapshot.user_id === user.id) {
-      shelf = snapshot.shelf || [];
-      journal = snapshot.journal || [];
-      catalogAll = snapshot.catalog || [];
-      favorites = snapshot.favorites || [];
-      requests = [];
-      showOfflineBanner(snapshot.timestamp);
-      return; // Выходим без ошибки — показали офлайн-данные
-    }
-    // Если снапшота нет — пробрасываем ошибку
-    throw err;
+  // ОФЛАЙН: supabase-js не бросает исключение при обрыве сети —
+  // он возвращает { error }. Сеть считаем упавшей, если главный
+  // запрос вернул ошибку и браузер офлайн (или текст ошибки сетевой).
+  if (sh.error) {
+    const netMsg = /fetch|network|load failed/i.test(sh.error.message || '');
+    if ((!navigator.onLine || netMsg) && applyOfflineSnapshot()) return;
+    throw new Error(sh.error.message || 'Не удалось загрузить полку');
   }
+
+  const uid = user.id;
+  catalogAll = (cat.data || [])
+    .filter((t) => t.status === 'published' || t.author_id === uid);
+
+  const teaById = new Map(catalogAll.map((t) => [t.id, t]));
+  shelf = (sh.data || []).map((r) => ({
+    ...r,
+    tea: teaById.get(r.tea_id) || { name: 'Чай', type: '—', region: '' },
+  }));
+  journal = j.data || [];
+  requests = rq.data || [];
+  favorites = (fav.data || []).map((r) => r.tea_id);
+
+  // Снапшот пишем ТОЛЬКО после успешной загрузки
+  saveOfflineSnapshot();
+  document.querySelector('.offline-banner')?.remove();
 }
 
 // ---------- Статистика ----------
