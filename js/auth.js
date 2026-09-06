@@ -2,6 +2,12 @@
 // auth.js — управление авторизацией + роли пользователей
 // Блок 1: загрузка роли (admin/moderator/user)
 // Блок 2: кнопка режима модератора + переход в каталог
+// ФИКС (этап 3): «Режим модератора» — ТУМБЛЕР:
+//   • ВЫКЛ — админ/модератор пользуется сервисом как обычный
+//     пользователь (чистый интерфейс, «На полку» и т.д.);
+//   • ВКЛ — карандаши редактирования, тумблер «Каталог/Модерация»;
+//   • строка роли из меню пользователя убрана (юзверю не нужно
+//     знать, кто он).
 // ЭТАП 7: аватар профиля в шапке, экспорт refreshUserAvatar.
 // ============================================================
 import { supabase, isConfigured } from './supabaseClient.js';
@@ -13,6 +19,7 @@ import { SHOW_DEMO_ACCOUNTS } from './config.js';
 
 let currentUser = null;
 let currentUserRole = 'user';
+// Режим модератора: активен только при роли И включённом тумблере
 let moderationActive = localStorage.getItem('tea_shelf_mode') === 'moderator';
 const listeners = [];
 
@@ -25,23 +32,6 @@ export const isAdmin = () => currentUserRole === 'admin';
 export function onAuthChange(fn) { listeners.push(fn); }
 function emit() { listeners.forEach((fn) => fn(currentUser, currentUserRole)); }
 
-// ---------- Аватар профиля в шапке ----------
-async function loadAvatarInto(btn, userId) {
-  try {
-    const { data } = await supabase.from('profiles')
-      .select('avatar_url').eq('user_id', userId).maybeSingle();
-    if (data?.avatar_url && document.body.contains(btn)) {
-      btn.innerHTML = `<img class="avatar-img" src="${data.avatar_url}" alt="">`;
-    }
-  } catch (e) { /* остаются инициалы */ }
-}
-
-export function refreshUserAvatar() {
-  const btn = $('#avatarBtn');
-  if (!btn || !currentUser) return;
-  loadAvatarInto(btn, currentUser.id);
-}
-
 // ---------- Тумблер режима модератора ----------
 export function toggleModerationMode() {
   if (!hasModeratorRole()) {
@@ -52,7 +42,7 @@ export function toggleModerationMode() {
   if (moderationActive) localStorage.setItem('tea_shelf_mode', 'moderator');
   else localStorage.removeItem('tea_shelf_mode');
   renderState();
-  emit();
+  emit(); // страницы (каталог) подхватят изменение без ручного reload
   return moderationActive;
 }
 
@@ -66,6 +56,7 @@ async function refreshUser() {
     currentUser = null;
     currentUserRole = 'user';
     renderState();
+    refreshUserAvatar();
     emit();
     return;
   }
@@ -73,6 +64,7 @@ async function refreshUser() {
   const { data } = await supabase.auth.getSession();
   currentUser = data.session?.user ?? null;
 
+  // Блок 1: загружаем роль пользователя
   if (currentUser) {
     try {
       const { data: roleData, error } = await supabase
@@ -96,6 +88,7 @@ async function refreshUser() {
   }
 
   renderState();
+  refreshUserAvatar();
   emit();
 }
 
@@ -113,19 +106,16 @@ function renderState() {
     const initials = name.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 
     $('#userEmail').textContent = email;
+    $('#avatarBtn').textContent = initials || '?';
 
-    const avatarBtn = $('#avatarBtn');
-    if (avatarBtn) {
-      avatarBtn.textContent = initials || '?';
-      loadAvatarInto(avatarBtn, currentUser.id);
-    }
-
+    // Тумблер «Режим модератора»: виден только обладателям роли,
+    // текст и состояние зависят от того, включён ли режим сейчас.
     const modBtn = $('#openModerationBtn');
     if (modBtn) {
       modBtn.classList.toggle('hidden', !hasModeratorRole());
       modBtn.textContent = isModerationActive()
-        ? 'Выйти из режима модератора'
-        : 'Режим модератора';
+        ? '👤 Выйти из режима модератора'
+        : '🛡️ Режим модератора';
     }
   } else {
     openBtn.classList.remove('hidden');
@@ -135,29 +125,49 @@ function renderState() {
 }
 
 // ============================================================
+// ЭТАП 7: аватар профиля в шапке
+// ============================================================
+async function loadAvatarInto(btn, userId) {
+  try {
+    const { data } = await supabase
+      .from('profiles')
+      .select('avatar_url')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (data?.avatar_url && document.body.contains(btn)) {
+      btn.innerHTML = `<img class="avatar-img" src="${data.avatar_url}" alt="">`;
+    }
+  } catch (e) { /* остаются инициалы */ }
+}
+
+export function refreshUserAvatar() {
+  const btn = $('#avatarBtn');
+  if (!btn || !currentUser) return;
+  loadAvatarInto(btn, currentUser.id);
+}
+
+// ============================================================
 // Политика обработки персональных данных
 // ============================================================
 const PRIVACY_HTML = `
   <h3 style="margin:0 0 6px;">1. Общие положения</h3>
-  <p style="margin:0 0 12px;">1.1 Настоящая политика разработана в соответствии с Федеральным законом от 27.07.2006 № 152-ФЗ «О персональных данных» и определяет порядок обработки персональных данных пользователей сервиса «Чайная полка».<br>1.2 Оператор данных — администрация сервиса «Чайная полка». Вопросы и запросы по персональным данным — через ссылку «Обратная связь» в подвале сайта.</p>
+  <p style="margin:0 0 12px;">Сервис «Чайная полка» (далее — сервис) собирает только данные, необходимые для его работы, и не передаёт их третьим лицам. Регистрируясь, вы даёте согласие на обработку перечисленных ниже данных.</p>
 
-  <h3 style="margin:0 0 6px;">2. Состав обрабатываемых данных</h3>
-  <p style="margin:0 0 12px;">— Аккаунт: email, имя, фото профиля (по желанию).<br>— Записи полки: добавленные чаи, остатки, журнал завариваний с оценками и заметками.<br>— Заявки на добавление чая в общий каталог.</p>
+  <h3 style="margin:0 0 6px;">2. Какие данные мы собираем</h3>
+  <p style="margin:0 0 12px;">— Аккаунт: email и имя.<br>— Записи полки: добавленные чаи, остатки, журнал завариваний с оценками и заметками.<br>— Заявки на добавление чая в общий каталог.</p>
 
-  <h3 style="margin:0 0 6px;">3. Цели обработки</h3>
-  <p style="margin:0 0 12px;">Предоставление функционала сервиса (личная полка, журнал, каталог), модерация заявок, улучшение сервиса. Данные не используются для рекламы и не передаются третьим лицам.</p>
+  <h3 style="margin:0 0 6px;">3. Зачем они нужны</h3>
+  <p style="margin:0 0 12px;">Чтобы вести вашу личную полку и журнал, рассматривать заявки в каталог и улучшать сервис. Данные не используются для рекламы и не продаются.</p>
 
-  <h3 style="margin:0 0 6px;">4. Хранение и защита</h3>
-  <p style="margin:0 0 12px;">Данные хранятся в защищённой базе данных с разграничением доступа: ваши личные записи видите только вы, администрация видит заявки для модерации. Одобренный чай публикуется в каталоге без указания ваших контактов. Инфраструктура сервиса размещается с учётом требований 152-ФЗ.</p>
+  <h3 style="margin:0 0 6px;">4. Где хранятся и кто их видит</h3>
+  <p style="margin:0 0 12px;">Данные хранятся в защищённой облачной базе Supabase. Ваши записи видите только вы. Администрация сервиса видит заявки для модерации. Одобренный чай публикуется в каталоге без указания ваших контактов.</p>
 
-  <h3 style="margin:0 0 6px;">5. Файлы cookie и аналитика</h3>
-  <p style="margin:0 0 12px;">Сервис использует аналитику (Vercel Analytics и Яндекс Метрика): фиксируются обезличенные действия — визиты и нажатия кнопок — без идентификации личности.</p>
+  <h3 style="margin:0 0 6px;">5. Аналитика</h3>
+  <p style="margin:0 0 12px;">Сервис использует аналитику без cookie (Vercel Analytics, PostHog): она фиксирует обезличенные действия — визиты и нажатия кнопок — и не позволяет идентифицировать личность.</p>
 
-  <h3 style="margin:0 0 6px;">6. Сроки хранения и удаление</h3>
-  <p style="margin:0 0 12px;">Данные хранятся до удаления аккаунта. Вы можете удалить аккаунт и все данные самостоятельно в профиле (кнопка «Удалить аккаунт») либо запросить удаление через «Обратную связь». Неопознанные чаи удаляются автоматически через 30 дней после завершения.</p>
-
-  <h3 style="margin:0 0 6px;">7. Права пользователя</h3>
-  <p style="margin:0 0 0;">Вы вправе получать сведения об обработке своих данных, изменять их (профиль), отозвать согласие на обработку — удалением аккаунта или запросом через «Обратную связь».</p>
+  <h3 style="margin:0 0 6px;">6. Ваши права</h3>
+  <p style="margin:0 0 0;">Вы можете удалить чаи с полки, отозвать заявки, а также запросить удаление аккаунта и всех данных — напишите нам через ссылку «Обратная связь» внизу страницы.</p>
 `;
 
 let privacyOv = null;
@@ -219,12 +229,13 @@ export async function initAuth() {
   if (demo) demo.classList.toggle('hidden', !SHOW_DEMO_ACCOUNTS);
   if (overlay) wireOverlay(overlay);
 
+  // Юзеру не нужно знать свою роль — убираем строку из меню полностью
   $('#userRoleBadge')?.remove();
 
   injectConsent();
-  
+
   document.addEventListener('click', (e) => {
-    if (e.target.closest('#privacyOpen') || e.target.closest('[data-action="open-privacy"]')) {
+    if (e.target.closest('#privacyOpen')) {
       e.preventDefault();
       openPrivacy();
     }
@@ -276,14 +287,17 @@ export async function initAuth() {
     showToast('Вы вышли из аккаунта');
   });
 
+  // ТУМБЛЕР режима модератора:
+  // ВКЛ  → переходим в каталог с открытой модерацией;
+  // ВЫКЛ → возвращаем обычный пользовательский интерфейс.
   $('#openModerationBtn')?.addEventListener('click', () => {
     const active = toggleModerationMode();
     userMenu?.classList.add('hidden');
     if (active) {
-      showToast('Режим модератора активирован');
+      showToast('🛡️ Режим модератора активирован');
       window.location.href = 'catalog.html?moderation=1';
     } else {
-      showToast('Вы в обычном режиме');
+      showToast('👤 Вы в обычном режиме');
       window.location.reload();
     }
   });
@@ -307,7 +321,7 @@ export async function initAuth() {
 
     try {
       if (mode === 'login') {
-        const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         trackEvent('login');
         closeOverlay(overlay);
@@ -315,7 +329,7 @@ export async function initAuth() {
       } else {
         const { data, error } = await supabase.auth.signUp({
           email,
-          password: pass,
+          password,
           options: { data: { name } },
         });
         if (error) throw error;
