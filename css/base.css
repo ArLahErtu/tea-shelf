@@ -300,3 +300,44 @@ footer .footer-col button.footer-link:hover {
 @media (max-width: 720px) {
   footer .footer-grid { flex-direction: column; }
 }
+
+/* ------------------------------------------------------------
+   Офлайн-баннер
+   ------------------------------------------------------------ */
+.offline-banner {
+  position: fixed;
+  top: 60px;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  background: #F6E3C4;
+  border-bottom: 1px solid #E5C68F;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #6E4711;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  animation: fadeUp 0.3s ease;
+}
+
+.offline-banner button {
+  background: none;
+  border: none;
+  font-size: 24px;
+  line-height: 1;
+  color: #6E4711;
+  cursor: pointer;
+  padding: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.offline-banner button:hover {
+  color: #8A5A16;
+}

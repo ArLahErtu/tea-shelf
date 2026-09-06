@@ -2,6 +2,8 @@
 // shelf.js — логика страницы shelf.html
 // Восстановлена рабочая версия + архив в модальном окне
 // (три вкладки: чай / тизаны / неизвестные) и архив журналов.
+// ОФЛАЙН-РЕЖИМ: сохраняет снапшот данных в localStorage,
+// при ошибке загрузки показывает последние сохранённые данные.
 // ============================================================
 import { initCommon } from './common.js';
 import { supabase } from './supabaseClient.js';
@@ -42,33 +44,107 @@ function journalName(j) {
   return tea ? tea.name : 'Чай';
 }
 
+// ============================================================
+// ОФЛАЙН-РЕЖИМ: сохранение и загрузка снапшота
+// ============================================================
+function saveOfflineSnapshot() {
+  const user = getUser();
+  if (!user) return;
+  
+  const snapshot = {
+    user_id: user.id,
+    timestamp: Date.now(),
+    shelf: shelf,
+    journal: journal,
+    catalog: catalogAll,
+    favorites: favorites,
+  };
+  
+  try {
+    localStorage.setItem(`tea_shelf_offline_${user.id}`, JSON.stringify(snapshot));
+  } catch (e) {
+    console.warn('[offline] Не удалось сохранить снапшот:', e);
+  }
+}
+
+function loadOfflineSnapshot() {
+  const user = getUser();
+  if (!user) return null;
+  
+  try {
+    const raw = localStorage.getItem(`tea_shelf_offline_${user.id}`);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (e) {
+    console.warn('[offline] Не удалось загрузить снапшот:', e);
+    return null;
+  }
+}
+
+function showOfflineBanner(timestamp) {
+  const existing = document.querySelector('.offline-banner');
+  if (existing) existing.remove();
+  
+  const banner = document.createElement('div');
+  banner.className = 'offline-banner';
+  banner.innerHTML = `
+    <span>Офлайн-режим: показываем данные от ${new Date(timestamp).toLocaleString('ru-RU')}</span>
+    <button class="offline-banner-close" aria-label="Закрыть" type="button">×</button>
+  `;
+  banner.querySelector('button').addEventListener('click', () => banner.remove());
+  document.body.prepend(banner);
+}
+
 // ---------- Загрузка ----------
 async function load() {
   const user = getUser();
   if (!user) { shelf = []; journal = []; requests = []; favorites = []; return; }
 
-  const [sh, j, rq, cat, fav] = await Promise.all([
-    supabase.from(TABLES.shelf).select('*').eq('user_id', user.id),
-    supabase.from(TABLES.journal).select('*').eq('user_id', user.id)
-      .order('created_at', { ascending: false }),
-    supabase.from(TABLES.catalog).select('*')
-      .eq('status', 'pending').eq('author_id', user.id),
-    supabase.from(TABLES.catalog).select('*'),
-    supabase.from(TABLES.wishlist).select('tea_id').eq('user_id', user.id),
-  ]);
+  try {
+    const [sh, j, rq, cat, fav] = await Promise.all([
+      supabase.from(TABLES.shelf).select('*').eq('user_id', user.id),
+      supabase.from(TABLES.journal).select('*').eq('user_id', user.id)
+        .order('created_at', { ascending: false }),
+      supabase.from(TABLES.catalog).select('*')
+        .eq('status', 'pending').eq('author_id', user.id),
+      supabase.from(TABLES.catalog).select('*'),
+      supabase.from(TABLES.wishlist).select('tea_id').eq('user_id', user.id),
+    ]);
 
-  const uid = user.id;
-  catalogAll = (cat.data || [])
-    .filter((t) => t.status === 'published' || t.author_id === uid);
+    const uid = user.id;
+    catalogAll = (cat.data || [])
+      .filter((t) => t.status === 'published' || t.author_id === uid);
 
-  const teaById = new Map(catalogAll.map((t) => [t.id, t]));
-  shelf = (sh.data || []).map((r) => ({
-    ...r,
-    tea: teaById.get(r.tea_id) || { name: 'Чай', type: '—', region: '' },
-  }));
-  journal = j.data || [];
-  requests = rq.data || [];
-  favorites = (fav.data || []).map((r) => r.tea_id);
+    const teaById = new Map(catalogAll.map((t) => [t.id, t]));
+    shelf = (sh.data || []).map((r) => ({
+      ...r,
+      tea: teaById.get(r.tea_id) || { name: 'Чай', type: '—', region: '' },
+    }));
+    journal = j.data || [];
+    requests = rq.data || [];
+    favorites = (fav.data || []).map((r) => r.tea_id);
+    
+    // ОФЛАЙН: сохраняем снапшот после успешной загрузки
+    saveOfflineSnapshot();
+    // Убираем баннер, если он был
+    document.querySelector('.offline-banner')?.remove();
+    
+  } catch (err) {
+    // ОФЛАЙН: при ошибке пытаемся загрузить из снапшота
+    console.warn('[load] Ошибка загрузки, пробуем офлайн:', err.message);
+    const snapshot = loadOfflineSnapshot();
+    if (snapshot && snapshot.user_id === user.id) {
+      shelf = snapshot.shelf || [];
+      journal = snapshot.journal || [];
+      catalogAll = snapshot.catalog || [];
+      favorites = snapshot.favorites || [];
+      requests = [];
+      showOfflineBanner(snapshot.timestamp);
+      return; // Выходим без ошибки — показали офлайн-данные
+    }
+    // Если снапшота нет — пробрасываем ошибку
+    throw err;
+  }
 }
 
 // ---------- Статистика ----------
@@ -347,8 +423,6 @@ function cardNode(r) {
   return node;
 }
 
-
-
 function renderAll() {
   renderStats();
   renderFavorites();
@@ -410,7 +484,6 @@ function initJournalOverlay() {
 let archiveModalsWired = false;
 
 function ensureArchiveModals() {
-  // Если в HTML остались старые версии модалок с другой разметкой — удаляем
   const oldArchive = $('#archiveOverlay');
   if (oldArchive && !$('#archiveTeaList')) oldArchive.remove();
   const oldJournal = $('#journalArchiveOverlay');
@@ -469,7 +542,6 @@ function ensureArchiveModals() {
     document.body.appendChild(ov);
   }
 
-  // Вешаем обработчики только один раз
   if (archiveModalsWired) return;
   archiveModalsWired = true;
 
@@ -478,7 +550,6 @@ function ensureArchiveModals() {
   wireOverlay($('#journalArchiveOverlay'));
   $('#journalArchiveClose')?.addEventListener('click', () => closeOverlay($('#journalArchiveOverlay')));
 
-  // Переключение вкладок (обе модалки)
   [['#archiveOverlay', { tea: '#archiveTeaList', tisane: '#archiveTisaneList', unknown: '#archiveUnknownList' }],
    ['#journalArchiveOverlay', { tea: '#journalArchiveTea', tisane: '#journalArchiveTisane', unknown: '#journalArchiveUnknown' }]]
     .forEach(([sel, map]) => {
@@ -498,7 +569,6 @@ function ensureArchiveModals() {
       });
     });
 
-  // Действия в архиве чая
   $('#archiveTeaList')?.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-action]');
     if (!btn) return;
@@ -560,7 +630,6 @@ async function openArchiveModal() {
   const user = getUser();
   if (!user) return;
 
-  // Чай
   const teaBox = $('#archiveTeaList');
   teaBox.innerHTML = '';
   const finishedTeas = shelf.filter((r) => statusOf(r) === 'finished');
@@ -577,7 +646,6 @@ async function openArchiveModal() {
       )));
   }
 
-  // Тизаны
   const { data: finTisanes } = await supabase.from('user_tisanes')
     .select('*, tisane_catalog(*)')
     .eq('user_id', user.id)
@@ -599,7 +667,6 @@ async function openArchiveModal() {
     });
   }
 
-  // Неизвестные
   const { data: unknowns } = await supabase.from('unknown_teas')
     .select('*')
     .eq('user_id', user.id)
@@ -623,7 +690,6 @@ async function openArchiveModal() {
   openOverlay($('#archiveOverlay'));
 }
 
-// ---------- Удаление из архива со снапшотом журнала ----------
 async function snapshotAndDeleteJournal(user, filter, sourceType, sourceRef) {
   const { data: entries } = await supabase.from(TABLES.journal)
     .select('*').eq('user_id', user.id);
@@ -637,7 +703,6 @@ async function snapshotAndDeleteJournal(user, filter, sourceType, sourceRef) {
     });
     await supabase.from(TABLES.journal).delete()
       .eq('user_id', user.id);
-    // удаляем только нужные строки по id
     await Promise.all(mine.map((m) =>
       supabase.from(TABLES.journal).delete().eq('id', m.id)));
   }
@@ -767,7 +832,6 @@ function journalArchiveRow(a) {
   return node;
 }
 
-// ---------- Строка текущего журнала ----------
 function liveJournalRow(j) {
   const node = document.createElement('div');
   node.className = 'jentry';
@@ -782,16 +846,11 @@ function liveJournalRow(j) {
   return node;
 }
 
-// ============================================================
-// ЖУРНАЛ ЗАВАРИВАНИЙ (модалка «Архив журналов»): ВСЕ журналы —
-// текущие записи + архив удалённых, по вкладкам чай/тизаны/неизвестные
-// ============================================================
 async function openJournalArchiveModal() {
   ensureArchiveModals();
   const user = getUser();
   if (!user) return;
 
-  // Текущие (живые) журналы
   const { data: live } = await supabase.from(TABLES.journal)
     .select('*').eq('user_id', user.id)
     .order('created_at', { ascending: false });
@@ -803,7 +862,6 @@ async function openJournalArchiveModal() {
     unknown: liveRows.filter((j) => j.unknown_id),
   };
 
-  // Архивные снапшоты удалённых
   const { data: arch } = await supabase.from('brew_journal_archive')
     .select('*').eq('user_id', user.id)
     .order('created_at', { ascending: false });
