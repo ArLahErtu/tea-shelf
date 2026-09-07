@@ -2,7 +2,7 @@
 // Service Worker для PWA «Чайная полка»
 // Стратегия: Cache-first (сначала из кэша) + Network fallback (сеть, если нет в кэше)
 
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const CACHE_NAME = `tea-shelf-${CACHE_VERSION}`;
 
 // Список всех статических файлов, которые нужны для работы сайта
@@ -13,6 +13,7 @@ const STATIC_ASSETS = [
   '/catalog.html',
   '/shelf.html',
   '/profile.html',
+  '/privacy.html',
   
   // Системные файлы
   '/manifest.webmanifest',

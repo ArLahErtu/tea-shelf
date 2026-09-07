@@ -212,7 +212,7 @@ function injectConsent() {
   p.style.margin = '0 0 var(--space-3)';
   p.innerHTML =
     'Регистрируясь на сайте, вы подтверждаете своё согласие на ' +
-    '<a href="#" id="privacyOpen" style="text-decoration:underline;">сбор персональных данных</a>.';
+    '<a href="privacy.html" target="_blank" rel="noopener" style="text-decoration:underline;">сбор персональных данных</a>.';
   anchor.insertAdjacentElement('afterend', p);
 }
 

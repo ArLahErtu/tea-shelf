@@ -980,20 +980,6 @@ Toasts
 }
 
 /* ------------------------------------------------------------
-Footer
------------------------------------------------------------- */
-footer {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-  margin-top: var(--space-8);
-  border-top: 1px solid var(--line);
-  padding: var(--space-5) 0 var(--space-6);
-  font-size: 12.5px;
-  color: var(--muted);
-}
-
-/* ------------------------------------------------------------
 Components responsive
 ------------------------------------------------------------ */
 @media (max-width: 720px) {
@@ -1103,4 +1089,66 @@ Components responsive
   height: 100%;
   object-fit: cover;
   border-radius: 50%;
+}
+
+/* ------------------------------------------------------------
+   Cookie-плашка
+   ------------------------------------------------------------ */
+.cookie-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 90;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  box-shadow: 0 -10px 30px -18px rgba(60, 48, 26, 0.35);
+  padding: var(--space-3) 0;
+}
+.cookie-bar-in {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+.cookie-bar p {
+  font-size: 13px;
+  color: var(--muted);
+  max-width: 720px;
+}
+.cookie-bar a {
+  color: var(--green-d);
+  text-decoration: underline;
+}
+.cookie-bar-btns {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* ------------------------------------------------------------
+   Футер и страница политики: доводка цветов и отступов
+   ------------------------------------------------------------ */
+footer .footer-col a,
+footer .footer-col button.footer-link {
+  color: var(--ink);
+}
+
+.privacy-doc {
+  padding-top: var(--space-8);
+  padding-bottom: var(--space-6);
+  max-width: 860px;
+}
+.privacy-doc h2 {
+  font-size: 20px;
+  margin: var(--space-6) 0 var(--space-2);
+}
+.privacy-doc p {
+  margin-bottom: var(--space-2);
+  font-size: 14.5px;
+  color: #4A4331;
+}
+.privacy-doc a {
+  color: var(--green-d);
+  text-decoration: underline;
 }

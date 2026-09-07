@@ -1,11 +1,9 @@
 // ============================================================
 // common.js — инициализация общих блоков на всех страницах
-// Неделя 4: ссылка обратной связи,
-// аналитика — Яндекс Метрика (вместо PostHog: не работает в РФ).
-// БЛОК 2 (этап 3): убрано дублирование уведомлений о модерации
-// (теперь только в chatbot.js — красивое сообщение в чате).
-// БЛОК 2.5: модалка количества инициализируется на ВСЕХ страницах —
-// «Добавить чай» работает откуда угодно (чат, главная, каталог).
+// Аналитика: Яндекс Метрика загружается ТОЛЬКО после согласия
+// в куки-плашке (честный гейт: «Отклонить» — метрики нет совсем).
+// Обратная связь: ссылка в футере уже есть в разметке
+// (data-footer-feedback), дубли не создаём.
 // ============================================================
 import { initDbStatus } from './supabaseClient.js';
 import { initAuth } from './auth.js';
@@ -19,11 +17,8 @@ export async function initCommon() {
   await initAuth();        // шапка + модалка входа
   initAmountModal();       // модалка количества — теперь на каждой странице
   initChatbot();           // FAB + окно бота
-  initFeedbackLink();      // ссылка на Google Form в футере
+  initFeedbackLink();      // страховка: ссылка обратной связи, если её нет в разметке
   registerSW();            // Регистрация Service Worker для PWA
-  // УВЕДОМЛЕНИЯ О МОДЕРАЦИИ убраны отсюда: теперь их шлёт chatbot.js
-  // при первом открытии чата (красивое сообщение с кнопкой
-  // «Добавить на полку», без спама тостами на всех страницах).
 
   // Esc закрывает любую открытую модалку
   document.addEventListener('keydown', (e) => {
@@ -32,6 +27,11 @@ export async function initCommon() {
     }
   });
 }
+
+// ============================================================
+// Cookie-согласие и аналитика
+// ============================================================
+const COOKIE_CONSENT_KEY = 'tea_shelf_cookie_consent';
 
 function initAnalytics() {
   // >>> METRIKA SNIPPET START <<<
@@ -52,17 +52,56 @@ function initAnalytics() {
   });
   // >>> METRIKA SNIPPET END <<<
 }
-initAnalytics();
 
-// ---------- Обратная связь: ссылка в футере ----------
+function initCookieConsent() {
+  const stored = localStorage.getItem(COOKIE_CONSENT_KEY);
+
+  // Согласие дано ранее — метрика стартует сразу
+  if (stored === 'yes') { initAnalytics(); return; }
+  // Отказ — метрика НЕ загружается вообще, плашку не показываем
+  if (stored === 'no') return;
+
+  // Согласия ещё не было — показываем плашку
+  const bar = document.createElement('div');
+  bar.className = 'cookie-bar';
+  bar.setAttribute('role', 'dialog');
+  bar.setAttribute('aria-label', 'Согласие на использование cookie и аналитики');
+  bar.innerHTML = `
+    <div class="wrap cookie-bar-in">
+      <p>Мы используем cookie и Яндекс.Метрику только после вашего согласия.
+        Пока вы не нажали «Принять», метрика не загружается.
+        <a href="privacy.html#cookies">Подробнее в политике</a>.</p>
+      <div class="cookie-bar-btns">
+        <button class="btn btn-primary btn-sm" type="button" data-cookie="accept">Принять</button>
+        <button class="btn btn-outline btn-sm" type="button" data-cookie="decline">Отклонить</button>
+      </div>
+    </div>`;
+  document.body.appendChild(bar);
+
+  bar.querySelector('[data-cookie="accept"]').addEventListener('click', () => {
+    localStorage.setItem(COOKIE_CONSENT_KEY, 'yes');
+    bar.remove();
+    initAnalytics();
+  });
+
+  bar.querySelector('[data-cookie="decline"]').addEventListener('click', () => {
+    localStorage.setItem(COOKIE_CONSENT_KEY, 'no');
+    bar.remove();
+  });
+}
+initCookieConsent();
+
+// ---------- Обратная связь: страховка, если ссылки нет в разметке ----------
 function initFeedbackLink() {
   if (!FEEDBACK_URL) return;
+  if (document.querySelector('[data-footer-feedback]')) return; // ссылка уже в футере
   const wrap = document.querySelector('footer .wrap');
   if (!wrap) return;
   const a = document.createElement('a');
   a.href = FEEDBACK_URL;
   a.target = '_blank';
   a.rel = 'noopener';
+  a.setAttribute('data-footer-feedback', '');
   a.textContent = 'Обратная связь';
   a.style.textDecoration = 'underline';
   wrap.appendChild(a);
