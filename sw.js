@@ -2,7 +2,7 @@
 // Service Worker для PWA «Чайная полка»
 // Стратегия: Cache-first (сначала из кэша) + Network fallback (сеть, если нет в кэше)
 
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const CACHE_NAME = `tea-shelf-${CACHE_VERSION}`;
 
 // Список всех статических файлов, которые нужны для работы сайта
@@ -14,6 +14,7 @@ const STATIC_ASSETS = [
   '/shelf.html',
   '/profile.html',
   '/privacy.html',
+  '/404.html',
   
   // Системные файлы
   '/manifest.webmanifest',
@@ -133,7 +134,7 @@ self.addEventListener('fetch', (event) => {
           .catch(() => {
             // Если интернета нет и человек пытается перейти на другую страницу
             if (request.mode === 'navigate') {
-              return caches.match('/index.html');
+              return caches.match('/404.html') || caches.match('/index.html');
             }
             // Для остальных ресурсов отдаем системный ответ "Нет сети"
             return new Response('Офлайн режим: ресурс недоступен', { status: 503, statusText: 'Offline' });
