@@ -321,7 +321,7 @@ export async function initAuth() {
 
     try {
       if (mode === 'login') {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
         if (error) throw error;
         trackEvent('login');
         closeOverlay(overlay);
@@ -329,7 +329,7 @@ export async function initAuth() {
       } else {
         const { data, error } = await supabase.auth.signUp({
           email,
-          password,
+          password: pass,
           options: { data: { name } },
         });
         if (error) throw error;
