@@ -4,11 +4,11 @@
   "lang": "ru",
   "name": "Чайная полка",
   "short_name": "Чайная полка",
-  "description": "Умный учёт вашего чая: остатки, журнал завариваний, список покупок",
+  "description": "Спокойный личный учёт чая: остатки, журнал завариваний, список покупок и общий каталог",
   "start_url": "/index.html",
   "display": "standalone",
-  "background_color": "#F5EFE2",
-  "theme_color": "#2F5D3C",
+  "background_color": "#F4EEDD",
+  "theme_color": "#F4EEDD",
   "orientation": "portrait-primary",
   "icons": [
     {

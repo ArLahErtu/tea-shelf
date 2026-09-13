@@ -21,10 +21,11 @@ function initPreloader() {
   setTimeout(hide, 1600); // страховка
 }
 
-// ---------- библиотека: мини-каталог с поиском (максимум 3 карточки) ----------
+// ---------- состояние фильтров библиотеки ----------
 const libState = { q: '', type: 'all' };
 let libTimer = null;
 
+// ---------- библиотека: мини-каталог с поиском (максимум 3 карточки) ----------
 function buildLibQuery() {
   let query = supabase
     .from(TABLES.catalog)

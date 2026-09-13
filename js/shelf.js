@@ -18,6 +18,7 @@ import { openTeaModal } from './teaModal.js';
 import { initAmountModal, openAmountModal } from './amountModal.js';
 import { initTisanes, reloadTisanes, renderTisanes, tisaneJournalName } from './tisanes.js';
 import { initUnknowns, reloadUnknowns, renderUnknowns, unknownJournalName } from './unknowns.js';
+import { offerBrewTimer } from './brewTimer.js';
 
 let shelf = [];
 let journal = [];
@@ -435,6 +436,7 @@ function renderAll() {
   renderGrid();
   renderTisanes();
   renderUnknowns();
+  renderShoppingInline();
 
   const low = shelf.filter((r) => statusOf(r) === 'low').length;
   $('#shelfBanner')?.classList.toggle('hidden', !low);
@@ -1149,6 +1151,121 @@ function initFilters() {
   $('#shelfSort')?.addEventListener('change', (e) => { filters.sort = e.target.value; renderGrid(); });
 }
 
+// ---------- Сегмент-разделы полки (Полка / Покупки / Избранное) ----------
+const SEG_KEYS = ['shelf', 'shop', 'fav'];
+
+function showSegment(key, pushHash = true) {
+  if (!SEG_KEYS.includes(key)) key = 'shelf';
+  SEG_KEYS.forEach((k) => {
+    $('#seg-' + k)?.classList.toggle('hidden', k !== key);
+  });
+  $$('#shelfSeg button').forEach((b) => {
+    const on = b.dataset.seg === key;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-selected', String(on));
+  });
+  if (pushHash) history.replaceState(null, '', '#' + key);
+}
+
+function initSegments() {
+  const seg = $('#shelfSeg');
+  if (!seg) return;
+  seg.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-seg]');
+    if (b) showSegment(b.dataset.seg);
+  });
+  window.addEventListener('hashchange', () => applyHash());
+}
+
+function applyHash() {
+  const h = location.hash.replace('#', '');
+  if (h === 'brew') { openBrewChooser(); return; }
+  if (SEG_KEYS.includes(h)) showSegment(h, false);
+}
+
+// ---------- Список «что докупить» внутри раздела «Покупки» ----------
+function renderShoppingInline() {
+  const box = $('#shoppingInline');
+  if (!box) return;
+  const rows = shelf.filter((r) => ['low', 'finished'].includes(statusOf(r)));
+
+  if (!rows.length) {
+    box.innerHTML = '<div class="empty"><h3>Покупок пока нет</h3>' +
+      '<p>Когда остаток чая опустится ниже порога «мало», он сам появится в этом списке.</p></div>';
+    return;
+  }
+
+  box.innerHTML = '';
+  rows.forEach((r) => {
+    const st = statusOf(r);
+    const node = document.createElement('div');
+    node.className = 'buyrow';
+    node.innerHTML = `
+      <span class="box" aria-hidden="true"></span>
+      <span class="buy-info"><b>${escapeHtml(r.tea?.name || 'Чай')}</b>
+        <span class="${st === 'finished' ? 'st-fin' : 'st-low'}">${st === 'finished' ? 'закончился' : 'остаток ниже порога'} · ${r.amount} ${UNIT_LABELS[r.unit] || 'г'}</span></span>
+      <button class="btn btn-outline btn-sm" type="button" data-action="restock">Пополнить</button>`;
+    node.querySelector('[data-action="restock"]').addEventListener('click', () => restockRow(r));
+    box.appendChild(node);
+  });
+}
+
+// ---------- Выбор чая для заваривания (FAB и кнопка «Заварил») ----------
+let chooseOv = null;
+
+function ensureChooseOverlay() {
+  if (chooseOv) return chooseOv;
+  chooseOv = document.createElement('div');
+  chooseOv.className = 'overlay';
+  chooseOv.id = 'brewChooseOverlay';
+  chooseOv.hidden = true;
+  chooseOv.innerHTML = `
+    <div class="modal narrow" role="dialog" aria-modal="true" aria-labelledby="brewChooseTitle">
+      <div class="modal-head">
+        <h2 id="brewChooseTitle">Что завариваем?</h2>
+        <button class="icon-btn" type="button" data-choose="close" aria-label="Закрыть">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <p class="modal-sub">Выберите чай с полки — откроется таймер и окно журнала.</p>
+      <div id="brewChooseList" class="journal-tea-list"></div>
+    </div>`;
+  document.body.appendChild(chooseOv);
+  wireOverlay(chooseOv);
+  chooseOv.addEventListener('click', (e) => {
+    if (e.target.closest('[data-choose="close"]')) { closeOverlay(chooseOv); return; }
+    const btn = e.target.closest('[data-choose-row]');
+    if (!btn) return;
+    const row = shelf.find((r) => String(r.id) === btn.dataset.chooseRow);
+    if (!row) return;
+    closeOverlay(chooseOv);
+    offerBrewTimer(row.tea, () => openBrew(row));
+  });
+  return chooseOv;
+}
+
+function openBrewChooser() {
+  const ov = ensureChooseOverlay();
+  const list = $('#brewChooseList');
+  const rows = shelf.filter((r) => r.amount > 0);
+  if (!rows.length) {
+    list.innerHTML = '<p class="hint">На полке нет чаёв с остатком. Добавьте чай из каталога.</p>';
+  } else {
+    list.innerHTML = '';
+    rows.forEach((r) => {
+      const b = document.createElement('button');
+      b.className = 'jentry';
+      b.type = 'button';
+      b.dataset.chooseRow = r.id;
+      b.style.cssText = 'border:0;background:none;text-align:left;width:100%;cursor:pointer;border-radius:12px;padding:10px';
+      b.innerHTML = `<div class="jbody"><b>${escapeHtml(r.tea?.name || 'Чай')}</b>
+        <div class="jm">${r.amount} ${UNIT_LABELS[r.unit] || 'г'} · ${escapeHtml(r.tea?.time || '')}</div></div>`;
+      list.appendChild(b);
+    });
+  }
+  openOverlay(ov);
+}
+
 // ---------- Старт ----------
 async function init() {
   await initCommon();
@@ -1166,8 +1283,12 @@ async function init() {
   });
   initJournalOverlay();
   ensureArchiveModals();
+  initSegments();
 
   $('#openArchiveBtn')?.addEventListener('click', openArchiveModal);
+  $('#openRestockInline')?.addEventListener('click', openRestockModal);
+  $$('[data-brew-choose]').forEach((b) => b.addEventListener('click', openBrewChooser));
+  window.teaShelfBrewChoose = openBrewChooser;   // для FAB из таб-бара (common.js)
   $('#openJournalArchiveBtn')?.addEventListener('click', openJournalArchiveModal);
   $('#shelfBannerAction')?.addEventListener('click', openRestockModal);
 
@@ -1184,7 +1305,7 @@ async function init() {
     const row = shelf.find((r) => String(r.id) === card.dataset.shelfId);
     if (!row) return;
 
-    if (e.target.closest('[data-action="brew"]')) return openBrew(row);
+    if (e.target.closest('[data-action="brew"]')) return offerBrewTimer(row.tea, () => openBrew(row));
     if (e.target.closest('[data-action="restock"]')) return restockRow(row);
     if (e.target.closest('[data-action="edit"]')) return editAmount(row);
     if (e.target.closest('[data-action="remove"]')) return removeRow(row);
@@ -1225,6 +1346,7 @@ async function init() {
     await initTisanes();
     await initUnknowns();
     renderAll();
+    applyHash();
   } catch (err) {
     $('#shelfGrid')?.setAttribute('aria-busy', 'false');
     if ($('#shelfGrid')) {

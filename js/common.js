@@ -11,12 +11,16 @@ import { initChatbot } from './chatbot.js';
 import { initAmountModal } from './amountModal.js';
 import { closeOverlay, $$ } from './ui.js';
 import { FEEDBACK_URL } from './config.js';
+import { initGate } from './gate.js';
 
 export async function initCommon() {
   initDbStatus();          // чип статуса БД (скрыт в CSS)
-  await initAuth();        // шапка + модалка входа
+  await initAuth();        // шапка + меню профиля + модалка входа
+  initGate();              // «две страницы»: гости и вошедшие не пересекаются
   initAmountModal();       // модалка количества — теперь на каждой странице
-  initChatbot();           // FAB + окно бота
+  initChatbot();           // окно чат-помощника (FAB скрыт, триггеры в шапке/таб-баре)
+  initChatTriggers();      // кнопки «ИИ-ассистент» в шапке и таб-баре
+  initBrewFab();           // FAB «Заварил» в таб-баре
   initFeedbackLink();      // страховка: ссылка обратной связи, если её нет в разметке
   registerSW();            // Регистрация Service Worker для PWA
 
@@ -105,6 +109,33 @@ function initFeedbackLink() {
   a.textContent = 'Обратная связь';
   a.style.textDecoration = 'underline';
   wrap.appendChild(a);
+}
+
+// ---------- Триггеры чат-помощника (шапка + таб-бар) ----------
+// Само окно и его FAB генерирует chatbot.js; в редизайне FAB скрыт в CSS,
+// а открывают чат кнопки с data-open-chat.
+function initChatTriggers() {
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-open-chat]');
+    if (!t) return;
+    e.preventDefault();
+    document.getElementById('chatbotToggle')?.click();
+  });
+}
+
+// ---------- FAB «Заварил» в нижнем таб-баре ----------
+// На полке открывает выбор чая + таймер, на остальных страницах уводит
+// на полку к тому же сценарию.
+function initBrewFab() {
+  const fab = document.getElementById('brewFab');
+  if (!fab) return;
+  fab.addEventListener('click', () => {
+    if (typeof window.teaShelfBrewChoose === 'function') {
+      window.teaShelfBrewChoose();
+    } else {
+      window.location.href = 'shelf.html#brew';
+    }
+  });
 }
 
 // ---------- Регистрация Service Worker (PWA) ----------

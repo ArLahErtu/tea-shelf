@@ -2,104 +2,233 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Политика обработки персональных данных — Чайная полка</title>
   <meta name="description" content="Политика обработки персональных данных сервиса «Чайная полка»: какие данные собираем, зачем, где и сколько храним, как уничтожаем.">
   <link rel="canonical" href="https://tea-shelf.vercel.app/privacy.html">
 
-  <meta name="theme-color" content="#2F5D3C">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Политика обработки персональных данных — Чайная полка">
+  <meta property="og:description" content="Политика обработки персональных данных сервиса «Чайная полка»: какие данные собираем, зачем, где и сколько храним, как уничтожаем.">
+  <meta property="og:url" content="https://tea-shelf.vercel.app/privacy.html">
+  <meta property="og:image" content="https://tea-shelf.vercel.app/img/icon-512.png">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <meta name="theme-color" content="#F4EEDD">
 
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="img/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Чайная полка">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Prata&display=swap"
-    rel="stylesheet"
-  >
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Prata&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/pages/profile.css">
+  <link rel="stylesheet" href="css/chatbot.css">
+
+  <script>
+    window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+  </script>
+  <script defer src="/_vercel/insights/script.js"></script>
+  <script defer src="/_vercel/speed-insights/script.js"></script>
 </head>
-<body>
+<body class="page-privacy">
+<a class="skip-link" href="#main">Перейти к содержанию</a>
+
 
 <header class="topbar">
-  <div class="wrap topbar-in">
-    <a class="brand" href="index.html" aria-label="Чайная полка — на главную">
-      <span class="logo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20c0-8 5-13 14-15-1 9-6 14-14 15Z"/></svg></span>
-      <span class="btxt">Чайная полка</span>
+  <div class="wrap in">
+    <a class="logo" href="index.html" aria-label="Чайная полка — на главную">
+      <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M12 3C7 7 5 10.5 5 14a7 7 0 0 0 14 0c0-3.5-2-7-7-11Zm0 17a5 5 0 0 1-5-5c0-.4.3-.7.7-.7s.7.3.7.7a3.6 3.6 0 0 0 3.6 3.6c.4 0 .7.3.7.7s-.3.7-.7.7Z"/></svg></span>
+      <span class="txt">Чайная полка</span>
     </a>
-  </div>
-</header>
-
-<main class="wrap privacy-doc">
-  <h1>Политика обработки персональных данных</h1>
-  <p class="sub">Актуальная редакция всегда опубликована на этой странице. Сервис «Чайная полка» (далее — сервис).</p>
-
-  <h2>1. Общие положения и оператор</h2>
-  <p>Оператор персональных данных — владелец сервиса «Чайная полка». Контакт для вопросов о данных: <a href="mailto:busyatv3@gmail.com">busyatv3@gmail.com</a>. Политика описывает, какие данные мы собираем, с какой целью, где и как долго они хранятся и как уничтожаются.</p>
-
-  <h2>2. Какие данные мы собираем</h2>
-  <p>— Аккаунт: email и имя, указанные при регистрации.</p>
-  <p>— Записи личного кабинета: чаи на полке, остатки, журнал завариваний с оценками и заметками, тизаны, неизвестные чаи, заявки в каталог.</p>
-  <p>— Файлы, которые вы сами загружаете: фото профиля, фото упаковок и чаёв.</p>
-  <p>— Технические записи браузера (localStorage): ключи сессии интерфейса, настройки отображения, флаг согласия на cookie. Без них сайт не работает.</p>
-  <p>— Обратная связь: если вы пишете через форму обратной связи Google, данные обрабатывает Google LLC (серверы вне РФ) — это добровольный канал; для обратной связи также доступна почта оператора.</p>
-
-  <h2>3. Цели обработки</h2>
-  <p>Данные нужны только для работы сервиса: ведение личной полки и журнала, модерация заявок в каталог, поддержка пользователей, улучшение сервиса. Данные не используются для рекламы и не продаются третьим лицам.</p>
-
-  <h2>4. Где и сколько хранятся данные, порядок уничтожения</h2>
-  <p>Сейчас данные хранятся в защищённой облачной базе Supabase; ведётся перенос базы и файлов на серверы на территории Российской Федерации, после чего пункт будет дополнен указанием конкретного места хранения.</p>
-  <p>Данные хранятся до момента удаления аккаунта. Удалить аккаунт можно самостоятельно в профиле (кнопка «Удалить аккаунт») или письмом на почту оператора. После запроса данные уничтожаются в срок до 30 дней, включая резервные копии в пределах стандартных циклов бэкапов хостинга.</p>
-
-  <h2 id="cookies">5. Cookie, localStorage и аналитика</h2>
-  <p>Сам сайт не требует cookie для работы: служебные данные хранятся в localStorage браузера (ключи интерфейса и флаг согласия).</p>
-  <p>Яндекс.Метрика (ставит cookie) загружается ТОЛЬКО после вашего явного согласия в плашке внизу экрана. Если нажать «Отклонить», метрика не загружается вовсе и никаких cookie аналитики не создаётся.</p>
-  <p>Отозвать согласие можно в любой момент: очистите данные сайта в браузере — плашка появится снова, и до нового согласия метрика загружаться не будет.</p>
-
-  <h2>6. Ваши права</h2>
-  <p>Вы можете получить сведения о своих данных, исправить их или удалить: самостоятельно в профиле и на полке, либо письмом на почту оператора. Вы вправе отозвать согласие на обработку и на использование аналитики.</p>
-
-  <h2>7. Обратная связь и изменения политики</h2>
-  <p>Вопросы и запросы о данных: <a href="mailto:busyatv3@gmail.com">busyatv3@gmail.com</a>, а также через ссылку «Обратная связь» в подвале сайта. Существенные изменения политики публикуются на этой странице до вступления в силу.</p>
-</main>
-
-<footer>
-  <div class="wrap">
-    <div class="footer-grid">
-      <div class="footer-brand">
-        <a class="brand" href="index.html" aria-label="Чайная полка — на главную">
-          <span class="logo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20c0-8 5-13 14-15-1 9-6 14-14 15Z"/></svg></span>
-          <span class="btxt">Чайная полка</span>
-        </a>
-        <p class="footer-email">
-          <a href="mailto:busyatv3@gmail.com">busyatv3@gmail.com</a>
-          <span class="hint">почта для вопросов и предложений</span>
-        </p>
-      </div>
-      <nav class="footer-col" aria-label="Навигация в подвале">
-        <h4>Навигация</h4>
-        <ul>
-          <li><a href="index.html">Главная</a></li>
-          <li><a href="catalog.html">Каталог</a></li>
-          <li><a href="shelf.html">Полка</a></li>
-          <li><a href="profile.html">Профиль</a></li>
-        </ul>
-      </nav>
-      <div class="footer-col">
-        <h4>О нас</h4>
-        <ul>
-          <li><a href="privacy.html">Политика обработки персональных данных</a></li>
-          <li><a href="https://forms.gle/rCcAXQ7kSTANzhqm7" target="_blank" rel="noopener" data-footer-feedback>Обратная связь</a></li>
-        </ul>
+    <nav class="nav" aria-label="Основная навигация">
+      <a href="index.html">Главная</a>
+      <a href="catalog.html">Каталог</a>
+      <a href="shelf.html">Моя полка</a>
+      <a href="profile.html">Профиль</a>
+    </nav>
+    <div class="tb-right">
+      <span class="db-chip" id="dbStatus" role="status" aria-live="polite"><i aria-hidden="true"></i>подключение…</span>
+      <button class="btn btn-green tb-login" id="authOpen" type="button">Войти</button>
+      <div class="avatar-btn hidden" id="userArea">
+        <button class="avatar" id="avatarBtn" type="button" aria-haspopup="true"
+                aria-expanded="false" aria-label="Меню профиля">?</button>
+        <div class="user-menu hidden" id="userMenu">
+          <p class="um-mail" id="userEmail">user@example.com</p>
+          <a href="profile.html">
+            <svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/><path d="M4 20c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5"/></svg>
+            Профиль
+          </a>
+          <button type="button" id="openModerationBtn" class="hidden">
+            <svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6Z"/></svg>
+            Режим модератора
+          </button>
+          <button class="danger" id="logoutBtn" type="button">
+            <svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4H5v16h4M15 8l4 4-4 4M19 12H9"/></svg>
+            Выйти
+          </button>
+        </div>
       </div>
     </div>
   </div>
+</header>
+<main id="main">
+  <div class="wrap">
+    <div class="phead">
+      <div>
+        <p class="kicker">документ</p>
+        <h1>Политика обработки<br>персональных данных</h1>
+      </div>
+    </div>
+
+    <div class="doc" style="padding-bottom:80px">
+      <span class="upd">редакция от 13 сентября 2026</span>
+
+      <h2>1. Общие положения и оператор</h2>
+      <p>Оператор персональных данных — владелец сервиса «Чайная полка». Контакт для вопросов
+         о данных: <a href="mailto:busyatv3@gmail.com">busyatv3@gmail.com</a>. Политика описывает,
+         какие данные мы собираем, с какой целью, где и как долго они хранятся и как уничтожаются.
+         Обработка ведётся в соответствии с 152-ФЗ «О персональных данных».</p>
+
+      <h2>2. Какие данные мы обрабатываем</h2>
+      <ul>
+        <li>Аккаунт: email и имя, указанные при регистрации, а также фото профиля — если вы его добавили.</li>
+        <li>Полка и журнал: ваши чаи, остатки, заваривания, оценки и заметки.</li>
+        <li>Заявки в каталог: содержание предложенных карточек и их статус.</li>
+        <li>Обратная связь: если вы пишете через форму Google, данные обрабатывает Google LLC
+            (серверы вне РФ) — это добровольный канал; также доступна почта оператора.</li>
+      </ul>
+
+      <h2>3. Цели и основания обработки</h2>
+      <p>Данные используются только для работы сервиса: учёт чая, ведение журнала, модерация
+         каталога, ответы на обращения. Основание — ваше согласие при регистрации и использование
+         сервиса. Данные полки и журнала видите только вы: доступ изолирован политиками
+         безопасности базы данных (RLS).</p>
+
+      <h2>4. Хранение и удаление</h2>
+      <p>Данные хранятся до момента удаления аккаунта. Удалить аккаунт можно самостоятельно
+         в профиле (кнопка «Удалить аккаунт») или письмом на почту оператора. После запроса
+         данные уничтожаются в срок до 30 дней, включая резервные копии в пределах стандартных
+         циклов бэкапов хостинга.</p>
+
+      <h2>5. Третьи лица и инфраструктура</h2>
+      <ul>
+        <li>Supabase (база данных, авторизация, хранилище фото) — обработчик по поручению оператора.</li>
+        <li>Vercel (хостинг и аналитика производительности, обезличенно).</li>
+        <li>Яндекс Метрика — только после вашего согласия в баннере cookie.</li>
+        <li>YandexGPT — только когда вы сами пишете ИИ-помощнику; история запросов хранится
+            для работы лимитов.</li>
+      </ul>
+
+      <h2>6. Ваши права</h2>
+      <p>Вы можете получить сведения о своих данных, исправить их или удалить: самостоятельно
+         в профиле и на полке, либо письмом на почту оператора. Вы вправе отозвать согласие
+         на обработку и на использование аналитики — после этого метрика не загружается.</p>
+
+      <h2 id="cookies">7. Cookie и аналитика</h2>
+      <p>Сервис использует cookie и Яндекс Метрику только после явного согласия. Сессионные
+         данные авторизации необходимы для работы сервиса и не отключаются.</p>
+
+      <p style="margin-top:34px">Вопросы о данных: <a href="mailto:busyatv3@gmail.com">busyatv3@gmail.com</a>
+         · почта для вопросов и предложений.</p>
+    </div>
+  </div>
+</main>
+  <div class="overlay" id="authOverlay" hidden>
+    <div class="modal narrow" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+      <div class="modal-head">
+        <h2 id="authTitle">Вход</h2>
+        <button class="icon-btn" id="authClose" type="button" aria-label="Закрыть окно входа">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+
+      <div class="auth-tabs" aria-label="Выбор режима входа">
+        <button type="button" class="active" id="tabLogin">Вход</button>
+        <button type="button" id="tabRegister">Регистрация</button>
+      </div>
+
+      <div class="global-err" id="authError" role="alert"></div>
+
+      <form id="authForm" novalidate>
+        <div class="field hidden" id="fieldName">
+          <label for="authName">Имя</label>
+          <input id="authName" name="name" type="text" autocomplete="name" placeholder="Укажите имя">
+          <p class="err">Укажите имя</p>
+        </div>
+
+        <div class="field" id="fieldEmail">
+          <label for="authEmail">Email <span class="req">*</span></label>
+          <input
+            id="authEmail" name="email" type="email" required autocomplete="email"
+            placeholder="Укажите корректный email"
+          >
+          <p class="err">Укажите корректный email</p>
+        </div>
+
+        <div class="field" id="fieldPassword">
+          <label for="authPassword">Пароль <span class="req">*</span></label>
+          <input
+            id="authPassword" name="password" required minlength="6"
+            autocomplete="current-password" placeholder="Пароль — минимум 6 символов"
+            type="password"
+          >
+          <p class="err">Пароль — минимум 6 символов</p>
+        </div>
+
+        <button class="btn btn-primary" id="authSubmit" type="submit">Войти</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="toasts" aria-live="polite"></div>
+
+  <!-- CHATBOT: HTML генерируется автоматически через js/chatbotHTML.js -->
+
+  <!-- Шаблон карточки полки (Блок А: qty-row + иконка журнала) -->
+
+<footer>
+  <div class="wrap f-grid">
+    <div class="f-brand">
+      <a class="logo" href="index.html" aria-label="Чайная полка — на главную">
+        <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M12 3C7 7 5 10.5 5 14a7 7 0 0 0 14 0c0-3.5-2-7-7-11Zm0 17a5 5 0 0 1-5-5c0-.4.3-.7.7-.7s.7.3.7.7a3.6 3.6 0 0 0 3.6 3.6c.4 0 .7.3.7.7s-.3.7-.7.7Z"/></svg></span><span class="txt">Чайная полка</span>
+      </a>
+      <p class="tag">Спокойный личный учёт чая: полка, журнал, каталог.</p>
+    </div>
+    <nav class="f-col" aria-label="Навигация в подвале">
+      <h4>Навигация</h4>
+      <a href="catalog.html">Каталог</a>
+      <a href="shelf.html">Полка</a>
+      <a href="journal.html">Журнал</a>
+      <a href="profile.html">Профиль</a>
+    </nav>
+    <div class="f-col">
+      <h4>О нас</h4>
+      <a href="privacy.html">Политика обработки персональных данных</a>
+      <a href="https://forms.gle/rCcAXQ7kSTANzhqm7" target="_blank" rel="noopener" data-footer-feedback>Обратная связь</a>
+      <a href="https://t.me/teashelf_off">Telegram-канал</a>
+    </div>
+    <div class="f-col">
+      <h4>Оператор персональных данных · 152-ФЗ</h4>
+      <p class="f-legal">Оператор — владелец сервиса «Чайная полка». Данные обрабатываются
+        согласно 152-ФЗ «О персональных данных»: аккаунт, полка и журнал видны только вам;
+        удаление — самостоятельно в профиле или письмом, срок до 30 дней.</p>
+      <p class="f-mail" style="margin-top:12px">
+        <a href="mailto:busyatv3@gmail.com">busyatv3@gmail.com</a>
+        <span class="f-hint">почта для вопросов и предложений</span>
+      </p>
+    </div>
+  </div>
+  <div class="f-bot"><div class="wrap in"><span>© 2026 Чайная полка</span><span>заваривайте осознанно 🌿</span></div></div>
 </footer>
 
+  <script type="module" src="js/doc.js"></script>
 </body>
 </html>

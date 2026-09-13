@@ -1159,6 +1159,18 @@ async function init() {
   // Фильтр по типу
   $('#catalogTypeFilter')?.addEventListener('change', (e) => {
     state.type = e.target.value;
+    syncTypeChips(e.target.value);
+    refresh();
+  });
+
+  // v2: чипы быстрого фильтра синхронны с селектом #catalogTypeFilter
+  $('#typeChips')?.addEventListener('click', (e) => {
+    const c = e.target.closest('.chip');
+    const sel = $('#catalogTypeFilter');
+    if (!c || !sel) return;
+    sel.value = c.dataset.type;
+    state.type = c.dataset.type;
+    syncTypeChips(c.dataset.type);
     refresh();
   });
 

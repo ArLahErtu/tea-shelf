@@ -5,8 +5,9 @@
 import { initCommon } from './common.js';
 import { supabase } from './supabaseClient.js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
-import { $, showToast, setInvalid, isValidEmail, askConfirm } from './ui.js';
-import { getUser, onAuthChange, refreshUserAvatar } from './auth.js';
+import { $, $$, showToast, setInvalid, isValidEmail, askConfirm } from './ui.js';
+import { getUser, onAuthChange, refreshUserAvatar, openAuth } from './auth.js';
+import { initNotifications } from './notifications.js';
 
 let profile = null;
 
@@ -48,6 +49,7 @@ async function render() {
   }
 
   renderAvatar();
+  loadAiLimits();
 }
 
 function renderAvatar() {
@@ -109,6 +111,30 @@ async function onAvatarFile(e) {
   renderAvatar();
   refreshUserAvatar();
   showToast('Фото профиля обновлено');
+}
+
+// ---------- Лимиты ИИ-помощника (план) ----------
+async function loadAiLimits() {
+  const user = getUser();
+  if (!user) return;
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    const { data } = await supabase.rpc('get_user_limits', { p_user_id: user.id, p_timezone: tz });
+    const l = Array.isArray(data) ? data[0] : data;
+    if (!l) return;
+    const limit = Number(l.requests_limit ?? 7);
+    const rem = Number(l.requests_remaining ?? limit);
+    const used = Math.max(0, limit - rem);
+    const bar = $('#aiBar');
+    const wrap = $('#aiBarWrap');
+    if (bar) bar.style.width = (l.plan === 'premium' ? 100 : Math.min(100, Math.round((used / (limit || 1)) * 100))) + '%';
+    if (wrap) wrap.setAttribute('aria-label', `Использовано ${used} из ${limit} запросов в день`);
+    $('#aiLimitText').textContent = l.plan === 'premium'
+      ? 'план премиум: безлимит'
+      : `${used} из ${limit} запросов в день`;
+  } catch (e) {
+    console.warn('[ai limits]', e?.message || e);
+  }
 }
 
 // ---------- Смена пароля ----------
@@ -187,6 +213,14 @@ async function init() {
   await initCommon();
 
   $('#avatarInput')?.addEventListener('change', onAvatarFile);
+  $('#avatarBtnUpload')?.addEventListener('click', () => $('#avatarInput')?.click());
+  $('#authOpen2')?.addEventListener('click', () => openAuth());
+  $$('[data-scroll-to]').forEach((b) => b.addEventListener('click', () => {
+    const target = document.querySelector(b.dataset.scrollTo);
+    target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    target?.querySelector('input')?.focus({ preventScroll: true });
+  }));
+  initNotifications();
   $('#passwordForm')?.addEventListener('submit', onPasswordSubmit);
   $('#emailForm')?.addEventListener('submit', onEmailSubmit);
   $('#deleteAccountBtn')?.addEventListener('click', onDeleteAccount);

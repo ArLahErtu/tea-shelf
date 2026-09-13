@@ -2,90 +2,60 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-
-  <title>404 — страница не найдена · Чайная полка</title>
-  <meta name="description" content="Страница не найдена. Вернитесь на главную или откройте каталог чаёв.">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Страница не найдена — Чайная полка</title>
+  <meta name="description" content="Страница не найдена: вернитесь на главную «Чайной полки» или откройте каталог чаёв.">
+  <meta name="theme-color" content="#F4EEDD">
   <meta name="robots" content="noindex">
-
-  <meta name="theme-color" content="#2F5D3C">
-
-  <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="img/icon-192.png">
-
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Prata&display=swap"
-    rel="stylesheet"
-  >
-
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Prata&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/components.css">
+  <style>
+    .nf { min-height: calc(100vh - 200px); display: grid; place-items: center; text-align: center; padding: 60px 0; }
+    .nf .code { font-family: var(--serif); font-size: clamp(80px, 18vw, 160px); line-height: 1; color: var(--green); opacity: .9; }
+    .nf h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(26px, 4vw, 40px); margin: 10px 0 12px; }
+    .nf p { color: var(--ink-soft); max-width: 44ch; margin: 0 auto 28px; }
+    .nf .row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+    .nf .kanji { font-family: var(--serif); color: var(--hair); font-size: 22px; margin-bottom: 14px; }
+  </style>
 </head>
 <body>
+<a class="skip-link" href="#main">Перейти к содержанию</a>
 
 <header class="topbar">
-  <div class="wrap topbar-in">
-    <a class="brand" href="index.html" aria-label="Чайная полка — на главную">
-      <span class="logo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20c0-8 5-13 14-15-1 9-6 14-14 15Z"/></svg></span>
-      <span class="btxt">Чайная полка</span>
+  <div class="wrap in">
+    <a class="logo" href="index.html" aria-label="Чайная полка — на главную">
+      <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M12 3C7 7 5 10.5 5 14a7 7 0 0 0 14 0c0-3.5-2-7-7-11Zm0 17a5 5 0 0 1-5-5c0-.4.3-.7.7-.7s.7.3.7.7a3.6 3.6 0 0 0 3.6 3.6c.4 0 .7.3.7.7s-.3.7-.7.7Z"/></svg></span>
+      <span class="txt">Чайная полка</span>
     </a>
+    <nav class="nav" aria-label="Основная навигация">
+      <a href="index.html">Главная</a>
+      <a href="catalog.html">Каталог</a>
+    </nav>
   </div>
 </header>
 
-<main class="wrap">
-  <div class="page-head">
+<main id="main">
+  <div class="wrap nf">
     <div>
-      <p class="crumbs">Ошибка 404</p>
-      <h1>Страница не найдена</h1>
-      <p class="sub">Возможно, адрес устарел, страница уехала или в ссылке опечатка. Ничего не потеряно: полка и каталог на месте.</p>
-    </div>
-  </div>
-
-  <div class="empty">
-    <h3>404</h3>
-    <p>Такой страницы нет. Начните с главной или загляните в общий каталог чаёв.</p>
-    <div class="head-btns" style="justify-content: center;">
-      <a class="btn btn-primary" href="index.html">На главную</a>
-      <a class="btn btn-outline" href="catalog.html">В каталог</a>
+      <p class="kanji">迷</p>
+      <div class="code" aria-hidden="true">404</div>
+      <h1>Такой страницы нет</h1>
+      <p>Возможно, ссылку переписали или страница ушла в архив, как допитый чай.
+         Вернитесь на главную или загляните в каталог.</p>
+      <div class="row">
+        <a class="btn btn-green" href="index.html">На главную</a>
+        <a class="btn btn-outline" href="catalog.html">Открыть каталог</a>
+      </div>
     </div>
   </div>
 </main>
 
 <footer>
-  <div class="wrap">
-    <div class="footer-grid">
-      <div class="footer-brand">
-        <a class="brand" href="index.html" aria-label="Чайная полка — на главную">
-          <span class="logo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20c0-8 5-13 14-15-1 9-6 14-14 15Z"/></svg></span>
-          <span class="btxt">Чайная полка</span>
-        </a>
-        <p class="footer-email">
-          <a href="mailto:busyatv3@gmail.com">busyatv3@gmail.com</a>
-          <span class="hint">почта для вопросов и предложений</span>
-        </p>
-      </div>
-      <nav class="footer-col" aria-label="Навигация в подвале">
-        <h4>Навигация</h4>
-        <ul>
-          <li><a href="index.html">Главная</a></li>
-          <li><a href="catalog.html">Каталог</a></li>
-          <li><a href="shelf.html">Полка</a></li>
-          <li><a href="profile.html">Профиль</a></li>
-        </ul>
-      </nav>
-      <div class="footer-col">
-        <h4>О нас</h4>
-        <ul>
-          <li><a href="privacy.html">Политика обработки персональных данных</a></li>
-          <li><a href="https://forms.gle/rCcAXQ7kSTANzhqm7" target="_blank" rel="noopener" data-footer-feedback>Обратная связь</a></li>
-        </ul>
-      </div>
-    </div>
-  </div>
+  <div class="f-bot"><div class="wrap in"><span>© 2026 Чайная полка</span><span>заваривайте осознанно 🌿</span></div></div>
 </footer>
-
 </body>
 </html>

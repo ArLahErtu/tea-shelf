@@ -1,445 +1,124 @@
 /* ============================================================
-   pages/index.css
-   Стили главной страницы
-   Неделя 4: центрированный hero, сетка 4 УТП, CTA в одну строку
-   на мобильном, карусель «Возможности» на мобильном.
+   pages/index.css — лондрид-лендинг (только для гостей)
    ============================================================ */
 
-/* ------------------------------------------------------------
-   Hero (центрирован)
-   ------------------------------------------------------------ */
-.hero {
-  padding: var(--space-9) 0 var(--space-7);
-  text-align: center;
-}
+/* ---------- hero ---------- */
+.hero { position: relative; padding: 40px 0 56px; overflow: hidden; }
+.hero .enso-bg { position: absolute; right: -140px; top: -120px; width: 560px; opacity: .07; pointer-events: none; }
+.hero .enso-bg path { fill: none; stroke: var(--ink); stroke-width: 3.5; stroke-linecap: round; }
+.hero .in { display: grid; grid-template-columns: 1.15fr .85fr; gap: 56px; align-items: center; position: relative; }
+.over { font-size: 15px; color: var(--gray); letter-spacing: .02em; margin-bottom: 18px; display: flex; align-items: center; gap: 10px; }
+.over::before { content: ""; width: 34px; height: 1px; background: var(--green); }
+.hero h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(40px, 5.6vw, 72px); line-height: 1.08; letter-spacing: .005em; }
+.hero p.lead { margin: 22px 0 34px; font-size: 18px; color: var(--ink-soft); max-width: 46ch; }
+.cta-row { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
 
-.hero h1 {
-  max-width: 640px;
-  margin: 0 auto var(--space-3);
-  font-size: clamp(30px, 4.6vw, 48px);
-  line-height: 1.12;
-}
+/* какэмоно — свиток с фото */
+.kake { position: relative; justify-self: center; width: min(320px, 72vw); }
+.kake .rod { height: 14px; background: var(--ink); border-radius: 7px; margin: 0 -18px; position: relative; z-index: 2; }
+.kake .rod::before, .kake .rod::after { content: ""; position: absolute; top: 50%; width: 10px; height: 10px; background: var(--gold); border-radius: 50%; transform: translateY(-50%); }
+.kake .rod::before { left: -14px; }
+.kake .rod::after { right: -14px; }
+.kake .canvas { background: var(--paper); border: 1px solid var(--line); padding: 14px; margin: 6px 0; }
+.kake .canvas img { width: 100%; aspect-ratio: 3 / 4; max-height: 44vh; object-fit: cover; }
+.kake .side { position: absolute; left: -58px; top: 26px; display: flex; gap: 14px; align-items: flex-start; }
+.kake .kanji { font-family: var(--serif); font-size: 44px; line-height: 1; color: var(--ink); opacity: .85; }
+.kake .cap { font-size: 13px; color: var(--gray); letter-spacing: .14em; padding-top: 6px; }
+.seal { position: absolute; right: -16px; bottom: 64px; width: 56px; height: 56px; background: var(--seal); border-radius: 10px; display: grid; place-items: center; transform: rotate(-4deg); box-shadow: 0 4px 14px rgba(181, 68, 44, .35); }
+.seal span { font-family: var(--serif); color: #fff; font-size: 30px; line-height: 1; }
 
-.hero .lead {
-  max-width: 560px;
-  margin: 0 auto var(--space-6);
-  font-size: 16.5px;
-  line-height: 1.6;
-  color: var(--muted);
-}
+/* появление hero — одна оркестрованная секвенция */
+.hero .st { opacity: 0; transform: translateY(18px); animation: rise .7s cubic-bezier(.22, 1, .36, 1) forwards; }
+.hero .st:nth-child(2) { animation-delay: .1s; }
+.hero .st:nth-child(3) { animation-delay: .2s; }
+.hero .st:nth-child(4) { animation-delay: .3s; }
+.hero .kake { opacity: 0; animation: rise .8s cubic-bezier(.22, 1, .36, 1) .25s forwards; }
+@keyframes rise { to { opacity: 1; transform: none; } }
 
-.hero-cta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-  justify-content: center;
-  margin-bottom: var(--space-6);
-}
-
-/* ------------------------------------------------------------
-   УТП: сетка 4 карточек (2×2 на мобильном)
-   ------------------------------------------------------------ */
-.usp-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--space-3);
-  text-align: center;
-}
-
-.usp {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: var(--space-5) var(--space-4);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.usp .ic {
-  width: 44px;
-  height: 44px;
-  border-radius: 13px;
-  display: grid;
-  place-items: center;
-}
-
-.usp .ic svg {
-  width: 21px;
-  height: 21px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.9;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.usp b {
-  font-size: 14.5px;
-}
-
-.usp span {
-  font-size: 12.5px;
-  line-height: 1.5;
-  color: var(--muted);
-}
-
-/* ------------------------------------------------------------
-   Sections
-   ------------------------------------------------------------ */
-.sec {
-  padding: var(--space-8) 0 var(--space-2);
-}
-
-.sec-head {
-  max-width: 640px;
-  margin-bottom: var(--space-5);
-}
-
-.sec-kicker {
-  margin-bottom: var(--space-2);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 1.2px;
-  text-transform: uppercase;
-  color: var(--amber);
-}
-
-.sec-head h2 {
-  margin-bottom: var(--space-2);
-  font-size: clamp(24px, 3.4vw, 34px);
-  line-height: 1.2;
-}
-
-.sec-head p {
-  font-size: 15px;
-  line-height: 1.6;
-  color: var(--muted);
-}
-
-/* ------------------------------------------------------------
-   Features / steps
-   ------------------------------------------------------------ */
-.feat-grid,
-.steps {
-  display: grid;
-  gap: var(--space-3);
-}
-
-.feat-grid {
-  grid-template-columns: repeat(4, 1fr);
-}
-
-.steps {
-  grid-template-columns: repeat(3, 1fr);
-}
-
-.feat,
-.step {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: var(--space-5);
-}
-
-.feat .ic {
-  width: 44px;
-  height: 44px;
-  border-radius: 13px;
-  display: grid;
-  place-items: center;
-  margin-bottom: var(--space-3);
-}
-
-.feat .ic svg {
-  width: 21px;
-  height: 21px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.9;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.ic.g {
-  background: var(--green-soft);
-  color: var(--green);
-}
-
-.ic.a {
-  background: var(--amber-soft);
-  color: var(--amber);
-}
-
-.ic.b {
-  background: #DDEDEA;
-  color: #26605B;
-}
-
-.ic.r {
-  background: #F2E3EE;
-  color: #8A4E7F;
-}
-
-.feat h3,
-.step h3 {
-  margin-bottom: var(--space-2);
-  font-size: 16.5px;
-}
-
-.feat p,
-.step p {
-  font-size: 13.5px;
-  line-height: 1.55;
-  color: var(--muted);
-}
-
-.step .n {
-  margin-bottom: var(--space-2);
-  font-family: 'Prata', serif;
-  font-size: 34px;
-  color: var(--amber);
-}
-
-/* ------------------------------------------------------------
-   Tea teaser
-   ------------------------------------------------------------ */
-.tea-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: var(--space-3);
-}
-
-.tmini {
-  display: block;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  overflow: hidden;
-  box-shadow: var(--shadow);
-  color: var(--ink);
-  transition: transform 0.18s;
-}
-
-.tmini:hover {
-  transform: translateY(-3px);
-}
-
-.tmini .tm {
-  position: relative;
-  height: 105px;
-  overflow: hidden;
-  background: #EFE7D2;
-}
-
-.tmini img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.tmini .ph {
-  height: 100%;
-  display: grid;
-  place-items: center;
-  background: linear-gradient(160deg, #F3EDDD, #EDE4CF);
-}
-
-.tmini .ph svg {
-  width: 30px;
-  height: 30px;
-  stroke: #C9BEA6;
-  fill: none;
-  stroke-width: 1.6;
-  opacity: 0.7;
-}
-
-.tmini .tb {
-  padding: 10px var(--space-3) var(--space-3);
-}
-
-.tmini b {
-  display: block;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  font-family: 'Prata', serif;
-  font-size: 14.5px;
-  font-weight: 400;
-}
-
-.tmini span {
-  font-size: 11.5px;
-  font-weight: 700;
-  color: var(--muted);
-}
-
-/* ------------------------------------------------------------
-   Roadmap
-   ------------------------------------------------------------ */
-.road {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-3);
-}
-
-.road .panel {
-  margin-bottom: 0;
-  padding: var(--space-5);
-}
-
-.road h3 {
-  margin-bottom: var(--space-3);
-  font-size: 14px;
-  font-weight: 800;
-  letter-spacing: 0.6px;
-  text-transform: uppercase;
-}
-
-.road .done h3 {
-  color: var(--green-d);
-}
-
-.road .next h3 {
-  color: var(--amber);
-}
-
-.road li {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  list-style: none;
-  margin-bottom: 9px;
-  font-size: 13.5px;
-  line-height: 1.5;
-  color: #4A4331;
-}
-
-.road li svg {
-  width: 15px;
-  height: 15px;
-  flex: none;
-  margin-top: var(--space-1);
-  fill: none;
-  stroke-width: 2.4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.road .done li svg {
-  stroke: var(--green);
-}
-
-.road .next li svg {
-  stroke: var(--amber);
-}
-
-/* ------------------------------------------------------------
-   CTA
-   ------------------------------------------------------------ */
-.cta {
-  position: relative;
-  overflow: hidden;
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  margin: var(--space-8) 0 0;
-}
-
-.cta img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.cta .ovl {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--space-5);
-  padding: var(--space-8) var(--space-7);
-  background: linear-gradient(100deg, rgba(37, 73, 47, 0.93), rgba(37, 73, 47, 0.72));
-}
-
-.cta h2 {
-  max-width: 520px;
-  margin-bottom: var(--space-2);
-  color: #F4EEDD;
-  font-size: clamp(22px, 3.2vw, 30px);
-  line-height: 1.25;
-}
-
-.cta p {
-  max-width: 480px;
-  font-size: 14.5px;
-  color: #CFE0C6;
-}
-
-/* ------------------------------------------------------------
-   Index responsive
-   ------------------------------------------------------------ */
 @media (max-width: 900px) {
-  .feat-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .tea-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
-  .road {
-    grid-template-columns: 1fr;
-  }
-
-  .usp-grid {
-    grid-template-columns: 1fr 1fr;
-  }
+  .hero { padding: 32px 0 44px; }
+  .hero .in { grid-template-columns: 1fr; gap: 44px; }
+  .kake { justify-self: start; margin-left: 40px; }
+}
+@media (max-width: 560px) {
+  .kake { margin-left: 26px; width: min(300px, 78vw); }
+  .kake .side { left: -34px; }
+  .kake .kanji { font-size: 32px; }
 }
 
-@media (max-width: 640px) {
-  .tea-grid {
-    grid-template-columns: 1fr 1fr;
-  }
+/* ---------- лента типов ---------- */
+.marquee { background: var(--green); color: var(--cream); overflow: hidden; padding: 14px 0; }
+.marquee .track { display: flex; gap: 44px; width: max-content; animation: mq 36s linear infinite; font-family: var(--serif); font-size: 17px; white-space: nowrap; }
+.marquee .track span { display: flex; align-items: center; gap: 44px; }
+.marquee .track em { font-style: normal; opacity: .55; }
+@keyframes mq { to { transform: translateX(-50%); } }
 
-  .steps {
-    grid-template-columns: 1fr;
-  }
+/* ---------- секции ---------- */
+.sec { padding: 88px 0; }
+.sec + .sec { padding-top: 0; }
+.sec-head { display: flex; align-items: baseline; gap: 20px; margin-bottom: 44px; }
+.sec-head .k { font-family: var(--serif); font-size: 22px; color: var(--hair); }
+.sec-head h2 { font-family: var(--serif); font-weight: 400; font-size: clamp(30px, 3.6vw, 44px); line-height: 1.15; }
+.sec-head .rule { flex: 1; height: 1px; background: var(--hair); opacity: .6; }
 
-  /* CTA-кнопки в одну строку */
-  .hero-cta {
-    flex-wrap: nowrap;
-  }
-
-  .hero-cta .btn {
-    flex: 1 1 0;
-    min-width: 0;
-    padding: 12px 8px;
-    font-size: 13.5px;
-  }
-
-  /* «Возможности» — карусель */
-  .feat-grid {
-    display: flex;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    -webkit-overflow-scrolling: touch;
-    gap: var(--space-3);
-    padding: var(--space-1) var(--space-1) 10px;
-    scrollbar-width: none;
-  }
-
-  .feat-grid::-webkit-scrollbar {
-    display: none;
-  }
-
-  .feat {
-    flex: 0 0 82%;
-    scroll-snap-align: center;
-  }
+/* возможности: сетка с волосяными линейками */
+.feat { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--hair); }
+.feat .cell { padding: 36px 36px 40px 0; border-bottom: 1px solid var(--hair); position: relative; }
+.feat .cell:nth-child(even) { padding-left: 36px; border-left: 1px solid var(--hair); padding-right: 0; }
+.feat .num { font-family: var(--serif); font-size: 26px; color: var(--hair); position: absolute; top: 34px; right: 8px; }
+.feat h3 { font-family: var(--serif); font-weight: 400; font-size: 26px; margin: 0 0 10px; display: flex; align-items: center; gap: 12px; }
+.feat h3 svg { width: 26px; height: 26px; stroke: var(--green); fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.feat p { color: var(--ink-soft); font-size: 16px; max-width: 44ch; }
+@media (max-width: 760px) {
+  .feat { grid-template-columns: 1fr; }
+  .feat .cell:nth-child(even) { padding-left: 0; border-left: 0; }
+  .feat .cell { padding-right: 0; }
 }
+
+/* шаги */
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--hair); }
+.step { padding: 34px 32px 8px; position: relative; }
+.step + .step { border-left: 1px solid var(--hair); }
+.step .k { font-family: var(--serif); font-size: 40px; color: var(--green); opacity: .9; }
+.step h3 { font-family: var(--serif); font-weight: 400; font-size: 23px; margin: 14px 0 8px; }
+.step p { color: var(--ink-soft); font-size: 15.5px; }
+@media (max-width: 760px) {
+  .steps { grid-template-columns: 1fr; }
+  .step + .step { border-left: 0; border-top: 1px solid var(--hair); }
+  .step { padding: 28px 0 28px; }
+}
+
+/* библиотека */
+.lib { display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px; }
+@media (max-width: 900px) { .lib { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 620px) { .lib { grid-template-columns: 1fr; } }
+.lib-more { margin-top: 34px; display: inline-flex; }
+
+/* ---------- библиотека: панель поиска и примечание ---------- */
+.lib-toolbar { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 26px; }
+.lib-note { margin-top: 26px; color: var(--gray); font-size: 15px; max-width: 62ch; }
+.lib-note a { color: var(--green); font-weight: 700; }
+.lib-note a:hover { text-decoration: underline; }
+@media (max-width: 620px) { .lib-toolbar .search { max-width: 100% !important; } }
+
+/* философская полоса */
+.zen { background: var(--green-deep); color: var(--cream); position: relative; overflow: hidden; margin-top: 88px; }
+.zen .in { display: grid; grid-template-columns: 1fr auto; gap: 40px; align-items: center; padding: 84px 28px; }
+.zen .logo { margin-bottom: 28px; }
+.zen .logo .mark { background: var(--cream); }
+.zen .logo .mark svg { fill: var(--green-deep); }
+.zen .logo .txt { color: var(--cream); }
+.zen q { font-family: var(--serif); font-size: clamp(24px, 3vw, 36px); line-height: 1.35; quotes: none; max-width: 24ch; display: block; }
+.zen .who { margin-top: 22px; color: #B9CBB9; font-size: 15px; }
+.zen .kanji-big { font-family: var(--serif); font-size: clamp(90px, 14vw, 180px); line-height: 1; opacity: .16; writing-mode: vertical-rl; }
+.zen .btn-w { background: none; border: 1.5px solid rgba(244, 238, 221, .5); color: var(--cream); margin-top: 34px; box-shadow: none; }
+.zen .btn-w:hover { border-color: var(--cream); background: rgba(244, 238, 221, .08); transform: none; }
+@media (max-width: 760px) {
+  .zen .in { grid-template-columns: 1fr; padding: 60px 28px; }
+  .zen .kanji-big { display: none; }
+}
+
+/* финальный CTA */
+.final { padding: 96px 0; }
+.final h2 { font-family: var(--serif); font-weight: 400; font-size: clamp(32px, 4.4vw, 54px); line-height: 1.12; max-width: 22ch; }
+.final .note { margin-top: 16px; color: var(--gray); font-size: 15px; }

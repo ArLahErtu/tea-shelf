@@ -1,5 +1,0 @@
-User-agent: *
-Allow: /
-Disallow: /shelf.html
-
-Sitemap: https://tea-shelf.vercel.app/sitemap.xml
