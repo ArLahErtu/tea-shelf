@@ -181,6 +181,8 @@
   overscroll-behavior: contain;
 }
 .overlay.show { opacity: 1; }
+/* страховка: закрытый оверлей не перехватывает клики даже в момент анимации */
+.overlay:not(.show) { pointer-events: none; }
 .modal {
   width: min(600px, 100%); max-height: min(86vh, 900px); overflow-y: auto;
   background: var(--paper); border: 1px solid var(--line); border-radius: var(--r);

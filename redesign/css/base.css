@@ -58,7 +58,7 @@ p { text-wrap: pretty; }
   border-radius: 4px;
 }
 
-.hidden { display: none !important; }
+.hidden, [hidden] { display: none !important; }
 .wrap { max-width: 1160px; margin: 0 auto; padding: 0 28px; }
 .vert { writing-mode: vertical-rl; text-orientation: mixed; }
 .num, .tabular { font-variant-numeric: tabular-nums; }
