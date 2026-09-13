@@ -199,6 +199,31 @@
   <section class="sec" id="library">
     <div class="wrap">
       <div class="sec-head"><span class="k">味</span><h2>Из каталога — вживую</h2><span class="rule"></span></div>
+
+      <div class="lib-toolbar" role="group" aria-label="Поиск и отбор по каталогу">
+        <label class="search" style="max-width:340px">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input type="search" id="libSearch" placeholder="Поиск: название или регион…" aria-label="Поиск по каталогу">
+        </label>
+        <select class="sel" id="libType" aria-label="Отбор по типу чая" style="width:auto">
+          <option value="all">Все типы</option>
+          <option value="Чёрный">Чёрный</option>
+          <option value="Зелёный">Зелёный</option>
+          <option value="Белый">Белый</option>
+          <option value="Жёлтый">Жёлтый</option>
+          <option value="Улун">Улун</option>
+          <option value="Красный">Красный</option>
+          <option value="Пуэр">Пуэр</option>
+          <option value="Хэй ча">Хэй ча</option>
+          <option value="Цветочный">Цветочный</option>
+          <option value="Матте">Матте</option>
+          <option value="Матча">Матча</option>
+          <option value="Травяной">Травяной</option>
+          <option value="Тизан">Тизан</option>
+          <option value="Смесь">Смесь / купаж</option>
+        </select>
+      </div>
+
       <div class="lib" id="libGrid">
         <a class="tea" href="catalog.html">
           <div class="ph-wrap"><img src="img/photo-leaves.jpg" width="960" height="720" loading="lazy" alt="Сухой жёлтый чай и светлый настой в гайвани"></div>
@@ -216,7 +241,10 @@
           <span class="p">80–85 °C · 20–30 сек</span></div>
         </a>
       </div>
-      <a class="lib-more btn-line" href="catalog.html">Весь каталог <svg class="" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+
+      <p class="lib-note">Это лишь витрина: в полном каталоге — десятки сортов с фото,
+         параметрами заваривания и оценками сообщества.
+         <a href="catalog.html">Открыть полный каталог</a>.</p>
     </div>
   </section>
 

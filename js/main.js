@@ -1,101 +1,117 @@
 // ============================================================
-// main.js — точка входа для главной страницы
-// «Библиотека» оживает без правки index.html (топ-6 по popularity,
-// статика в HTML — фолбэк).
-// Неделя 4: карусель «Возможности» на мобильном — автопрокрутка
-// с паузой при взаимодействии пользователя.
+// main.js — точка входа лонгрида (index.html, редизайн v2).
+// Страница только для гостей: вошедших уводит gate.js.
+// «Библиотека» — мини-каталог с поиском и отбором по типу:
+// показывает НЕ больше 3 карточек; полный каталог — ссылкой в примечании.
 // ============================================================
 import { initCommon } from './common.js';
 import { supabase, isConfigured } from './supabaseClient.js';
 import { TABLES } from './config.js';
-import { $, escapeHtml } from './ui.js';
+import { $, escapeHtml, typeClass } from './ui.js';
+import { openAuth } from './auth.js';
+import { nextParam } from './gate.js';
 
-const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '');
 
-async function loadLibrary() {
-  const grid = $('.tea-grid');
-  if (!grid || !isConfigured()) return;
+// ---------- прелоадер: энсо ----------
+function initPreloader() {
+  const pre = document.getElementById('pre');
+  const hide = () => pre && pre.classList.add('done');
+  window.addEventListener('load', () => setTimeout(hide, 350));
+  setTimeout(hide, 1600); // страховка
+}
 
-  const { data, error } = await supabase
+// ---------- библиотека: мини-каталог с поиском (максимум 3 карточки) ----------
+const libState = { q: '', type: 'all' };
+let libTimer = null;
+
+function buildLibQuery() {
+  let query = supabase
     .from(TABLES.catalog)
-    .select('id, name, type, region, photo_url, popularity')
-    .eq('status', 'published')
+    .select('id, name, type, region, photo_url, temp, time')
+    .eq('status', 'published');
+
+  if (libState.type !== 'all') query = query.ilike('type', libState.type);
+
+  // защита .or() от запятых и скобок в пользовательской строке
+  const term = libState.q.replace(/[,()"']/g, '').trim();
+  if (term) {
+    query = query.or(`name.ilike.%${term}%,region.ilike.%${term}%`);
+  }
+
+  return query
     .order('popularity', { ascending: false })
     .order('id', { ascending: true })
-    .limit(6);
+    .limit(3);
+}
 
-  if (error || !data?.length) {
-    console.warn('[library]', error?.message || 'каталог пуст');
+function libCard(t) {
+  const a = document.createElement('a');
+  a.className = 'tea';
+  a.href = 'catalog.html';
+  a.innerHTML = `
+    <div class="ph-wrap">
+      ${t.photo_url
+        ? `<img src="${escapeHtml(t.photo_url)}" width="960" height="720" loading="lazy" alt="${escapeHtml(t.name)}">`
+        : `<div class="ph"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20c0-8 5-13 14-15-1 9-6 14-14 15Z"/></svg></div>`}
+    </div>
+    <div class="b">
+      <span class="t">${escapeHtml(t.name)}</span>
+      <span class="r">${escapeHtml(cap(t.type) || '—')}${t.region ? ' · ' + escapeHtml(t.region) : ''}</span>
+      <span class="p ${typeClass(t.type)}">${escapeHtml([t.temp, t.time].filter(Boolean).join(' · ') || 'параметры в карточке')}</span>
+    </div>`;
+  return a;
+}
+
+async function loadLibrary() {
+  const grid = $('#libGrid');
+  if (!grid || !isConfigured()) return;
+
+  const { data, error } = await buildLibQuery();
+  if (error) {
+    console.warn('[library]', error.message);
+    return;
+  }
+
+  if (!data?.length) {
+    grid.innerHTML = `<div class="empty grid-col-span">
+      <h3>Ничего не нашлось</h3>
+      <p>Попробуйте другой запрос или тип — в полном каталоге сортов значительно больше.</p>
+    </div>`;
     return;
   }
 
   grid.innerHTML = '';
-  data.forEach((t) => {
-    const a = document.createElement('a');
-    a.className = 'tmini';
-    a.href = 'catalog.html';
-    a.title = t.name;
-    a.innerHTML = `
-      <div class="tm">
-        ${t.photo_url
-          ? `<img src="${escapeHtml(t.photo_url)}" alt="${escapeHtml(t.name)}" loading="lazy">`
-          : `<div class="ph"><svg viewBox="0 0 24 24"><path d="M5 20c0-8 5-13 14-15-1 9-6 14-14 15Z"/></svg></div>`}
-      </div>
-      <div class="tb">
-        <b>${escapeHtml(t.name)}</b>
-        <span>${escapeHtml(cap(t.type) || '—')}${t.region ? ' · ' + escapeHtml(t.region) : ''}</span>
-      </div>`;
-    grid.appendChild(a);
+  data.slice(0, 3).forEach((t) => grid.appendChild(libCard(t)));
+}
+
+function initLibFilters() {
+  const search = $('#libSearch');
+  const type = $('#libType');
+  if (!search || !type) return;
+
+  search.addEventListener('input', () => {
+    clearTimeout(libTimer);
+    libTimer = setTimeout(() => {
+      libState.q = search.value;
+      loadLibrary();
+    }, 300);
+  });
+
+  type.addEventListener('change', () => {
+    libState.type = type.value;
+    loadLibrary();
   });
 }
 
-// ---------- Карусель «Возможности» (только мобильные) ----------
-function initFeatCarousel() {
-  const grid = $('.feat-grid');
-  if (!grid) return;
-
-  const mq = window.matchMedia('(max-width: 640px)');
-  let timer = null;
-  let pauseUntil = 0;
-
-  const cardStep = () => {
-    const card = grid.querySelector('.feat');
-    if (!card) return 280;
-    return card.getBoundingClientRect().width + 12; // ширина + gap
-  };
-
-  function tick() {
-    if (Date.now() < pauseUntil) return;      // пользователь трогал — ждём
-    const max = grid.scrollWidth - grid.clientWidth - 4;
-    if (grid.scrollLeft >= max) {
-      grid.scrollTo({ left: 0, behavior: 'smooth' });   // зацикливаем
-    } else {
-      grid.scrollBy({ left: cardStep(), behavior: 'smooth' });
-    }
-  }
-
-  function start() {
-    stop();
-    if (mq.matches) timer = setInterval(tick, 4000);
-  }
-  function stop() {
-    if (timer) clearInterval(timer);
-    timer = null;
-  }
-
-  // Любое касание — пауза автопрокрутки на 8 секунд
-  const pause = () => { pauseUntil = Date.now() + 8000; };
-  grid.addEventListener('touchstart', pause, { passive: true });
-  grid.addEventListener('pointerdown', pause);
-  grid.addEventListener('wheel', pause, { passive: true });
-
-  if (mq.addEventListener) mq.addEventListener('change', start);
-  start();
-}
-
 async function init() {
+  initPreloader();
   await initCommon();
-  initFeatCarousel();
+
+  // гость пришёл с сервисной страницы (?next=…) — сразу показываем вход
+  if (nextParam()) openAuth();
+
+  initLibFilters();
   try {
     await loadLibrary();
   } catch (e) {

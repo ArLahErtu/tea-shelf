@@ -675,7 +675,7 @@ body.page-shelf {
    Shelf responsive — ФИКС ЭТАПА 0+: жёсткие ширины,
    чтобы блоки не были «то уже, то шире» страницы
    ------------------------------------------------------------ */
-@media (max-width: 960px) {
+@media (max-width: 860px) {
   .shelf-layout {
     display: flex;
     flex-direction: column;
@@ -698,12 +698,9 @@ body.page-shelf {
   #archivePanel,
   .shelf-main .toolbar,
   #shelfGrid {
-    width: 100%;
-    min-width: 0;
-    max-width: 100%;
-    box-sizing: border-box;
+    grid-template-columns: 1fr;
   }
-
+  
   /* мобильный порядок блоков */
   #shoppingPanel       { order: 1; }
   .shelf-main .toolbar { order: 2; }

@@ -982,7 +982,10 @@ Toasts
 /* ------------------------------------------------------------
 Components responsive
 ------------------------------------------------------------ */
-@media (max-width: 720px) {
+@media (max-width: 860px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
   .brand span.btxt {
     display: none;
   }
