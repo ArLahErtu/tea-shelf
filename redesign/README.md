@@ -81,43 +81,43 @@
 - **ИИ:** YandexGPT (yandexgpt-lite) через Supabase Edge Function `ai-assistant`.
 - **Хостинг:** Vercel (автодеплой с main), publish-каталог — корень репозитория.
 
-## Структура
+## Структура (v2.1)
 
 ```
 index.html / catalog.html / shelf.html / journal.html / profile.html / privacy.html / 404.html
+sw.js / vercel.json / manifest.webmanifest / robots.txt / sitemap.xml
 css/
-  base.css            токены, шапка, подвал, таб-бар, прелоадер
-  components.css      кнопки, модалки, карточки, списки, таймер, тосты
-  chatbot.css         окно чат-помощника
-  pages/index.css     лонгрид
-  pages/catalog.css   каталог
-  pages/shelf.css     полка
-  pages/journal.css   журнал
-  pages/profile.css   профиль и документы
+  base.css        шрифты (самохост), токены, шапка, подвал, таб-бар
+  components.css  кнопки, модалки, карточки, списки, таймер, тосты
+  chat.css        окно чат-помощника
+  index.css catalog.css shelf.css journal.css profile.css   стили страниц
 js/
-  main.js             лонгрид: прелоадер, библиотека топ-6
-  catalog.js          каталог, модерация, заявки
-  shelf.js            полка, покупки, избранное, архив, заваривание
-  journal.js          лента журнала
-  profile.js          профиль, фото, безопасность
-  doc.js              документы (privacy)
-  common.js           общие блоки: cookie-гейт, чат-триггеры, FAB, SW
-  gate.js             маршрутизация «гость / вошедший»
-  brewTimer.js        таймер проливов и настоя
-  notifications.js    тумблеры уведомлений
-  auth.js             вход, роли, меню аватара
-  supabaseClient.js   клиент Supabase (jsDelivr)
-  config.js           URL и anon-ключ, таблицы
-  ui.js               хелперы, тосты, модалки, словари
-  teaModal.js / amountModal.js   карточка чая и модалка количества
-  chatbot.js / chatbotHTML.js    чат-помощник
-  tisanes.js / unknowns.js       тизаны и неизвестные чаи
-img/                  favicon, иконки PWA, фото лендинга
-manifest.webmanifest  PWA-манифест
-sw.js                 service worker (precache v4)
-docs/                 ARCHITECTURE.md, REDESIGN.md, UIUX_REVIEW.md
-CHANGELOG.md          история изменений
+  app.js          корень композиции: initCommon() на каждой странице
+  core/           config.js · supabase.js · ui.js          — инфраструктура
+  features/       auth · gate · brew-timer · notifications · chat · chat-html ·
+                  tea-modal · amount-modal · tisanes · unknowns   — домен
+  pages/          index · catalog · shelf · journal · profile · doc — точки входа
+fonts/            Manrope (var) + Prata, woff2 cyrillic/latin
+img/              favicon, иконки PWA, фото лендинга
+docs/             ARCHITECTURE.md · REDESIGN.md · UIUX_REVIEW.md · AUDIT.md
+CHANGELOG.md      история изменений
 ```
+
+Правила слоёв: `core` не знает о домене, `features` импортируют только `core`,
+`pages` — `core` + `features`, связывает всё `app.js`. Граф модулей страницы —
+звезда глубиной ≤2, без баррелей и прокси.
+
+## Скорость
+
+- Шрифты самохост + `preload` кириллицы: ноль сторонних render-blocking origin.
+- `preconnect` к Supabase и jsDelivr; `modulepreload` графа модулей страницы
+  (генерируется сборщиком из импортов).
+- `vercel.json`: шрифты immutable 1 год; css/js/img — 1 день + stale-while-revalidate
+  7 дней; html и sw.js — must-revalidate.
+- SW v5: прекэш фактических файлов, офлайн-снапшот полки.
+- Изображения: явные `width/height` (нет CLS), `loading="lazy"`, `fetchpriority="high"`
+  у LCP-фото.
+- Замеры и обоснования: `docs/AUDIT.md` (запросов на страницу 10–20, глубина графа ≤2).
 
 ## База данных (Supabase)
 

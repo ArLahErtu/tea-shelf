@@ -18,16 +18,16 @@
 //   ЭТАП 0: добавлен обработчик загрузки фото из модалки модерации.
 // ЭТАП 5: Тизаны в каталоге — отдельный тип, состав трав.
 // ============================================================
-import { initCommon } from './common.js';
-import { supabase } from './supabaseClient.js';
-import { TABLES, SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
+import { initCommon } from '../app.js';
+import { supabase } from '../core/supabase.js';
+import { TABLES, SUPABASE_URL, SUPABASE_ANON_KEY } from '../core/config.js';
 import {
   $, $$, showToast, openOverlay, closeOverlay, wireOverlay,
   setInvalid, escapeHtml, plural, typeClass, TYPE_TO_DB, toTags, trackEvent,
-} from './ui.js';
-import { getUser, isModerationActive, onAuthChange } from './auth.js';
-import { openTeaModal } from './teaModal.js';
-import { initAmountModal, openAmountModal } from './amountModal.js';
+} from '../core/ui.js';
+import { getUser, isModerationActive, onAuthChange } from '../features/auth.js';
+import { openTeaModal } from '../features/tea-modal.js';
+import { initAmountModal, openAmountModal } from '../features/amount-modal.js';
 
 const PAGE_SIZE = 20;
 
@@ -1251,6 +1251,19 @@ async function init() {
       </button>
     </div>`;
   }
+}
+
+// ---------- Синхронизация чипов типа (v2) ----------
+function syncTypeChips(value) {
+  const chips = document.querySelectorAll('#typeChips .chip');
+  if (!chips.length) return;
+  let hit = false;
+  chips.forEach((c) => {
+    const on = c.dataset.type === value;
+    c.classList.toggle('on', on);
+    if (on) hit = true;
+  });
+  if (!hit) chips.forEach((c) => c.classList.toggle('on', c.dataset.type === 'all'));
 }
 
 init();

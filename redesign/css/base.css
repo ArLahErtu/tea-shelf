@@ -1,7 +1,43 @@
 /* ============================================================
-   base.css — дизайн-токены, сброс, типографика, шапка, подвал,
-   нижний таб-бар. Редизайн «Чайной полки» (версия 2).
+   base.css — шрифты, дизайн-токены, сброс, типографика, шапка,
+   подвал, нижний таб-бар. Редизайн «Чайной полки» (версия 2.1).
+   Шрифты самохостятся из /fonts (OFL): нет сторонних_origin_ и
+   блокирующих запросов к fonts.googleapis.com.
    ============================================================ */
+
+/* ---------- шрифты ---------- */
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url('../fonts/manrope-cyrillic.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url('../fonts/manrope-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Prata';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fonts/prata-cyrillic.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Prata';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fonts/prata-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
 
 /* ---------- токены ---------- */
 :root {
@@ -123,8 +159,8 @@ p { text-wrap: pretty; }
 .nav a[aria-current="page"]::after { right: 0; }
 .nav .nav-ico { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 
-.tb-right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
-.nav + .tb-right { margin-left: 0; }
+.tb-end { margin-left: auto; display: flex; align-items: center; gap: 26px; }
+.tb-right { display: flex; align-items: center; gap: 14px; }
 
 /* индикатор статуса БД: скрыт по умолчанию */
 .db-chip { display: none; }
@@ -197,6 +233,7 @@ body.has-tabbar { padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bot
 @media (max-width: 860px) {
   body.has-tabbar .tabbar { display: block; }
   body.has-tabbar .nav { display: none; }
+  body.has-tabbar .tb-end { gap: 0; }
 }
 
 /* ---------- подвал ---------- */
@@ -216,6 +253,12 @@ footer { border-top: 1px solid var(--hair); padding: 34px 0 0; margin-top: 40px;
 
 @media (max-width: 960px) { .f-grid { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 560px) { .f-grid { grid-template-columns: 1fr; gap: 26px; } }
+
+/* ---------- ритм страницы: контент не короче экрана ---------- */
+main { min-height: calc(100vh - var(--topbar-h) - 120px); }
+@supports (height: 100svh) {
+  main { min-height: calc(100svh - var(--topbar-h) - 120px); }
+}
 
 /* ---------- служебное ---------- */
 .skip-link {
@@ -240,8 +283,8 @@ footer { border-top: 1px solid var(--hair); padding: 34px 0 0; margin-top: 40px;
    навигация уезжает во вторую строку шапки скролл-лентой — без бургера */
 @media (max-width: 860px) {
   body:not(.has-tabbar) .topbar .in { flex-wrap: wrap; height: auto; padding: 10px 0; gap: 12px; }
+  body:not(.has-tabbar) .tb-end { flex-wrap: wrap; width: 100%; gap: 12px; }
+  body:not(.has-tabbar) .tb-right { margin-left: auto; }
   body:not(.has-tabbar) .nav { margin-left: 0; order: 3; width: 100%; overflow-x: auto; gap: 18px; padding-bottom: 4px; }
   body:not(.has-tabbar) .nav a::after, body:not(.has-tabbar) .nav button::after { display: none; }
-  /* nav скрыт или ушёл во вторую строку — аватар/кнопка входа всегда у правого края */
-  .tb-right { margin-left: auto; }
 }

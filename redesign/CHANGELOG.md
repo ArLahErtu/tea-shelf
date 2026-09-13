@@ -2,6 +2,30 @@
 
 Формат: [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/), семвер условный.
 
+## [2.1.0] — 2026-09-13 — структура и производительность
+
+### Добавлено
+- `vercel.json` с политиками Cache-Control (шрифты immutable, css/js/img SWR, html must-revalidate).
+- `fonts/`: Manrope (variable) и Prata самохостом (woff2, cyrillic+latin, OFL) +
+  `preload` кириллицы и `preconnect` к Supabase/jsDelivr в head каждой страницы.
+- `modulepreload` для транзитивного графа модулей страницы — генерируется сборщиком.
+- `docs/AUDIT.md` — аудит 2-го уровня: структура, замеры скорости, остаточный полиш.
+- Линт слоёв зависимостей (core/features/pages/app) — 0 нарушений.
+
+### Изменено
+- `js/` разложен по слоям: `app.js` (корень композиции), `core/` (config, supabase, ui),
+  `features/` (auth, gate, brew-timer, notifications, chat, chat-html, tea-modal,
+  amount-modal, tisanes, unknowns), `pages/` (index, catalog, shelf, journal, profile, doc).
+- Имена приведены к соглашению «страница = pages/<имя>.js», фичи — kebab-case.
+- `css/` стал плоским: `chatbot.css → chat.css`, `pages/*.css → css/*.css`.
+- `sw.js` v5: прекэш новых путей + шрифты.
+- Полиш по emil-design-eng: ease-out у входа модалок, `:active` у чипов/табов/сегментов,
+  симметричный уход тостов, ховер-подъём только у редких взаимодействий.
+
+### Исправлено
+- Убраны render-blocking запросы к fonts.googleapis.com/fonts.gstatic.com.
+- Водопад модулей 3–4 уровня сведён к глубине ≤2 параллельными запросами.
+
 ## [2.0.0] — 2026-09-13 — редизайн «тихий чайный дом»
 
 ### Добавлено

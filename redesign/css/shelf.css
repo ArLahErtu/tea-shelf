@@ -1,0 +1,35 @@
+/* ============================================================
+   pages/shelf.css — личный кабинет: полка, покупки, избранное
+   ============================================================ */
+
+.shelf-head { padding: 40px 0 24px; }
+
+/* чаи полки — спокойный список в одну колонку на любых экранах */
+#shelfGrid { display: grid; grid-template-columns: 1fr; gap: 14px; margin-bottom: 26px; }
+.tisanes-grid { grid-template-columns: 1fr; }
+
+.shelf-section { margin-top: 44px; }
+.shelf-section .sec-head { display: flex; align-items: baseline; gap: 18px; margin-bottom: 22px; }
+.shelf-section .sec-head .k { font-family: var(--serif); font-size: 20px; color: var(--hair); }
+.shelf-section .sec-head h2 { font-family: var(--serif); font-weight: 400; font-size: clamp(26px, 3vw, 36px); }
+.shelf-section .sec-head .rule { flex: 1; height: 1px; background: var(--hair); opacity: .6; }
+.shelf-section .sec-head .head-actions { margin-left: auto; }
+
+/* список «докупить» в стиле документа: строки с квадратами */
+.buylist { border-top: 1px solid var(--hair); }
+.buylist .buyrow { padding: 15px 4px; }
+.buylist .buy-check .box,
+.buy .box {
+  width: 19px; height: 19px; border: 1.5px solid var(--hair); border-radius: 5px; display: inline-block;
+}
+
+/* избранные и модерация — панели в две колонки на широких */
+.shelf-panels { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+@media (max-width: 900px) { .shelf-panels { grid-template-columns: 1fr; } }
+
+/* строка чая в «тихом» стиле макета (используется в пустых состояниях) */
+.srow { background: var(--paper); border: 1px solid var(--line); border-radius: var(--r); padding: 18px 20px; margin-bottom: 14px; }
+.srow .top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.srow .top .t { font-weight: 800; font-size: 17px; }
+.srow .top .g, .srow .g { color: var(--gray); font-size: 13px; }
+.srow .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }

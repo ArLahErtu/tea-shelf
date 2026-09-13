@@ -1,67 +1,42 @@
 // sw.js
-// Service Worker для PWA «Чайная полка» (редизайн v2)
-// Стратегия: Cache-first + Network fallback; навигация — network с офлайн-фолбэком.
-// ВАЖНО: в списке только реально существующие файлы — addAll падает на 404.
+// Service Worker PWA «Чайная полка» v2.1
+// Cache-first + network fallback; навигация — network с офлайн-фолбэком.
+// Прекаш только реально существующих файлов (addAll падает на 404).
 
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v5';
 const CACHE_NAME = `tea-shelf-${CACHE_VERSION}`;
 
 const STATIC_ASSETS = [
-  // Страницы
-  '/',
-  '/index.html',
-  '/catalog.html',
-  '/shelf.html',
-  '/journal.html',
-  '/profile.html',
-  '/privacy.html',
-  '/404.html',
+  // страницы
+  '/', '/index.html', '/catalog.html', '/shelf.html',
+  '/journal.html', '/profile.html', '/privacy.html', '/404.html',
 
-  // Системные файлы
-  '/manifest.webmanifest',
-  '/robots.txt',
-  '/sitemap.xml',
+  // служебное
+  '/manifest.webmanifest', '/robots.txt', '/sitemap.xml',
 
-  // Иконки и фото
-  '/img/favicon.svg',
-  '/img/icon-192.png',
-  '/img/icon-512.png',
-  '/img/photo-gaiwan.jpg',
-  '/img/photo-leaves.jpg',
-  '/img/photo-cup.jpg',
-  '/img/photo-jars.jpg',
+  // шрифты (самохост, immutable на практике)
+  '/fonts/manrope-cyrillic.woff2', '/fonts/manrope-latin.woff2',
+  '/fonts/prata-cyrillic.woff2', '/fonts/prata-latin.woff2',
 
-  // Стили
-  '/css/base.css',
-  '/css/components.css',
-  '/css/chatbot.css',
-  '/css/pages/index.css',
-  '/css/pages/catalog.css',
-  '/css/pages/shelf.css',
-  '/css/pages/journal.css',
-  '/css/pages/profile.css',
+  // иконки и фото
+  '/img/favicon.svg', '/img/icon-192.png', '/img/icon-512.png',
+  '/img/photo-gaiwan.jpg', '/img/photo-leaves.jpg',
+  '/img/photo-cup.jpg', '/img/photo-jars.jpg',
 
-  // Скрипты
-  '/js/main.js',
-  '/js/catalog.js',
-  '/js/shelf.js',
-  '/js/journal.js',
-  '/js/profile.js',
-  '/js/doc.js',
-  '/js/common.js',
-  '/js/gate.js',
-  '/js/brewTimer.js',
-  '/js/notifications.js',
-  '/js/auth.js',
-  '/js/supabaseClient.js',
-  '/js/config.js',
-  '/js/ui.js',
-  '/js/teaModal.js',
-  '/js/amountModal.js',
-  '/js/chatbot.js',
-  '/js/chatbotHTML.js',
-  '/js/tisanes.js',
-  '/js/unknowns.js',
+  // стили (плоско)
+  '/css/base.css', '/css/components.css', '/css/chat.css',
+  '/css/index.css', '/css/catalog.css', '/css/shelf.css',
+  '/css/journal.css', '/css/profile.css',
+
+  // скрипты: корень композиции → core → features → pages
+  '/js/app.js',
+  '/js/core/config.js', '/js/core/supabase.js', '/js/core/ui.js',
+  '/js/features/auth.js', '/js/features/gate.js', '/js/features/brew-timer.js',
+  '/js/features/notifications.js', '/js/features/chat.js', '/js/features/chat-html.js',
+  '/js/features/tea-modal.js', '/js/features/amount-modal.js',
+  '/js/features/tisanes.js', '/js/features/unknowns.js',
+  '/js/pages/index.js', '/js/pages/catalog.js', '/js/pages/shelf.js',
+  '/js/pages/journal.js', '/js/pages/profile.js', '/js/pages/doc.js',
 ];
 
 // Установка: скачиваем все файлы из списка в кэш браузера

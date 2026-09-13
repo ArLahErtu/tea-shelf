@@ -23,14 +23,24 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Чайная полка">
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Prata&display=swap" rel="stylesheet">
+  <!-- шрифты самохостятся: preload кириллицы до первой отрисовки -->
+  <link rel="preload" href="fonts/manrope-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/prata-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
+  <!-- данные и supabase-js: раннее соединение, без лишних редиректов -->
+  <link rel="preconnect" href="https://zpcajyjrrzksrymygeck.supabase.co" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/components.css">
-  <link rel="stylesheet" href="css/pages/profile.css">
-  <link rel="stylesheet" href="css/chatbot.css">
+  <link rel="stylesheet" href="css/chat.css">
+  <link rel="stylesheet" href="css/profile.css">
+  <!-- плоский граф модулей: браузер тянет их параллельно, без водопада -->
+  <link rel="modulepreload" href="js/app.js">
+  <link rel="modulepreload" href="js/core/config.js">
+  <link rel="modulepreload" href="js/core/supabase.js">
+  <link rel="modulepreload" href="js/core/ui.js">
+  <link rel="modulepreload" href="js/features/auth.js">
+  <link rel="modulepreload" href="js/features/notifications.js">
 
   <script>
     window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
@@ -48,6 +58,7 @@
       <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M12 3C7 7 5 10.5 5 14a7 7 0 0 0 14 0c0-3.5-2-7-7-11Zm0 17a5 5 0 0 1-5-5c0-.4.3-.7.7-.7s.7.3.7.7a3.6 3.6 0 0 0 3.6 3.6c.4 0 .7.3.7.7s-.3.7-.7.7Z"/></svg></span>
       <span class="txt">Чайная полка</span>
     </a>
+    <div class="tb-end">
     <nav class="nav" aria-label="Основная навигация">
       <a href="catalog.html"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 19.5V4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/><path d="M9 7h7M9 11h7"/></svg>Каталог</a>
       <a href="shelf.html"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 7h18M3 12h18M3 17h10M6 3v4M12 3v4M18 3v4"/></svg>Полка</a>
@@ -76,6 +87,7 @@
           </button>
         </div>
       </div>
+    </div>
     </div>
   </div>
 </header>
@@ -271,6 +283,6 @@
   <div class="f-bot"><div class="wrap in"><span>© 2026 Чайная полка</span><span>заваривайте осознанно 🌿</span></div></div>
 </footer>
 
-  <script type="module" src="js/profile.js"></script>
+  <script type="module" src="js/pages/profile.js"></script>
 </body>
 </html>

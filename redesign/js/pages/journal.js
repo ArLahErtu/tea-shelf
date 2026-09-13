@@ -3,14 +3,14 @@
 // Лента завариваний: группы по дням, оценки, заметки, расход.
 // Фильтры: поиск, чай, оценка/заметка. Переключение в архив.
 // ============================================================
-import { initCommon } from './common.js';
-import { supabase, isConfigured } from './supabaseClient.js';
-import { TABLES } from './config.js';
-import { $, $$, escapeHtml, plural, UNIT_LABELS } from './ui.js';
-import { getUser, onAuthChange } from './auth.js';
+import { initCommon } from '../app.js';
+import { supabase, isConfigured } from '../core/supabase.js';
+import { TABLES } from '../core/config.js';
+import { $, $$, escapeHtml, plural, UNIT_LABELS } from '../core/ui.js';
+import { getUser, onAuthChange } from '../features/auth.js';
 
 let journal = [];
-let archive = [];
+let archive = [];   // строки brew_journal_archive: запись лежит в payload (JSONB)
 let names = new Map();      // tea_id -> name
 let useArchive = false;
 
@@ -38,7 +38,18 @@ async function load() {
     supabase.from(TABLES.catalog).select('id, name'),
   ]);
   journal = j.data || [];
-  archive = a.data || [];
+  // архив хранит удалённую запись журналом внутри payload (JSONB):
+  // разворачиваем её до обычной формы записи, иначе нет rating/tea_id/note
+  archive = (a.data || []).map((row) => {
+    const p = row.payload;
+    if (!p || typeof p !== 'object') return null;
+    const rec = Array.isArray(p) ? p[0] : p;
+    return {
+      ...rec,
+      created_at: rec.created_at || row.created_at,
+      archived_at: row.created_at,
+    };
+  }).filter(Boolean);
   names = new Map((c.data || []).map((t) => ['c' + t.id, t.name]));
 
   // имена тизанов и неизвестных — из справочников пользователя
@@ -84,13 +95,15 @@ function filtered() {
 }
 
 function renderStats() {
-  const rated = journal.filter((j) => j.rating);
+  // статистика следует за тем источником, который открыт: журнал или архив
+  const src = useArchive ? archive : journal;
+  const rated = src.filter((j) => j.rating);
   const avg = rated.length ? (rated.reduce((s, j) => s + j.rating, 0) / rated.length) : 0;
   const monthAgo = Date.now() - 30 * 864e5;
-  $('#jStatBrews').textContent = journal.length || '0';
+  $('#jStatBrews').textContent = src.length || '0';
   $('#jStatRating').textContent = avg ? avg.toFixed(1).replace('.', ',') : '–';
-  $('#jStatTeas').textContent = new Set(journal.map((j) => j.tea_id || j.tisane_id || j.unknown_id)).size || '0';
-  $('#jStatMonth').textContent = journal.filter((j) => new Date(j.created_at).getTime() > monthAgo).length || '0';
+  $('#jStatTeas').textContent = new Set(src.map((j) => j.tea_id || j.tisane_id || j.unknown_id)).size || '0';
+  $('#jStatMonth').textContent = src.filter((j) => new Date(j.created_at).getTime() > monthAgo).length || '0';
 }
 
 function rowNode(j) {

@@ -23,14 +23,18 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Чайная полка">
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Prata&display=swap" rel="stylesheet">
+  <!-- шрифты самохостятся: preload кириллицы до первой отрисовки -->
+  <link rel="preload" href="fonts/manrope-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/prata-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
+  <!-- данные и supabase-js: раннее соединение, без лишних редиректов -->
+  <link rel="preconnect" href="https://zpcajyjrrzksrymygeck.supabase.co" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/components.css">
-  <link rel="stylesheet" href="css/pages/profile.css">
-  <link rel="stylesheet" href="css/chatbot.css">
+  <link rel="stylesheet" href="css/chat.css">
+  <!-- плоский граф модулей: браузер тянет их параллельно, без водопада -->
+  <link rel="modulepreload" href="js/app.js">
 
   <script>
     window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
@@ -48,6 +52,7 @@
       <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M12 3C7 7 5 10.5 5 14a7 7 0 0 0 14 0c0-3.5-2-7-7-11Zm0 17a5 5 0 0 1-5-5c0-.4.3-.7.7-.7s.7.3.7.7a3.6 3.6 0 0 0 3.6 3.6c.4 0 .7.3.7.7s-.3.7-.7.7Z"/></svg></span>
       <span class="txt">Чайная полка</span>
     </a>
+    <div class="tb-end">
     <nav class="nav" aria-label="Основная навигация">
       <a href="index.html">Главная</a>
       <a href="catalog.html">Каталог</a>
@@ -76,6 +81,7 @@
           </button>
         </div>
       </div>
+    </div>
     </div>
   </div>
 </header>
@@ -229,6 +235,6 @@
   <div class="f-bot"><div class="wrap in"><span>© 2026 Чайная полка</span><span>заваривайте осознанно 🌿</span></div></div>
 </footer>
 
-  <script type="module" src="js/doc.js"></script>
+  <script type="module" src="js/pages/doc.js"></script>
 </body>
 </html>

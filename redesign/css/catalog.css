@@ -1,0 +1,24 @@
+/* ============================================================
+   pages/catalog.css — страница каталога (редизайн v2)
+   ============================================================ */
+
+.catalog-head { padding: 44px 0 26px; }
+
+/* панель предложений (заявка на модерацию) */
+.suggest {
+  margin: 44px 0 20px; padding: 30px 34px;
+  background: var(--green-deep); color: var(--cream); border-radius: var(--r);
+  display: flex; align-items: center; justify-content: space-between; gap: 26px; flex-wrap: wrap;
+}
+.suggest b { font-family: var(--serif); font-weight: 400; font-size: 24px; display: block; margin-bottom: 8px; }
+.suggest p { color: #C4D2C4; font-size: 14.5px; max-width: 52ch; }
+.suggest .btn { background: var(--cream); color: var(--green-deep); box-shadow: none; }
+.suggest .btn:hover { background: #fff; transform: translateY(-2px); }
+.suggest .btn svg { stroke: var(--green-deep); }
+
+/* карточка в режиме модерации */
+.tcard .card-tools { position: static; }
+
+@media (max-width: 620px) {
+  .suggest { padding: 24px 22px; }
+}
