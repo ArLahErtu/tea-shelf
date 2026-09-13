@@ -44,13 +44,7 @@ body {
   overflow-x: hidden;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  min-height: 100dvh;
 }
-main { flex: 1 0 auto; }
-
 img, svg { display: block; max-width: 100%; }
 a { color: inherit; }
 button { font-family: inherit; cursor: pointer; color: inherit; }
@@ -203,7 +197,8 @@ body.has-tabbar { padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bot
 @media (max-width: 860px) {
   body.has-tabbar .tabbar { display: block; }
   body.has-tabbar .nav { display: none; }
-  .tb-right { margin-left: auto !important; }  
+  /* аватар/кнопка «Войти» всегда у правого края, независимо от nav */
+  .tb-right { margin-left: auto !important; }
 }
 
 /* ---------- подвал ---------- */

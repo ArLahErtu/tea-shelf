@@ -1,5 +1,5 @@
 /* ============================================================
-   pages/index.css — лонгрид-лендинг (только для гостей)
+   pages/index.css — лондрид-лендинг (только для гостей)
    ============================================================ */
 
 /* ---------- hero ---------- */
@@ -94,6 +94,13 @@
 @media (max-width: 620px) { .lib { grid-template-columns: 1fr; } }
 .lib-more { margin-top: 34px; display: inline-flex; }
 
+/* ---------- библиотека: панель поиска и примечание ---------- */
+.lib-toolbar { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 26px; }
+.lib-note { margin-top: 26px; color: var(--gray); font-size: 15px; max-width: 62ch; }
+.lib-note a { color: var(--green); font-weight: 700; }
+.lib-note a:hover { text-decoration: underline; }
+@media (max-width: 620px) { .lib-toolbar .search { max-width: 100% !important; } }
+
 /* философская полоса */
 .zen { background: var(--green-deep); color: var(--cream); position: relative; overflow: hidden; margin-top: 88px; }
 .zen .in { display: grid; grid-template-columns: 1fr auto; gap: 40px; align-items: center; padding: 84px 28px; }
@@ -115,22 +122,3 @@
 .final { padding: 96px 0; }
 .final h2 { font-family: var(--serif); font-weight: 400; font-size: clamp(32px, 4.4vw, 54px); line-height: 1.12; max-width: 22ch; }
 .final .note { margin-top: 16px; color: var(--gray); font-size: 15px; }
-
-/* ---------- ритм секций: каждый блок — минимум высота экрана ---------- */
-.hero, .sec, .zen, .final {
-  min-height: 100vh;
-  min-height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-.hero  { padding: 48px 0; }
-.sec   { padding: 64px 0; }
-.final { padding: 64px 0; }
-
-/* ---------- библиотека: панель поиска и примечание ---------- */
-.lib-toolbar { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 26px; }
-.lib-note { margin-top: 26px; color: var(--gray); font-size: 15px; max-width: 62ch; }
-.lib-note a { color: var(--green); font-weight: 700; }
-.lib-note a:hover { text-decoration: underline; }
-@media (max-width: 620px) { .lib-toolbar .search { max-width: 100% !important; } }
