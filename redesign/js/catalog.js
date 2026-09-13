@@ -209,6 +209,15 @@ async function setMode(mode) {
   renderMore();
 }
 
+// ---------- Синхронизация чипов быстрого фильтра ----------
+function syncTypeChips(type) {
+  $$('#typeChips .chip').forEach((c) => {
+    const isActive = c.dataset.type === type;
+    c.classList.toggle('on', isActive);
+    c.setAttribute('aria-pressed', String(isActive));
+  });
+}
+
 // ---------- Поиск / тип / сортировка: перезагрузка ----------
 async function refresh() {
   if (viewMode === 'moderation') {

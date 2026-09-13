@@ -32,13 +32,22 @@ async function load() {
   const feed = $('#journalFeed');
   if (!user || !isConfigured()) { journal = []; archive = []; render(); return; }
 
-  const [j, a, c] = await Promise.all([
+    const [j, a, c] = await Promise.all([
     supabase.from(TABLES.journal).select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
     supabase.from('brew_journal_archive').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(300),
     supabase.from(TABLES.catalog).select('id, name'),
   ]);
   journal = j.data || [];
-  archive = a.data || [];
+  
+  // ИСПРАВЛЕНИЕ: Распаковываем payload из архивных слепков в плоский массив записей
+  archive = (a.data || []).flatMap((row) =>
+    (row.payload || []).map((entry) => ({
+      ...entry,
+      // Страховка: если внутри payload нет даты, берем дату создания самого архивного слепка
+      created_at: entry.created_at || row.created_at
+    }))
+  );
+
   names = new Map((c.data || []).map((t) => ['c' + t.id, t.name]));
 
   // имена тизанов и неизвестных — из справочников пользователя
@@ -84,13 +93,16 @@ function filtered() {
 }
 
 function renderStats() {
-  const rated = journal.filter((j) => j.rating);
+  // ИСПРАВЛЕНИЕ: Считаем статистику по текущему источнику (архив или журнал)
+  const src = useArchive ? archive : journal;
+  const rated = src.filter((j) => j.rating);
   const avg = rated.length ? (rated.reduce((s, j) => s + j.rating, 0) / rated.length) : 0;
   const monthAgo = Date.now() - 30 * 864e5;
-  $('#jStatBrews').textContent = journal.length || '0';
+  
+  $('#jStatBrews').textContent = src.length || '0';
   $('#jStatRating').textContent = avg ? avg.toFixed(1).replace('.', ',') : '–';
-  $('#jStatTeas').textContent = new Set(journal.map((j) => j.tea_id || j.tisane_id || j.unknown_id)).size || '0';
-  $('#jStatMonth').textContent = journal.filter((j) => new Date(j.created_at).getTime() > monthAgo).length || '0';
+  $('#jStatTeas').textContent = new Set(src.map((j) => j.tea_id || j.tisane_id || j.unknown_id)).size || '0';
+  $('#jStatMonth').textContent = src.filter((j) => new Date(j.created_at).getTime() > monthAgo).length || '0';
 }
 
 function rowNode(j) {
