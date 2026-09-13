@@ -44,7 +44,13 @@ body {
   overflow-x: hidden;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
 }
+main { flex: 1 0 auto; }
+
 img, svg { display: block; max-width: 100%; }
 a { color: inherit; }
 button { font-family: inherit; cursor: pointer; color: inherit; }
@@ -58,7 +64,7 @@ p { text-wrap: pretty; }
   border-radius: 4px;
 }
 
-.hidden { display: none !important; }
+.hidden, [hidden] { display: none !important; }
 .wrap { max-width: 1160px; margin: 0 auto; padding: 0 28px; }
 .vert { writing-mode: vertical-rl; text-orientation: mixed; }
 .num, .tabular { font-variant-numeric: tabular-nums; }
@@ -197,6 +203,7 @@ body.has-tabbar { padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bot
 @media (max-width: 860px) {
   body.has-tabbar .tabbar { display: block; }
   body.has-tabbar .nav { display: none; }
+  .tb-right { margin-left: auto !important; }  
 }
 
 /* ---------- подвал ---------- */

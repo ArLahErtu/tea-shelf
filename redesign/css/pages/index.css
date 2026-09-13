@@ -115,3 +115,20 @@
 .final { padding: 96px 0; }
 .final h2 { font-family: var(--serif); font-weight: 400; font-size: clamp(32px, 4.4vw, 54px); line-height: 1.12; max-width: 22ch; }
 .final .note { margin-top: 16px; color: var(--gray); font-size: 15px; }
+
+/* ---------- ритм секций: каждый блок — минимум высота экрана ---------- */
+.hero, .sec, .zen, .final {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.hero  { padding: 48px 0; }
+.sec   { padding: 64px 0; }
+.final { padding: 64px 0; }
+
+@media (max-width: 760px) {
+  .hero, .sec, .final { padding: 40px 0; }
+  .zen .in { padding: 56px 28px; }
+}

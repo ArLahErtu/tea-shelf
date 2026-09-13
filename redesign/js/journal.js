@@ -38,7 +38,18 @@ async function load() {
     supabase.from(TABLES.catalog).select('id, name'),
   ]);
   journal = j.data || [];
-  archive = a.data || [];
+
+  // ИСПРАВЛЕНИЕ: архивные слепки хранят записи внутри поля payload (jsonb) —
+  // распаковываем их в плоский массив, чтобы filtered()/renderStats()/rowNode()
+  // работали одинаково и с основным журналом, и с архивом.
+  // Страховка: если внутри payload нет даты, берём дату создания самого слепка.
+  archive = (a.data || []).flatMap((row) =>
+    (row.payload || []).map((entry) => ({
+      ...entry,
+      created_at: entry.created_at || row.created_at
+    }))
+  );
+
   names = new Map((c.data || []).map((t) => ['c' + t.id, t.name]));
 
   // имена тизанов и неизвестных — из справочников пользователя
@@ -83,14 +94,17 @@ function filtered() {
   });
 }
 
+// ИСПРАВЛЕНИЕ: статистика теперь зависит от текущего источника (основной журнал
+// или архив), поэтому все четыре виджета обновляются при переключении вкладки.
 function renderStats() {
-  const rated = journal.filter((j) => j.rating);
+  const src = useArchive ? archive : journal;
+  const rated = src.filter((j) => j.rating);
   const avg = rated.length ? (rated.reduce((s, j) => s + j.rating, 0) / rated.length) : 0;
   const monthAgo = Date.now() - 30 * 864e5;
-  $('#jStatBrews').textContent = journal.length || '0';
+  $('#jStatBrews').textContent = src.length || '0';
   $('#jStatRating').textContent = avg ? avg.toFixed(1).replace('.', ',') : '–';
-  $('#jStatTeas').textContent = new Set(journal.map((j) => j.tea_id || j.tisane_id || j.unknown_id)).size || '0';
-  $('#jStatMonth').textContent = journal.filter((j) => new Date(j.created_at).getTime() > monthAgo).length || '0';
+  $('#jStatTeas').textContent = new Set(src.map((j) => j.tea_id || j.tisane_id || j.unknown_id)).size || '0';
+  $('#jStatMonth').textContent = src.filter((j) => new Date(j.created_at).getTime() > monthAgo).length || '0';
 }
 
 function rowNode(j) {
