@@ -242,4 +242,6 @@ footer { border-top: 1px solid var(--hair); padding: 34px 0 0; margin-top: 40px;
   body:not(.has-tabbar) .topbar .in { flex-wrap: wrap; height: auto; padding: 10px 0; gap: 12px; }
   body:not(.has-tabbar) .nav { margin-left: 0; order: 3; width: 100%; overflow-x: auto; gap: 18px; padding-bottom: 4px; }
   body:not(.has-tabbar) .nav a::after, body:not(.has-tabbar) .nav button::after { display: none; }
+  /* nav скрыт или ушёл во вторую строку — аватар/кнопка входа всегда у правого края */
+  .tb-right { margin-left: auto; }
 }
