@@ -1,9 +1,8 @@
 // ============================================================
-// common.js — инициализация общих блоков на всех страницах
-// Аналитика: Яндекс Метрика загружается ТОЛЬКО после согласия
-// в куки-плашке (честный гейт: «Отклонить» — метрики нет совсем).
-// Обратная связь: ссылка в футере уже есть в разметке
-// (data-footer-feedback), дубли не создаём.
+// common.js — инициализация общих блоков на всех страницах.
+// Каждый блок обёрнут в safe(): падение одного блока
+// (например, чатбота на холодной БД) не убивает остальные,
+// а имя упавшего печатается в Console для диагностики.
 // ============================================================
 import { initDbStatus } from './supabaseClient.js';
 import { initAuth } from './auth.js';
@@ -13,16 +12,38 @@ import { $, closeOverlay, $$ } from './ui.js';
 import { FEEDBACK_URL } from './config.js';
 import { initGate } from './gate.js';
 
+// защита от двойного вызова initCommon() на страницах,
+// где её вызывают и page-скрипт, и inline-модуль
+let commonStarted = false;
+
 export async function initCommon() {
-  initDbStatus();
-  await initAuth();
-  initGate();
-  initAmountModal();
-  initChatbot();
-  initChatTriggers();
-  initBrewFab();
-  initBurger();
-  initFeedbackLink();
+  if (commonStarted) return;
+  commonStarted = true;
+
+  const safe = (name, fn) => {
+    try {
+      fn();
+    } catch (e) {
+      console.warn('[common] блок "' + name + '" не инициализировался:', e);
+    }
+  };
+
+  // бургер и FAB не зависят от авторизации — вешаем ПЕРВЫМИ
+  safe('burger', initBurger);
+  safe('brewFab', initBrewFab);
+  safe('chatTriggers', initChatTriggers);
+  safe('dbStatus', initDbStatus);
+
+  try {
+    await initAuth();
+  } catch (e) {
+    console.warn('[common] блок "auth" не инициализировался:', e);
+  }
+
+  safe('gate', initGate);
+  safe('amount', initAmountModal);
+  safe('chatbot', initChatbot);
+  safe('feedback', initFeedbackLink);
   registerSW();
 
   document.addEventListener('keydown', (e) => {
@@ -32,6 +53,7 @@ export async function initCommon() {
   });
 }
 
+// ---------- Обратная связь: страховка, если ссылки нет в разметке ----------
 function initFeedbackLink() {
   if (!FEEDBACK_URL) return;
   if (document.querySelector('[data-footer-feedback]')) return;
@@ -47,6 +69,7 @@ function initFeedbackLink() {
   wrap.appendChild(a);
 }
 
+// ---------- Триггеры чат-помощника (шапка + таб-бар) ----------
 function initChatTriggers() {
   document.addEventListener('click', (e) => {
     const t = e.target.closest('[data-open-chat]');
@@ -56,6 +79,7 @@ function initChatTriggers() {
   });
 }
 
+// ---------- FAB «Заварил» в нижнем таб-баре ----------
 function initBrewFab() {
   const fab = document.getElementById('brewFab');
   if (!fab) return;
@@ -72,7 +96,10 @@ function initBrewFab() {
 function initBurger() {
   const btn = document.getElementById('burgerBtn');
   const nav = document.getElementById('mainNav');
-  if (!btn || !nav) return;
+  if (!btn || !nav) {
+    console.warn('[common] бургер: не найдены #burgerBtn или #mainNav');
+    return;
+  }
 
   const close = () => {
     nav.classList.remove('open');
@@ -97,6 +124,7 @@ function initBurger() {
   });
 }
 
+// ---------- Service Worker ----------
 function registerSW() {
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {

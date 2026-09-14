@@ -225,13 +225,15 @@
   <div class="f-bot"><div class="wrap in"><span>© 2026 Чайная полка</span><span>заваривайте осознанно 🌿</span></div></div>
 </footer>
 
-<script type="module" src="js/common.js"></script>
 <script type="module">
+  import { initCommon } from './js/common.js';
   import { getUser } from './js/auth.js';
-  // Если пользователь вошёл — включаем таб-бар, иначе бургер
-  (function () {
+  initCommon().then(() => {
+    // вошёл — таб-бар; не вошёл — бургер
     if (getUser()) document.body.classList.add('has-tabbar');
-  })();
+  });
 </script>
+</body>
+</html>
 </body>
 </html>

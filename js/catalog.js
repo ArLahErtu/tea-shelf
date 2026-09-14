@@ -874,14 +874,14 @@ async function saveEditedTea(formData) {
 function initPropose() {
   const ov = $('#proposeOverlay');
   wireOverlay(ov);
-  $('#proposeClose').addEventListener('click', () => closeOverlay(ov));
-  $('#proposeCancel').addEventListener('click', () => closeOverlay(ov));
+  $('#proposeClose')?.addEventListener('click', () => closeOverlay(ov));
+  $('#proposeCancel')?.addEventListener('click', () => closeOverlay(ov));
 
   const open = () => { if (getUser()) openOverlay(ov); };
-  $('#proposeTeaBtn').addEventListener('click', open);
+  $('#proposeTeaBtn')?.addEventListener('click', open);
   $('#emptyProposeBtn')?.addEventListener('click', open);
 
-  $('#proposeForm').addEventListener('submit', async (e) => {
+  $('#proposeForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const user = getUser();
     if (!user) return;
@@ -1170,7 +1170,7 @@ async function init() {
 
   // Поиск с дебаунсом
   let searchTimer = null;
-  $('#catalogSearch').addEventListener('input', (e) => {
+  $('#catalogSearch')?.addEventListener('input', (e) => {
     state.q = e.target.value.trim().toLowerCase();
     clearTimeout(searchTimer);
     searchTimer = setTimeout(refresh, 350);
@@ -1194,12 +1194,12 @@ async function init() {
     refresh();
   });
 
-  $('#catalogSort').addEventListener('change', (e) => {
+  $('#catalogSort')?.addEventListener('change', (e) => {
     state.sort = e.target.value;
     refresh();
   });
 
-  $('#moreBtn').addEventListener('click', loadMore);
+  $('#moreBtn')?.addEventListener('click', loadMore);
 
   // Клик по сетке
   const grid = $('#catalogGrid');
