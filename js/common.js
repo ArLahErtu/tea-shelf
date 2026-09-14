@@ -9,7 +9,7 @@ import { initDbStatus } from './supabaseClient.js';
 import { initAuth } from './auth.js';
 import { initChatbot } from './chatbot.js';
 import { initAmountModal } from './amountModal.js';
-import { closeOverlay, $$ } from './ui.js';
+import { $, closeOverlay, $$ } from './ui.js';
 import { FEEDBACK_URL } from './config.js';
 import { initGate } from './gate.js';
 
@@ -21,6 +21,7 @@ export async function initCommon() {
   initChatbot();           // окно чат-помощника (FAB скрыт, триггеры в шапке/таб-баре)
   initChatTriggers();      // кнопки «ИИ-ассистент» в шапке и таб-баре
   initBrewFab();           // FAB «Заварил» в таб-баре
+  initBurger();            // бургер-меню на мобильных страницах без таб-бара
   initFeedbackLink();      // страховка: ссылка обратной связи, если её нет в разметке
   registerSW();            // Регистрация Service Worker для PWA
 
@@ -135,6 +136,36 @@ function initBrewFab() {
     } else {
       window.location.href = 'shelf.html#brew';
     }
+  });
+}
+
+// ---------- бургер-меню (мобильные страницы без таб-бара) ----------
+function initBurger() {
+  const btn = $('#burgerBtn');
+  const nav = $('#mainNav');
+  if (!btn || !nav) return;
+
+  const close = () => {
+    nav.classList.remove('open');
+    btn.classList.remove('open');
+    btn.setAttribute('aria-expanded', 'false');
+  };
+
+  btn.addEventListener('click', () => {
+    const open = nav.classList.toggle('open');
+    btn.classList.toggle('open', open);
+    btn.setAttribute('aria-expanded', String(open));
+  });
+
+  // закрытие: клик по пункту меню, клик вне шапки, Escape
+  nav.addEventListener('click', (e) => {
+    if (e.target.closest('a, button')) close();
+  });
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.topbar')) close();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') close();
   });
 }
 

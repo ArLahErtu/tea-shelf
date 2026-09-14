@@ -49,12 +49,16 @@
       <span class="txt">Чайная полка</span>
     </a>
     <nav class="nav" aria-label="Основная навигация">
-      <a href="catalog.html"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 19.5V4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/><path d="M9 7h7M9 11h7"/></svg>Каталог</a>
-      <a href="shelf.html"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 7h18M3 12h18M3 17h10M6 3v4M12 3v4M18 3v4"/></svg>Полка</a>
-      <a href="journal.html"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 19V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zm0 0a2 2 0 0 0 2 2h13"/><path d="M9 7h6M9 11h6"/></svg>Журнал</a>
-      <button type="button" data-open-chat><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/><circle cx="12" cy="12" r="4"/></svg>ИИ-помощник</button>
+      <a href="#features">Возможности</a>
+      <a href="#steps">Как начать</a>
+      <a href="#library">Библиотека</a>
     </nav>
     <div class="tb-right">
+      <button class="burger" id="burgerBtn" type="button"
+              aria-label="Открыть меню" aria-expanded="false" aria-controls="mainNav">
+        <svg class="i-burger" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        <svg class="i-close" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
       <span class="db-chip" id="dbStatus" role="status" aria-live="polite"><i aria-hidden="true"></i>подключение…</span>
       <button class="btn btn-green tb-login" id="authOpen" type="button">Войти</button>
       <div class="avatar-btn hidden" id="userArea">

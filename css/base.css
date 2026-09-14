@@ -167,6 +167,20 @@ p { text-wrap: pretty; }
 /* гость: кнопка входа */
 .tb-login { padding: 10px 20px; font-size: 14.5px; }
 
+/* ---------- бургер-меню (мобильные страницы без таб-бара) ---------- */
+.burger {
+  display: none; place-items: center;
+  width: 42px; height: 42px; flex: none;
+  border: 0; border-radius: 11px;
+  background: color-mix(in srgb, var(--ink) 5%, transparent);
+  transition: background-color .15s;
+}
+.burger:hover { background: color-mix(in srgb, var(--ink) 10%, transparent); }
+.burger svg { width: 20px; height: 20px; stroke: var(--ink); fill: none; stroke-width: 2; stroke-linecap: round; }
+.burger .i-close { display: none; }
+.burger.open .i-close { display: block; }
+.burger.open .i-burger { display: none; }
+
 /* ---------- нижний таб-бар (мобильные, сервисные страницы) ---------- */
 .tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 45; display: none;
@@ -239,9 +253,26 @@ footer { border-top: 1px solid var(--hair); padding: 34px 0 0; margin-top: 40px;
 }
 
 /* страницы без таб-бара (лонгрид, профиль, документы): на мобильных
-   навигация уезжает во вторую строку шапки скролл-лентой — без бургера */
+   меню прячется под бургер и открывается дропдауном от шапки */
 @media (max-width: 860px) {
-  body:not(.has-tabbar) .topbar .in { flex-wrap: wrap; height: auto; padding: 10px 0; gap: 12px; }
-  body:not(.has-tabbar) .nav { margin-left: 0; order: 3; width: 100%; overflow-x: auto; gap: 18px; padding-bottom: 4px; }
-  body:not(.has-tabbar) .nav a::after, body:not(.has-tabbar) .nav button::after { display: none; }
-}
+  body:not(.has-tabbar) .burger { display: grid; }
+  body:not(.has-tabbar) .topbar .in { flex-wrap: nowrap; }
+  body:not(.has-tabbar) .nav {
+    position: absolute; top: 100%; left: 0; right: 0;
+    display: none; flex-direction: column; align-items: stretch; gap: 0;
+    margin: 0; padding: 6px 18px 12px;
+    background: var(--paper);
+    border-bottom: 1px solid var(--line);
+    box-shadow: var(--shadow-2);
+  }
+  body:not(.has-tabbar) .nav.open { display: flex; }
+  body:not(.has-tabbar) .nav a,
+  body:not(.has-tabbar) .nav button {
+    padding: 12px 6px; font-size: 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  body:not(.has-tabbar) .nav a:last-child,
+  body:not(.has-tabbar) .nav button:last-child { border-bottom: 0; }
+  body:not(.has-tabbar) .nav a::after,
+  body:not(.has-tabbar) .nav button::after { display: none; }
+  }
