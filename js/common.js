@@ -97,7 +97,10 @@ function initBurger() {
   const btn = document.getElementById('burgerBtn');
   const nav = document.getElementById('mainNav');
   if (!btn || !nav) {
-    console.warn('[common] бургер: не найдены #burgerBtn или #mainNav');
+    // на страницах с таб-баром бургера в разметке нет — это норма, молчим
+    if (!document.body.classList.contains('has-tabbar')) {
+      console.warn('[common] бургер: не найдены #burgerBtn или #mainNav');
+    }
     return;
   }
 

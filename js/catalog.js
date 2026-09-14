@@ -262,8 +262,9 @@ function renderLoadError() {
 // ---------- «Показать ещё» ----------
 async function loadMore() {
   if (loading || !canMore || viewMode === 'moderation') return;
+  const btn = $('#catalogMore');
+  if (!btn) return;
   loading = true;
-  const btn = $('#moreBtn');
   btn.disabled = true;
   btn.textContent = 'Загружаем…';
 
@@ -299,15 +300,16 @@ async function loadMore() {
   teas = pending.concat(published);
   render();
   renderMore();
-}
+} renderMore();
 
 function renderMore() {
   if (viewMode === 'moderation') {
-    $('#moreWrap').classList.add('hidden');
+    $('#catalogMoreWrap')?.classList.add('hidden');
     return;
   }
-  $('#moreWrap').classList.toggle('hidden', !canMore);
-  const btn = $('#moreBtn');
+  $('#catalogMoreWrap')?.classList.toggle('hidden', !canMore);
+  const btn = $('#catalogMore');
+  if (!btn) return;
   btn.disabled = false;
   btn.textContent = 'Показать ещё';
 }
@@ -1199,7 +1201,7 @@ async function init() {
     refresh();
   });
 
-  $('#moreBtn')?.addEventListener('click', loadMore);
+  $('#catalogMore')?.addEventListener('click', loadMore);
 
   // Клик по сетке
   // Клик по сетке
