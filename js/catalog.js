@@ -1202,7 +1202,12 @@ async function init() {
   $('#moreBtn')?.addEventListener('click', loadMore);
 
   // Клик по сетке
+  // Клик по сетке
   const grid = $('#catalogGrid');
+  if (!grid) {
+    console.warn('[catalog] #catalogGrid не найден в DOM');
+    return;
+  }
   grid.addEventListener('click', (e) => {
     // Клик по карточке тизана
     const tisaneCard = e.target.closest('[data-tisane-id]');
