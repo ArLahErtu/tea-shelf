@@ -13,12 +13,9 @@ import { nextParam } from './gate.js';
 
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '');
 
-// ---------- прелоадер: энсо ----------
-function initPreloader() {
-  const pre = document.getElementById('pre');
-  const hide = () => pre && pre.classList.add('done');
-  window.addEventListener('load', () => setTimeout(hide, 350));
-  setTimeout(hide, 1600); // страховка
+// ---------- готовность приложения для прелоадера ----------
+function signalReady() {
+  window.dispatchEvent(new Event('tea-app-ready'));
 }
 
 // ---------- состояние фильтров библиотеки ----------
@@ -118,6 +115,7 @@ async function init() {
   } catch (e) {
     console.warn('[library]', e?.message || e);
   }
+  signalReady();   // данные отрисованы (или ошибка обработана) — прелоадер можно снимать
 }
 
 init();

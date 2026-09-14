@@ -31,6 +31,8 @@
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/pages/index.css">
   <link rel="stylesheet" href="css/chatbot.css">
+  <link rel="preconnect" href="https://zpcajyjrrzksrymygeck.supabase.co">
+  <link rel="dns-prefetch" href="https://zpcajyjrrzksrymygeck.supabase.co">
 
   <script>
     window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
@@ -60,14 +62,18 @@
   </svg>
 </div>
 <script>
-  /* страховка: прелоадер уходит сам, даже если модули не стартовали */
+  /* прелоадер закрывается по событию tea-app-ready (main.js шлёт его,
+     когда библиотека отрисована); страховка — 4.5 с на холодную БД */
   (function () {
+    var hidden = false;
     var hide = function () {
+      if (hidden) return;
+      hidden = true;
       var pre = document.getElementById('pre');
       if (pre) pre.classList.add('done');
     };
-    window.addEventListener('load', function () { setTimeout(hide, 350); });
-    setTimeout(hide, 1600);
+    window.addEventListener('tea-app-ready', function () { setTimeout(hide, 250); });
+    setTimeout(hide, 4500);
   })();
 </script>
 

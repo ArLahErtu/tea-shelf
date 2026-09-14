@@ -229,14 +229,34 @@ async function refresh() {
     return;
   }
 
-  const first = await loadPublished(0);
-  if (first === null) return showToast('Не удалось обновить список', 'warn');
+  let first = await loadPublished(0);
+  if (first === null) {
+    // ретрай: первый запрос к Supabase может уйти в «холодный старт»
+    await new Promise((r) => setTimeout(r, 1500));
+    first = await loadPublished(0);
+  }
+  if (first === null) {
+    renderLoadError();
+    return showToast('Не удалось обновить список', 'warn');
+  }
   published = first;
   loadedCount = first.length;
   canMore = first.length === PAGE_SIZE;
   teas = pending.concat(published);
   render();
   renderMore();
+}
+
+// ---------- состояние ошибки сети с кнопкой повтора ----------
+function renderLoadError() {
+  const grid = $('#catalogGrid');
+  if (!grid) return;
+  grid.innerHTML = `<div class="empty grid-col-span">
+    <h3>Каталог не загрузился</h3>
+    <p>База отвечает медленно или нет сети. Обычно помогает повтор через пару секунд.</p>
+    <button class="btn btn-primary" type="button" id="catalogRetry">Повторить</button>
+  </div>`;
+  $('#catalogRetry')?.addEventListener('click', () => refresh());
 }
 
 // ---------- «Показать ещё» ----------
