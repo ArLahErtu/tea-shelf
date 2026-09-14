@@ -12,11 +12,10 @@
 //   • редактирование любых карточек через RPC update_tea;
 //   • фикс фильтра по типу (ilike, регистронезависимо);
 //   • URL синхронизирован с режимом (?moderation=1).
-// ФОТО v5: оригинал (webp/avif — вес и SEO) + терпеливая проверка.
-//   Если бакет отверг формат/размер — автоконвертация в JPEG
-//   и повтор, пользователь ошибку не видит.
-//   ЭТАП 0: добавлен обработчик загрузки фото из модалки модерации.
+// ФОТО v8: сырой fetch с ЯВНЫМ Content-Type + сессионный токен.
 // ЭТАП 5: Тизаны в каталоге — отдельный тип, состав трав.
+// v2-fix: null-safe селекторы, ретрай холодного старта Supabase,
+//   fallback-карточка без <template>, guard'ы всех оверлеев.
 // ============================================================
 import { initCommon } from './common.js';
 import { supabase } from './supabaseClient.js';
@@ -102,8 +101,6 @@ function pageQuery(offset) {
 function tisaneQuery(offset) {
   let q = supabase.from('tisane_catalog').select('*');
   if (state.q) {
-    const qq = state.q.toLowerCase();
-    // Фильтруем по названию или свойствам
     q = q.or(`name.ilike.%${state.q}%`);
   }
   q = q.order('tisane_number', { ascending: true });
@@ -146,7 +143,12 @@ function syncUrlWithMode() {
 async function load() {
   await loadHerbs(); // загружаем травы для тизанов
 
-  const first = await loadPublished(0);
+  let first = await loadPublished(0);
+  if (first === null) {
+    // ретрай: бесплатный Supabase мог уйти в «холодный старт»
+    await new Promise((r) => setTimeout(r, 1500));
+    first = await loadPublished(0);
+  }
   if (first === null) {
     throw new Error('Нет соединения с базой. Проверь сеть/блокировщики и нажми «Повторить».');
   }
@@ -168,19 +170,19 @@ async function load() {
   }
 
   if (user) {
-      const [p, sh, wl] = await Promise.all([
-        safeFetch(() => supabase.from(TABLES.catalog).select('*')
-          .eq('status', 'pending').eq('author_id', user.id), 'my pending'),
-        safeFetch(() => supabase.from(TABLES.shelf).select('tea_id')
-          .eq('user_id', user.id)
-          .gt('amount', 0), 'shelf ids'),
-        safeFetch(() => supabase.from(TABLES.wishlist).select('tea_id')
-          .eq('user_id', user.id), 'favorites ids'),
-      ]);
-      pending = p || [];
-      myShelf = new Set((sh || []).map((r) => r.tea_id));
-      favorites = new Set((wl || []).map((r) => r.tea_id));
-    }
+    const [p, sh, wl] = await Promise.all([
+      safeFetch(() => supabase.from(TABLES.catalog).select('*')
+        .eq('status', 'pending').eq('author_id', user.id), 'my pending'),
+      safeFetch(() => supabase.from(TABLES.shelf).select('tea_id')
+        .eq('user_id', user.id)
+        .gt('amount', 0), 'shelf ids'),
+      safeFetch(() => supabase.from(TABLES.wishlist).select('tea_id')
+        .eq('user_id', user.id), 'favorites ids'),
+    ]);
+    pending = p || [];
+    myShelf = new Set((sh || []).map((r) => r.tea_id));
+    favorites = new Set((wl || []).map((r) => r.tea_id));
+  }
   teas = pending.concat(published);
 
   const params = new URLSearchParams(location.search);
@@ -254,11 +256,12 @@ async function refresh() {
 function renderLoadError() {
   const grid = $('#catalogGrid');
   if (!grid) return;
-  grid.innerHTML = `<div class="empty grid-col-span">
-    <h3>Каталог не загрузился</h3>
-    <p>База отвечает медленно или нет сети. Обычно помогает повтор через пару секунд.</p>
-    <button class="btn btn-primary" type="button" id="catalogRetry">Повторить</button>
-  </div>`;
+  grid.innerHTML = `
+    <div class="empty grid-col-span">
+      <h3>Каталог не загрузился</h3>
+      <p>База отвечает медленно или нет сети. Обычно помогает повтор через пару секунд.</p>
+      <button class="btn btn-primary" type="button" id="catalogRetry">Повторить</button>
+    </div>`;
   $('#catalogRetry')?.addEventListener('click', () => refresh());
 }
 
@@ -290,20 +293,18 @@ async function loadMore() {
 
   const next = await loadPublished(loadedCount);
   loading = false;
-
   if (next === null) {
     btn.disabled = false;
     btn.textContent = 'Показать ещё';
     return showToast('Не удалось загрузить ещё. Нажмите снова', 'warn');
   }
-
   published = published.concat(next);
   loadedCount += next.length;
   canMore = next.length === PAGE_SIZE;
   teas = pending.concat(published);
   render();
   renderMore();
-} renderMore();
+}
 
 function renderMore() {
   if (viewMode === 'moderation') {
@@ -315,6 +316,13 @@ function renderMore() {
   if (!btn) return;
   btn.disabled = false;
   btn.textContent = 'Показать ещё';
+}
+
+// ---------- Синхронизация чипов быстрого фильтра с селектом ----------
+function syncTypeChips(type) {
+  $$('#typeChips .chip').forEach((c) => {
+    c.classList.toggle('on', c.dataset.type === type);
+  });
 }
 
 // ---------- Клиентский фильтр pending (режим модерации) ----------
@@ -390,8 +398,46 @@ function getSeoTypeName(type) {
 // ============================================================
 // РЕНДЕР КАРТОЧКИ ЧАЯ (обычный чай из tea_catalog)
 // ============================================================
+
+// Fallback-карточка: используется, если <template id="teaCardTemplate">
+// отсутствует в разметке (страховка от дрейфа HTML).
+function buildCardSkeleton() {
+  const node = document.createElement('article');
+  node.className = 'tcard';
+  node.innerHTML = `
+    <div class="tmedia">
+      <div class="ph" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M5 20c0-8 5-13 14-15-1 9-6 14-14 15Z"/></svg>
+      </div>
+      <img class="hidden" alt="" loading="lazy">
+      <div class="media-top">
+        <span class="typechip">—</span>
+        <button class="heart" type="button" aria-label="В избранное">
+          <svg viewBox="0 0 24 24"><path d="M12 20s-7-4.5-9-9c-1.2-2.8.6-6 3.8-6 2 0 3.4 1.2 5.2 3.2 1.8-2 3.2-3.2 5.2-3.2 3.2 0 5 3.2 3.8 6-2 4.5-9 9-9 9Z"/></svg>
+        </button>
+      </div>
+      <span class="pendbadge hidden">на модерации</span>
+      <span class="onshelf hidden">на полке</span>
+    </div>
+    <div class="tbody">
+      <h3 class="tname"></h3>
+      <p class="torigin"></p>
+      <p class="tdesc"></p>
+      <p class="brewline"></p>
+      <div class="tagrow"></div>
+    </div>
+    <div class="tfoot">
+      <span class="pop"></span>
+      <button class="btn btn-outline btn-sm" type="button" data-action="add-to-shelf">На полку</button>
+    </div>`;
+  return node;
+}
+
 function cardNode(tea) {
-  const node = $('#teaCardTemplate').content.firstElementChild.cloneNode(true);
+  const tpl = $('#teaCardTemplate');
+  const node = (tpl && tpl.content && tpl.content.firstElementChild)
+    ? tpl.content.firstElementChild.cloneNode(true)
+    : buildCardSkeleton();
   node.dataset.teaId = tea.id;
 
   const img = node.querySelector('img');
@@ -399,41 +445,49 @@ function cardNode(tea) {
     img.src = tea.photo_url;
     img.alt = tea.name;
     img.classList.remove('hidden');
-    node.querySelector('.ph').classList.add('hidden');
+    node.querySelector('.ph')?.classList.add('hidden');
   }
 
   const chip = node.querySelector('.typechip');
-  chip.textContent = tea.type || '—';
-  chip.className = 'typechip ' + typeClass(tea.type);
+  if (chip) {
+    chip.textContent = tea.type || '—';
+    chip.className = 'typechip ' + typeClass(tea.type);
+  }
 
-  node.querySelector('.tname').textContent = tea.name;
-  node.querySelector('.torigin').textContent = tea.region || '';
-  node.querySelector('.tdesc').textContent = tea.description || '';
-  node.querySelector('.brewline').textContent =
-    [tea.temp, tea.time].filter(Boolean).join(' · ');
+  const q = (s) => node.querySelector(s);
+  if (q('.tname')) q('.tname').textContent = tea.name;
+  if (q('.torigin')) q('.torigin').textContent = tea.region || '';
+  if (q('.tdesc')) q('.tdesc').textContent = tea.description || '';
+  if (q('.brewline')) {
+    q('.brewline').textContent = [tea.temp, tea.time].filter(Boolean).join(' · ');
+  }
 
-  const tagrow = node.querySelector('.tagrow');
-  toTags(tea.tags).slice(0, 3).forEach((t) => {
-    const s = document.createElement('span');
-    s.className = 'tag';
-    s.textContent = t;
-    tagrow.appendChild(s);
-  });
+  const tagrow = q('.tagrow');
+  if (tagrow) {
+    toTags(tea.tags).slice(0, 3).forEach((t) => {
+      const s = document.createElement('span');
+      s.className = 'tag';
+      s.textContent = t;
+      tagrow.appendChild(s);
+    });
+  }
 
   const pop = tea.popularity || 0;
-  node.querySelector('.pop').textContent = pop
-    ? `${pop} ${plural(pop, ['заваривание', 'заваривания', 'завариваний'])} у пользователей`
-    : '';
+  if (q('.pop')) {
+    q('.pop').textContent = pop
+      ? `${pop} ${plural(pop, ['заваривание', 'заваривания', 'завариваний'])} у пользователей`
+      : '';
+  }
 
-  node.querySelector('.pendbadge').classList.toggle('hidden', tea.status !== 'pending');
+  q('.pendbadge')?.classList.toggle('hidden', tea.status !== 'pending');
 
   const inModeration = viewMode === 'moderation';
   const onShelf = myShelf.has(tea.id);
-  node.querySelector('.onshelf').classList.toggle('hidden', !onShelf || inModeration);
-  node.querySelector('[data-action="add-to-shelf"]')
-    .classList.toggle('hidden', inModeration || onShelf || tea.status === 'pending');
-  node.querySelector('.heart').classList.toggle('hidden', inModeration);
-  node.querySelector('.heart').classList.toggle('on', favorites.has(tea.id));
+  q('.onshelf')?.classList.toggle('hidden', !onShelf || inModeration);
+  q('[data-action="add-to-shelf"]')
+    ?.classList.toggle('hidden', inModeration || onShelf || tea.status === 'pending');
+  q('.heart')?.classList.toggle('hidden', inModeration);
+  q('.heart')?.classList.toggle('on', favorites.has(tea.id));
 
   const canEdit = !inModeration && (
     isModerationActive() || (tea.author_id === currentUser?.id && tea.status === 'pending')
@@ -448,7 +502,7 @@ function cardNode(tea) {
       e.stopPropagation();
       openEditTeaModal(tea);
     });
-    node.querySelector('.media-top').appendChild(editBtn);
+    q('.media-top')?.appendChild(editBtn);
   }
 
   return node;
@@ -500,6 +554,7 @@ function tisaneCardNode(tisane) {
 // ============================================================
 function render() {
   const grid = $('#catalogGrid');
+  if (!grid) return;
   grid.setAttribute('aria-busy', 'false');
   grid.innerHTML = '';
 
@@ -626,7 +681,6 @@ async function addToShelfTisane(tisane) {
     mode: 'add',
     teaName: displayName,
     onSubmit: async (p) => {
-      // Проверяем, есть ли уже такой тизан у пользователя
       const { data: existing } = await supabase.from('user_tisanes')
         .select('id, quantity')
         .eq('user_id', user.id)
@@ -634,14 +688,12 @@ async function addToShelfTisane(tisane) {
         .maybeSingle();
 
       if (existing) {
-        // Обновляем количество
         const { error } = await supabase.from('user_tisanes')
           .update({ quantity: Number(existing.quantity) + p.amount })
           .eq('id', existing.id);
         if (error) return showToast('Ошибка: ' + error.message, 'warn');
         showToast(`«${displayName}» пополнен на ${p.amount} ${p.unit === 'g' ? 'г' : p.unit}`);
       } else {
-        // Создаём новую запись
         const { error } = await supabase.from('user_tisanes').insert({
           user_id: user.id,
           tisane_catalog_id: tisane.id,
@@ -690,7 +742,7 @@ function openModerateModal(tea) {
     }
   }
 
-  $('#moderateDuplicateWarn').classList.add('hidden');
+  $('#moderateDuplicateWarn')?.classList.add('hidden');
   checkDuplicate(tea);
 
   openOverlay(ov);
@@ -706,7 +758,7 @@ async function checkDuplicate(tea) {
     .ilike('name', name)
     .neq('id', tea.id)
     .limit(1);
-  $('#moderateDuplicateWarn').classList.toggle('hidden', !(data && data.length));
+  $('#moderateDuplicateWarn')?.classList.toggle('hidden', !(data && data.length));
 }
 
 function collectModerateData() {
@@ -741,6 +793,7 @@ async function approveCurrentTea() {
   if (!ok) return;
 
   const btn = $('#moderateApproveBtn');
+  if (!btn) return;
   btn.disabled = true;
   btn.textContent = 'Публикуем…';
 
@@ -751,12 +804,12 @@ async function approveCurrentTea() {
   });
 
   btn.disabled = false;
-  btn.textContent = ' Одобрить';
+  btn.textContent = 'Одобрить';
 
   if (error) return showToast('Ошибка одобрения: ' + error.message, 'warn');
 
   closeOverlay($('#moderateOverlay'));
-  showToast(` «${edited.name}» опубликован в каталоге`);
+  showToast(`«${edited.name}» опубликован в каталоге`);
   trackEvent('tea_approved', { tea_id: tea.id, tea_name: edited.name });
 
   await Promise.all([loadModeration(), refresh()]);
@@ -765,9 +818,11 @@ async function approveCurrentTea() {
 
 function openRejectOverlay() {
   if (!currentModerationTea) return;
+  const ov = $('#rejectOverlay');
+  if (!ov) return showToast('Модалка отклонения не найдена', 'warn');
   $('#rejectReason').value = '';
   $('#rejectDuplicate').checked = false;
-  openOverlay($('#rejectOverlay'));
+  openOverlay(ov);
 }
 
 async function rejectCurrentTea() {
@@ -780,7 +835,7 @@ async function rejectCurrentTea() {
   const duplicate = $('#rejectDuplicate').checked;
 
   const btn = $('#rejectForm [type="submit"]');
-  btn.disabled = true;
+  if (btn) btn.disabled = true;
 
   const { error } = await supabase.rpc('reject_tea', {
     p_tea_id: tea.id,
@@ -789,7 +844,7 @@ async function rejectCurrentTea() {
     p_duplicate_exists: duplicate,
   });
 
-  btn.disabled = false;
+  if (btn) btn.disabled = false;
   if (error) return showToast('Ошибка отклонения: ' + error.message, 'warn');
 
   closeOverlay($('#rejectOverlay'));
@@ -829,11 +884,13 @@ function openEditTeaModal(tea) {
   $('#editTeaPhotoUrl').value = tea.photo_url || '';
 
   const img = $('#editTeaCurrentPhoto');
-  if (tea.photo_url) {
-    img.src = tea.photo_url;
-    img.classList.remove('hidden');
-  } else {
-    img.classList.add('hidden');
+  if (img) {
+    if (tea.photo_url) {
+      img.src = tea.photo_url;
+      img.classList.remove('hidden');
+    } else {
+      img.classList.add('hidden');
+    }
   }
 
   openOverlay(ov);
@@ -870,7 +927,7 @@ async function saveEditedTea(formData) {
     return false;
   }
 
-  showToast(' Чай обновлён');
+  showToast('Чай обновлён');
   await load();
   return true;
 }
@@ -878,48 +935,54 @@ async function saveEditedTea(formData) {
 // ---------- Предложить чай ----------
 function initPropose() {
   const ov = $('#proposeOverlay');
-  wireOverlay(ov);
-  $('#proposeClose')?.addEventListener('click', () => closeOverlay(ov));
-  $('#proposeCancel')?.addEventListener('click', () => closeOverlay(ov));
+  if (ov) {
+    wireOverlay(ov);
+    $('#proposeClose')?.addEventListener('click', () => closeOverlay(ov));
+    $('#proposeCancel')?.addEventListener('click', () => closeOverlay(ov));
 
-  const open = () => { if (getUser()) openOverlay(ov); };
+    $('#proposeForm')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const user = getUser();
+      if (!user) return;
+
+      const name = $('#proposeName').value.trim();
+      const type = $('#proposeType').value;
+
+      let ok = true;
+      ok = setInvalid($('#proposeName').closest('.field'), !name) && ok;
+      ok = setInvalid($('#proposeType').closest('.field'), !type) && ok;
+      if (!ok) return;
+
+      const { error } = await supabase.from(TABLES.catalog).insert({
+        name,
+        type: TYPE_TO_DB[type] || type,
+        region: $('#proposeOrigin').value.trim() || null,
+        description: $('#proposeDescription').value.trim() || null,
+        status: 'pending',
+        author_id: user.id,
+      });
+      if (error) {
+        const msg = error.code === '23505'
+          ? 'Сбой нумерации в базе. Повторите позже или напишите нам.'
+          : 'Ошибка заявки: ' + error.message;
+        return showToast(msg, 'warn');
+      }
+
+      closeOverlay(ov);
+      e.target.reset();
+      showToast('Заявка отправлена на модерацию');
+      trackEvent('tea_proposed', { tea_name: name, type: TYPE_TO_DB[type] || type });
+      await load();
+    });
+  }
+
+  const open = () => {
+    if (!getUser()) { showToast('Сначала войдите', 'warn'); return; }
+    if (!ov) { showToast('Форма заявки недоступна', 'warn'); return; }
+    openOverlay(ov);
+  };
   $('#proposeTeaBtn')?.addEventListener('click', open);
   $('#emptyProposeBtn')?.addEventListener('click', open);
-
-  $('#proposeForm')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const user = getUser();
-    if (!user) return;
-
-    const name = $('#proposeName').value.trim();
-    const type = $('#proposeType').value;
-
-    let ok = true;
-    ok = setInvalid($('#proposeName').closest('.field'), !name) && ok;
-    ok = setInvalid($('#proposeType').closest('.field'), !type) && ok;
-    if (!ok) return;
-
-    const { error } = await supabase.from(TABLES.catalog).insert({
-      name,
-      type: TYPE_TO_DB[type] || type,
-      region: $('#proposeOrigin').value.trim() || null,
-      description: $('#proposeDescription').value.trim() || null,
-      status: 'pending',
-      author_id: user.id,
-    });
-    if (error) {
-      const msg = error.code === '23505'
-        ? 'Сбой нумерации в базе. Повторите позже или напишите нам.'
-        : 'Ошибка заявки: ' + error.message;
-      return showToast(msg, 'warn');
-    }
-
-    closeOverlay(ov);
-    e.target.reset();
-    showToast('Заявка отправлена на модерацию');
-    trackEvent('tea_proposed', { tea_name: name, type: TYPE_TO_DB[type] || type });
-    await load();
-  });
 }
 
 // ============================================================
@@ -1069,6 +1132,9 @@ async function init() {
   await initCommon();
   initAmountModal();
 
+  // вошёл — таб-бар; не вошёл — бургер
+  document.body.classList.toggle('has-tabbar', !!getUser());
+
   // ----- Тумблер режимов Каталог / Модерация -----
   $('#modeSwitch')?.addEventListener('click', (e) => {
     const btn = e.target.closest('.mode-btn');
@@ -1090,18 +1156,19 @@ async function init() {
     const file = e.target.files[0];
     if (!file) return;
 
-    const teaType = $('#moderateType').value;
-    const teaName = $('#moderateName').value.trim();
+    const teaType = $('#moderateType')?.value || '';
+    const teaName = $('#moderateName')?.value.trim() || '';
 
     const btn = $('#moderatePhotoUploadBtn');
     if (btn) { btn.disabled = true; btn.textContent = 'Загрузка...'; }
 
     const photoUrl = await uploadPhoto(file, teaType, teaName);
     if (photoUrl) {
-      $('#moderatePhoto').value = photoUrl;
+      const input = $('#moderatePhoto');
+      if (input) input.value = photoUrl;
       const img = $('#moderateCurrentPhoto');
       if (img) { img.src = photoUrl; img.classList.remove('hidden'); }
-      showToast(' Фото загружено');
+      showToast('Фото загружено');
     }
 
     if (btn) { btn.disabled = false; btn.textContent = 'Загрузить фото'; }
@@ -1129,24 +1196,22 @@ async function init() {
       const file = e.target.files[0];
       if (!file) return;
 
-      const teaType = $('#editTeaType').value;
-      const teaName = $('#editTeaName').value.trim();
+      const teaType = $('#editTeaType')?.value || '';
+      const teaName = $('#editTeaName')?.value.trim() || '';
 
       const btn = $('#editTeaUploadBtn');
-      btn.disabled = true;
-      btn.textContent = 'Загрузка...';
+      if (btn) { btn.disabled = true; btn.textContent = 'Загрузка...'; }
 
       const photoUrl = await uploadPhoto(file, teaType, teaName);
       if (photoUrl) {
-        $('#editTeaPhotoUrl').value = photoUrl;
+        const input = $('#editTeaPhotoUrl');
+        if (input) input.value = photoUrl;
         const img = $('#editTeaCurrentPhoto');
-        img.src = photoUrl;
-        img.classList.remove('hidden');
-        showToast(' Фото загружено');
+        if (img) { img.src = photoUrl; img.classList.remove('hidden'); }
+        showToast('Фото загружено');
       }
 
-      btn.disabled = false;
-      btn.textContent = 'Загрузить фото';
+      if (btn) { btn.disabled = false; btn.textContent = 'Загрузить фото'; }
     });
 
     $('#editTeaForm')?.addEventListener('submit', async (e) => {
@@ -1207,7 +1272,6 @@ async function init() {
   $('#catalogMore')?.addEventListener('click', loadMore);
 
   // Клик по сетке
-  // Клик по сетке
   const grid = $('#catalogGrid');
   if (!grid) {
     console.warn('[catalog] #catalogGrid не найден в DOM');
@@ -1223,8 +1287,6 @@ async function init() {
       if (e.target.closest('[data-action="add-tisane-to-shelf"]')) {
         return addToShelfTisane(tisane);
       }
-      // Клик по карточке тизана — пока просто показываем информацию
-      // (можно добавить модалку с деталями позже)
       return;
     }
 
@@ -1266,6 +1328,7 @@ async function init() {
     if (viewMode === 'moderation' && !isModerationActive()) {
       viewMode = 'catalog';
     }
+    document.body.classList.toggle('has-tabbar', !!getUser());
     load().catch((err) => console.warn('[catalog reload]', err));
   });
 

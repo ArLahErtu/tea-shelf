@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Каталог чаёв — Чайная полка</title>
-  <meta name="description" content="Общий каталог чаёв «Чайной полки»: поиск по названию, региону и тегам, параметры заваривания каждого сорта.">
+  <meta name="description" content="Общий каталог чаёв «Чайной полки»: температура, время, доза, теги. Редкий сорт можно предложить всем — через модерацию.">
   <link rel="canonical" href="https://tea-shelf.vercel.app/catalog.html">
 
   <meta property="og:type" content="website">
   <meta property="og:title" content="Каталог чаёв — Чайная полка">
-  <meta property="og:description" content="Общий каталог чаёв «Чайной полки»: поиск по названию, региону и тегам, параметры заваривания каждого сорта.">
+  <meta property="og:description" content="Десятки сортов с температурой, временем и дозой. Редкий чай можно предложить всем.">
   <meta property="og:url" content="https://tea-shelf.vercel.app/catalog.html">
   <meta property="og:image" content="https://tea-shelf.vercel.app/img/icon-512.png">
   <meta name="twitter:card" content="summary_large_image">
@@ -29,24 +29,32 @@
 
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/components.css">
-  <link rel="stylesheet" href="css/pages/catalog.css">
   <link rel="stylesheet" href="css/chatbot.css">
+
+  <style>
+    /* Тумблер Каталог / Модерация: минимальные стили, пока нет в components.css */
+    .mode-switch { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 16px; }
+    .mode-switch.hidden { display: none; }
+    .mode-switch .mode-btn {
+      border: 1px solid var(--hair, #d8cdb4); background: #fff; border-radius: 999px;
+      padding: 8px 16px; font: inherit; cursor: pointer;
+    }
+    .mode-switch .mode-btn.active {
+      background: var(--green, #2f6b3f); color: #fff; border-color: var(--green, #2f6b3f);
+    }
+    .mode-switch .badge {
+      display: inline-block; min-width: 20px; padding: 1px 6px; margin-left: 6px;
+      border-radius: 999px; background: #c8552e; color: #fff; font-size: 12px;
+    }
+  </style>
 
   <script>
     window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
   </script>
   <script defer src="/_vercel/insights/script.js"></script>
   <script defer src="/_vercel/speed-insights/script.js"></script>
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "CollectionPage",
-    "name": "Каталог чаёв",
-    "url": "https://tea-shelf.vercel.app/catalog.html"
-  }
-  </script>
 </head>
-<body class="page-catalog has-tabbar">
+<body>
 <a class="skip-link" href="#main">Перейти к содержанию</a>
 
 <header class="topbar">
@@ -55,11 +63,12 @@
       <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M12 3C7 7 5 10.5 5 14a7 7 0 0 0 14 0c0-3.5-2-7-7-11Zm0 17a5 5 0 0 1-5-5c0-.4.3-.7.7-.7s.7.3.7.7a3.6 3.6 0 0 0 3.6 3.6c.4 0 .7.3.7.7s-.3.7-.7.7Z"/></svg></span>
       <span class="txt">Чайная полка</span>
     </a>
-    <nav class="nav" aria-label="Основная навигация">
-      <a href="catalog.html"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 19.5V4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/><path d="M9 7h7M9 11h7"/></svg>Каталог</a>
-      <a href="shelf.html"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 7h18M3 12h18M3 17h10M6 3v4M12 3v4M18 3v4"/></svg>Полка</a>
-      <a href="journal.html"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 19V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zm0 0a2 2 0 0 0 2 2h13"/><path d="M9 7h6M9 11h6"/></svg>Журнал</a>
-      <button type="button" data-open-chat><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/><circle cx="12" cy="12" r="4"/></svg>ИИ-помощник</button>
+    <nav class="nav" id="mainNav" aria-label="Основная навигация">
+      <a href="catalog.html">Каталог</a>
+      <a href="shelf.html">Полка</a>
+      <a href="journal.html">Журнал</a>
+      <a href="#" data-open-chat>ИИ-помощник</a>
+      <a href="profile.html">Профиль</a>
     </nav>
     <div class="tb-right">
       <span class="db-chip" id="dbStatus" role="status" aria-live="polite"><i aria-hidden="true"></i>подключение…</span>
@@ -83,9 +92,14 @@
           </button>
         </div>
       </div>
+      <button class="burger" id="burgerBtn" type="button" aria-label="Меню"
+              aria-expanded="false" aria-controls="mainNav">
+        <span></span><span></span><span></span>
+      </button>
     </div>
   </div>
 </header>
+
 <main id="main">
   <div class="wrap">
     <div class="phead">
@@ -97,13 +111,14 @@
       <div class="act">
         <button class="btn btn-green" type="button" id="proposeTeaBtn">Предложить чай</button>
       </div>
-      <div class="mode-switch" id="modeSwitch">
-        <button class="mode-btn active" type="button" data-mode="catalog">Каталог</button>
-        <button class="mode-btn" type="button" data-mode="moderation">
-          Модерация
-          <span class="badge hidden" id="pendingCount">0</span>
-        </button>
-      </div>  
+    </div>
+
+    <!-- Тумблер Каталог / Модерация (виден только модератору) -->
+    <div class="mode-switch hidden" id="modeSwitch" role="group" aria-label="Режим каталога">
+      <button class="mode-btn active" type="button" data-mode="catalog">Каталог</button>
+      <button class="mode-btn" type="button" data-mode="moderation">
+        Модерация<span class="badge" id="pendingCount">0</span>
+      </button>
     </div>
   </div>
 
@@ -157,238 +172,354 @@
   </div>
 </main>
 
-  <div class="overlay" id="authOverlay" hidden>
-    <div class="modal narrow" role="dialog" aria-modal="true" aria-labelledby="authTitle">
-      <div class="modal-head">
-        <h2 id="authTitle">Вход</h2>
-        <button class="icon-btn" id="authClose" type="button" aria-label="Закрыть окно входа">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+<!-- ============================================================
+     ШАБЛОН КАРТОЧКИ ЧАЯ (обязателен: cardNode клонирует его;
+     в JS есть fallback, но шаблон — основной путь)
+     ============================================================ -->
+<template id="teaCardTemplate">
+  <article class="tcard">
+    <div class="tmedia">
+      <div class="ph" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M5 20c0-8 5-13 14-15-1 9-6 14-14 15Z"/></svg>
+      </div>
+      <img class="hidden" alt="" loading="lazy">
+      <div class="media-top">
+        <span class="typechip">—</span>
+        <button class="heart" type="button" aria-label="В избранное">
+          <svg viewBox="0 0 24 24"><path d="M12 20s-7-4.5-9-9c-1.2-2.8.6-6 3.8-6 2 0 3.4 1.2 5.2 3.2 1.8-2 3.2-3.2 5.2-3.2 3.2 0 5 3.2 3.8 6-2 4.5-9 9-9 9Z"/></svg>
         </button>
       </div>
-
-      <div class="auth-tabs" aria-label="Выбор режима входа">
-        <button type="button" class="active" id="tabLogin">Вход</button>
-        <button type="button" id="tabRegister">Регистрация</button>
-      </div>
-
-      <div class="global-err" id="authError" role="alert"></div>
-
-      <form id="authForm" novalidate>
-        <div class="field hidden" id="fieldName">
-          <label for="authName">Имя</label>
-          <input id="authName" name="name" type="text" autocomplete="name" placeholder="Укажите имя">
-          <p class="err">Укажите имя</p>
-        </div>
-
-        <div class="field" id="fieldEmail">
-          <label for="authEmail">Email <span class="req">*</span></label>
-          <input
-            id="authEmail" name="email" type="email" required autocomplete="email"
-            placeholder="Укажите корректный email"
-          >
-          <p class="err">Укажите корректный email</p>
-        </div>
-
-        <div class="field" id="fieldPassword">
-          <label for="authPassword">Пароль <span class="req">*</span></label>
-          <input
-            id="authPassword" name="password" required minlength="6"
-            autocomplete="current-password" placeholder="Пароль — минимум 6 символов"
-            type="password"
-          >
-          <p class="err">Пароль — минимум 6 символов</p>
-        </div>
-
-        <button class="btn btn-primary" id="authSubmit" type="submit">Войти</button>
-      </form>
+      <span class="pendbadge hidden">на модерации</span>
+      <span class="onshelf hidden">на полке</span>
     </div>
-  </div>
+    <div class="tbody">
+      <h3 class="tname"></h3>
+      <p class="torigin"></p>
+      <p class="tdesc"></p>
+      <p class="brewline"></p>
+      <div class="tagrow"></div>
+    </div>
+    <div class="tfoot">
+      <span class="pop"></span>
+      <button class="btn btn-outline btn-sm" type="button" data-action="add-to-shelf">На полку</button>
+    </div>
+  </article>
+</template>
 
-  <!-- Карточка чая -->
-  <div class="overlay" id="teaOverlay" hidden>
-    <div class="modal wide" role="dialog" aria-modal="true" aria-labelledby="teaTitle">
-      <div class="modal-head">
-        <h2 id="teaTitle">Карточка чая</h2>
-        <button class="icon-btn" id="teaClose" type="button" aria-label="Закрыть карточку чая">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
-        </button>
+<!-- ============================================================
+     ОВЕРЛЕЙ: ПРЕДЛОЖИТЬ ЧАЙ
+     ============================================================ -->
+<div class="overlay" id="proposeOverlay" hidden>
+  <div class="modal narrow" role="dialog" aria-modal="true" aria-labelledby="proposeTitle">
+    <div class="modal-head">
+      <h2 id="proposeTitle">Предложить чай</h2>
+      <button class="icon-btn" id="proposeClose" type="button" aria-label="Закрыть">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <form id="proposeForm" novalidate>
+      <div class="field">
+        <label for="proposeName">Название <span class="req">*</span></label>
+        <input id="proposeName" name="name" type="text" required placeholder="Например: Да Хун Пао">
+        <p class="err">Укажите название</p>
       </div>
-
-      <div class="dmedia">
-        <div class="ph" id="teaPlaceholder" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><path d="M5 20c0-8 5-13 14-15-1 9-6 14-14 15Z"/></svg>
-        </div>
-        <img id="teaImage" class="hidden" alt="" loading="lazy" decoding="async">
-        <span class="phlabel" id="teaPhotoLabel">Фото добавит модератор</span>
+      <div class="field">
+        <label for="proposeType">Тип <span class="req">*</span></label>
+        <select id="proposeType" name="type" required>
+          <option value="">Выберите тип</option>
+          <option value="Чёрный">Чёрный</option>
+          <option value="Зелёный">Зелёный</option>
+          <option value="Белый">Белый</option>
+          <option value="Жёлтый">Жёлтый</option>
+          <option value="Улун">Улун</option>
+          <option value="Красный">Красный</option>
+          <option value="Пуэр">Пуэр</option>
+          <option value="Хэй ча">Хэй ча</option>
+          <option value="Цветочный">Цветочный</option>
+          <option value="Матте">Матте</option>
+          <option value="Матча">Матча</option>
+          <option value="Травяной">Травяной</option>
+          <option value="Тизан">Тизан</option>
+          <option value="Смесь">Смесь / купаж</option>
+        </select>
+        <p class="err">Укажите тип</p>
       </div>
-
-      <div class="dmeta">
-        <span class="typechip tc-green" id="teaTypeChip">Тип</span>
-        <span class="dorigin" id="teaOrigin">Регион</span>
+      <div class="field">
+        <label for="proposeOrigin">Регион</label>
+        <input id="proposeOrigin" name="region" type="text" placeholder="Например: Уишань, Фуцзянь">
       </div>
-
-      <p class="ddesc" id="teaDescription">Описание.</p>
-
-      <div class="bgrid" aria-label="Параметры заваривания">
-        <div class="bcell"><div class="v" id="teaTemp">–</div><div class="l">температура</div></div>
-        <div class="bcell"><div class="v" id="teaTime">–</div><div class="l">время</div></div>
-        <div class="bcell"><div class="v" id="teaDose">–</div><div class="l">на чашку</div></div>
-        <div class="bcell"><div class="v" id="teaRating">–</div><div class="l">проливы</div></div>
+      <div class="field">
+        <label for="proposeDescription">Описание</label>
+        <textarea id="proposeDescription" name="description" rows="4" placeholder="Вкус, аромат, особенности листа…"></textarea>
       </div>
-
-      <div class="tagrow" id="teaTags" hidden></div>
-
-      <p class="simtitle">Похожие чаи</p>
-      <div id="teaSimilar"></div>
-
       <div class="modal-foot">
-        <button class="btn btn-outline" id="wishlistBtn" type="button">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10Z"/></svg>
-          <span id="wishlistBtnText">В избранное</span>
-        </button>
-        <button class="btn btn-primary" id="addToShelfBtn" type="button">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-          Пополнить
-        </button>
+        <button class="btn btn-outline" id="proposeCancel" type="button">Отмена</button>
+        <button class="btn btn-primary" type="submit">Отправить на модерацию</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============================================================
+     ОВЕРЛЕЙ: МОДЕРАЦИЯ ЗАЯВКИ
+     ============================================================ -->
+<div class="overlay" id="moderateOverlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="moderateTitle">
+    <div class="modal-head">
+      <h2 id="moderateTitle">Проверка заявки</h2>
+      <button class="icon-btn" id="moderateClose" type="button" aria-label="Закрыть">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+
+    <div class="global-err hidden" id="moderateDuplicateWarn" role="alert">
+      ⚠️ В каталоге уже есть опубликованный чай с таким именем — проверьте дубликат.
+    </div>
+
+    <div class="field">
+      <label for="moderateName">Название <span class="req">*</span></label>
+      <input id="moderateName" type="text" required>
+      <p class="err">Укажите название</p>
+    </div>
+    <div class="field">
+      <label for="moderateType">Тип <span class="req">*</span></label>
+      <select id="moderateType" required>
+        <option value="">Выберите тип</option>
+        <option value="Чёрный">Чёрный</option>
+        <option value="Зелёный">Зелёный</option>
+        <option value="Белый">Белый</option>
+        <option value="Жёлтый">Жёлтый</option>
+        <option value="Улун">Улун</option>
+        <option value="Красный">Красный</option>
+        <option value="Пуэр">Пуэр</option>
+        <option value="Хэй ча">Хэй ча</option>
+        <option value="Цветочный">Цветочный</option>
+        <option value="Матте">Матте</option>
+        <option value="Матча">Матча</option>
+        <option value="Травяной">Травяной</option>
+        <option value="Тизан">Тизан</option>
+        <option value="Смесь">Смесь / купаж</option>
+      </select>
+      <p class="err">Укажите тип</p>
+    </div>
+    <div class="field">
+      <label for="moderateRegion">Регион</label>
+      <input id="moderateRegion" type="text">
+    </div>
+    <div class="field">
+      <label for="moderateDescription">Описание</label>
+      <textarea id="moderateDescription" rows="4"></textarea>
+    </div>
+    <div class="fields-row">
+      <div class="field">
+        <label for="moderateTemp">Температура</label>
+        <input id="moderateTemp" type="text" placeholder="85–90 °C">
+      </div>
+      <div class="field">
+        <label for="moderateTime">Время</label>
+        <input id="moderateTime" type="text" placeholder="3–4 мин">
+      </div>
+      <div class="field">
+        <label for="moderateGrams">Грамм</label>
+        <input id="moderateGrams" type="number" min="1" max="30">
+      </div>
+      <div class="field">
+        <label for="moderateSteeps">Проливов</label>
+        <input id="moderateSteeps" type="text" placeholder="5–7">
       </div>
     </div>
-  </div>
-
-  <!-- Количество и единицы -->
-  <div class="overlay" id="amountOverlay" hidden>
-    <div class="modal narrow" role="dialog" aria-modal="true" aria-labelledby="amountTitle">
-      <div class="modal-head">
-        <h2 id="amountTitle">Добавить на полку</h2>
-        <button class="icon-btn" id="amountClose" type="button" aria-label="Закрыть">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
-        </button>
+    <div class="field">
+      <label for="moderateTags">Теги</label>
+      <input id="moderateTags" type="text" placeholder="через запятую">
+    </div>
+    <div class="field">
+      <label for="moderatePhoto">URL фото</label>
+      <input id="moderatePhoto" type="text" placeholder="https://…">
+      <div class="photo-row">
+        <input id="moderatePhotoInput" type="file" accept="image/*" hidden>
+        <button class="btn btn-outline btn-sm" id="moderatePhotoUploadBtn" type="button"
+                onclick="document.getElementById('moderatePhotoInput').click()">Загрузить фото</button>
+        <img id="moderateCurrentPhoto" class="thumb hidden" alt="Текущее фото чая">
       </div>
-      <p class="modal-sub" id="amountTeaName">—</p>
+    </div>
 
-      <form id="amountForm" novalidate>
-        <div class="row2">
-          <div class="field">
-            <label for="amountValue">Количество <span class="req">*</span></label>
-            <input id="amountValue" type="number" min="1" step="1" value="100" inputmode="decimal" required>
-            <p class="err">Укажите количество</p>
-          </div>
-          <div class="field">
-            <label for="amountUnitSel">Единица</label>
-            <select id="amountUnitSel">
-              <option value="g">граммы</option>
-              <option value="sachet">пакетики</option>
-              <option value="pcs">упаковки</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="presets" id="amountPresets">
-          <button type="button" class="preset" data-amount="50">50</button>
-          <button type="button" class="preset sel" data-amount="100">100</button>
-          <button type="button" class="preset" data-amount="250">250</button>
-        </div>
-
-        <div class="field" id="amountThresholdField">
-          <label for="amountThreshold">Порог «мало»</label>
-          <input id="amountThreshold" type="number" min="0" step="1" value="20">
-          <p class="hint">Когда остаток дойдёт до этого значения, чай попадёт в «Что докупить».</p>
-        </div>
-
-        <div class="modal-foot">
-          <button class="btn btn-ghost" type="button" id="amountCancel">Отмена</button>
-          <button class="btn btn-primary" type="submit" id="amountSubmit">Добавить</button>
-        </div>
-      </form>
+    <div class="modal-foot">
+      <button class="btn btn-outline" id="moderateRejectBtn" type="button">Отклонить</button>
+      <button class="btn btn-primary" id="moderateApproveBtn" type="button">Одобрить</button>
     </div>
   </div>
+</div>
 
-  <!-- Предложить чай -->
-  <div class="overlay" id="proposeOverlay" hidden>
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="proposeTitle">
-      <div class="modal-head">
-        <h2 id="proposeTitle">Предложить чай в каталог</h2>
-        <button class="icon-btn" id="proposeClose" type="button" aria-label="Закрыть">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
-        </button>
-      </div>
-      <p class="modal-sub">Заявка попадёт на модерацию. После одобрения чай увидят все.</p>
-
-      <form id="proposeForm" novalidate>
-        <div class="field">
-          <label for="proposeName">Название <span class="req">*</span></label>
-          <input id="proposeName" name="name" type="text" required placeholder="Например, Хошань Хуан Я">
-          <p class="err">Укажите название</p>
-        </div>
-        <div class="row2">
-          <div class="field">
-            <label for="proposeType">Тип</label>
-            <select id="proposeType" name="type">
-              <option value="Жёлтый">Жёлтый</option>
-              <option value="Зелёный">Зелёный</option>
-              <option value="Белый">Белый</option>
-              <option value="Улун">Улун</option>
-              <option value="Пуэр">Пуэр</option>
-              <option value="Красный">Красный</option>
-              <option value="Хэй ча">Хэй ча</option>
-              <option value="Травяной">Травяной</option>
-              <option value="Тизан">Тизан</option>
-              <option value="Смесь">Смесь</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="proposeRegion">Регион</label>
-            <input id="proposeRegion" name="region" type="text" placeholder="Например, Аньхой, Китай">
-          </div>
-        </div>
-        <div class="field">
-          <label for="proposeDescription">Описание</label>
-          <textarea id="proposeDescription" name="description" rows="3" placeholder="Вкус, аромат, цвет настоя…"></textarea>
-        </div>
-        <div class="row2">
-          <div class="field">
-            <label for="proposeTemp">Температура</label>
-            <input id="proposeTemp" name="temp" type="text" placeholder="85 °C">
-          </div>
-          <div class="field">
-            <label for="proposeTime">Время</label>
-            <input id="proposeTime" name="time" type="text" placeholder="20–30 сек">
-          </div>
-        </div>
-        <div class="row2">
-          <div class="field">
-            <label for="proposeGrams">Доза</label>
-            <input id="proposeGrams" name="grams" type="text" placeholder="7 г">
-          </div>
-          <div class="field">
-            <label for="proposeSteeps">Проливы</label>
-            <input id="proposeSteeps" name="steeps" type="text" placeholder="до 7">
-          </div>
-        </div>
-        <div class="field">
-          <label for="proposeTags">Теги (через запятую)</label>
-          <input id="proposeTags" name="tags" type="text" placeholder="цветочный, сладкий, горный">
-        </div>
-
-        <div class="moderate-warn">После отправки чай получит статус «на модерации» и появится в списке заявок в разделе «Избранное и заявки» на полке.</div>
-
-        <div class="modal-foot">
-          <button class="btn btn-ghost" id="proposeCancel" type="button">Отмена</button>
-          <button class="btn btn-primary" type="submit">Отправить</button>
-        </div>
-      </form>
+<!-- ============================================================
+     ОВЕРЛЕЙ: ОТКЛОНЕНИЕ ЗАЯВКИ
+     ============================================================ -->
+<div class="overlay" id="rejectOverlay" hidden>
+  <div class="modal narrow" role="dialog" aria-modal="true" aria-labelledby="rejectTitle">
+    <div class="modal-head">
+      <h2 id="rejectTitle">Отклонить заявку</h2>
+      <button class="icon-btn" id="rejectClose" type="button" aria-label="Закрыть">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
     </div>
+    <form id="rejectForm" novalidate>
+      <div class="field">
+        <label for="rejectReason">Причина (увидит автор)</label>
+        <textarea id="rejectReason" rows="3" placeholder="Например: дубликат уже опубликованного чая"></textarea>
+      </div>
+      <label class="check">
+        <input type="checkbox" id="rejectDuplicate">
+        Заявка — дубликат: удалить карточку из базы полностью
+      </label>
+      <div class="modal-foot">
+        <button class="btn btn-outline" id="rejectCancel" type="button">Отмена</button>
+        <button class="btn btn-danger" type="submit">Отклонить</button>
+      </div>
+    </form>
   </div>
+</div>
 
-  <div id="toasts" aria-live="polite"></div>
+<!-- ============================================================
+     ОВЕРЛЕЙ: РЕДАКТИРОВАНИЕ ЧАЯ
+     ============================================================ -->
+<div class="overlay" id="editTeaOverlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="editTeaTitle">
+    <div class="modal-head">
+      <h2 id="editTeaTitle">Редактирование чая</h2>
+      <button class="icon-btn" id="editTeaClose" type="button" aria-label="Закрыть">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <form id="editTeaForm" novalidate>
+      <input id="editTeaId" type="hidden">
+      <div class="field">
+        <label for="editTeaName">Название <span class="req">*</span></label>
+        <input id="editTeaName" type="text" required>
+        <p class="err">Укажите название</p>
+      </div>
+      <div class="field">
+        <label for="editTeaType">Тип <span class="req">*</span></label>
+        <select id="editTeaType" required>
+          <option value="">Выберите тип</option>
+          <option value="Чёрный">Чёрный</option>
+          <option value="Зелёный">Зелёный</option>
+          <option value="Белый">Белый</option>
+          <option value="Жёлтый">Жёлтый</option>
+          <option value="Улун">Улун</option>
+          <option value="Красный">Красный</option>
+          <option value="Пуэр">Пуэр</option>
+          <option value="Хэй ча">Хэй ча</option>
+          <option value="Цветочный">Цветочный</option>
+          <option value="Матте">Матте</option>
+          <option value="Матча">Матча</option>
+          <option value="Травяной">Травяной</option>
+          <option value="Тизан">Тизан</option>
+          <option value="Смесь">Смесь / купаж</option>
+        </select>
+        <p class="err">Укажите тип</p>
+      </div>
+      <div class="field">
+        <label for="editTeaOrigin">Регион</label>
+        <input id="editTeaOrigin" type="text">
+      </div>
+      <div class="field">
+        <label for="editTeaDescription">Описание</label>
+        <textarea id="editTeaDescription" rows="4"></textarea>
+      </div>
+      <div class="fields-row">
+        <div class="field">
+          <label for="editTeaTemp">Температура</label>
+          <input id="editTeaTemp" type="text">
+        </div>
+        <div class="field">
+          <label for="editTeaTime">Время</label>
+          <input id="editTeaTime" type="text">
+        </div>
+        <div class="field">
+          <label for="editTeaGrams">Грамм</label>
+          <input id="editTeaGrams" type="number" min="1" max="30">
+        </div>
+        <div class="field">
+          <label for="editTeaSteeps">Проливов</label>
+          <input id="editTeaSteeps" type="text">
+        </div>
+      </div>
+      <div class="field">
+        <label for="editTeaTags">Теги</label>
+        <input id="editTeaTags" type="text">
+      </div>
+      <div class="field">
+        <label for="editTeaPhotoUrl">URL фото</label>
+        <input id="editTeaPhotoUrl" type="text">
+        <div class="photo-row">
+          <input id="editTeaPhotoInput" type="file" accept="image/*" hidden>
+          <button class="btn btn-outline btn-sm" id="editTeaUploadBtn" type="button"
+                  onclick="document.getElementById('editTeaPhotoInput').click()">Загрузить фото</button>
+          <img id="editTeaCurrentPhoto" class="thumb hidden" alt="Текущее фото чая">
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-outline" id="editTeaCancel" type="button">Отмена</button>
+        <button class="btn btn-primary" type="submit">Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
 
-  <!-- CHATBOT: HTML генерируется автоматически через js/chatbotHTML.js -->
+<!-- ============================================================
+     ОВЕРЛЕЙ ВХОДА / РЕГИСТРАЦИИ (ожидает auth.js)
+     ============================================================ -->
+<div class="overlay" id="authOverlay" hidden>
+  <div class="modal narrow" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+    <div class="modal-head">
+      <h2 id="authTitle">Вход</h2>
+      <button class="icon-btn" id="authClose" type="button" aria-label="Закрыть окно входа">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+
+    <div class="auth-tabs" aria-label="Выбор режима входа">
+      <button type="button" class="active" id="tabLogin">Вход</button>
+      <button type="button" id="tabRegister">Регистрация</button>
+    </div>
+
+    <div class="global-err" id="authError" role="alert"></div>
+
+    <form id="authForm" novalidate>
+      <div class="field hidden" id="fieldName">
+        <label for="authName">Имя</label>
+        <input id="authName" name="name" type="text" autocomplete="name" placeholder="Укажите имя">
+        <p class="err">Укажите имя</p>
+      </div>
+
+      <div class="field" id="fieldEmail">
+        <label for="authEmail">Email <span class="req">*</span></label>
+        <input id="authEmail" name="email" type="email" required autocomplete="email"
+               placeholder="Укажите корректный email">
+        <p class="err">Укажите корректный email</p>
+      </div>
+
+      <div class="field" id="fieldPassword">
+        <label for="authPassword">Пароль <span class="req">*</span></label>
+        <input id="authPassword" name="password" required minlength="6"
+               autocomplete="current-password" placeholder="Пароль — минимум 6 символов"
+               type="password">
+        <p class="err">Пароль — минимум 6 символов</p>
+      </div>
+
+      <button class="btn btn-primary" id="authSubmit" type="submit">Войти</button>
+    </form>
+  </div>
+</div>
+
+<div id="toasts" aria-live="polite"></div>
+
+<!-- CHATBOT: HTML генерируется автоматически через js/chatbotHTML.js -->
 
 <footer>
   <div class="wrap f-grid">
     <div class="f-brand">
       <a class="logo" href="index.html" aria-label="Чайная полка — на главную">
-        <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M12 3C7 7 5 10.5 5 14a7 7 0 0 0 14 0c0-3.5-2-7-7-11Zm0 17a5 5 0 0 1-5-5c0-.4.3-.7.7-.7s.7.3.7.7a3.6 3.6 0 0 0 3.6 3.6c.4 0 .7.3.7.7s-.3.7-.7.7Z"/></svg></span>
-        <span class="txt">Чайная полка</span>
+        <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M12 3C7 7 5 10.5 5 14a7 7 0 0 0 14 0c0-3.5-2-7-7-11Zm0 17a5 5 0 0 1-5-5c0-.4.3-.7.7-.7s.7.3.7.7a3.6 3.6 0 0 0 3.6 3.6c.4 0 .7.3.7.7s-.3.7-.7.7Z"/></svg></span><span class="txt">Чайная полка</span>
       </a>
       <p class="tag">Спокойный личный учёт чая: полка, журнал, каталог.</p>
     </div>
@@ -419,19 +550,27 @@
   <div class="f-bot"><div class="wrap in"><span>© 2026 Чайная полка</span><span>заваривайте осознанно 🌿</span></div></div>
 </footer>
 
+<!-- Нижний таб-бар (виден при body.has-tabbar; класс ставит catalog.js) -->
 <nav class="tabbar" aria-label="Нижняя навигация">
-  <div class="grid">
-    <a class="tab active" href="catalog.html"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 19.5V4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/><path d="M9 7h7M9 11h7"/></svg>Каталог</a>
-    <a class="tab" href="shelf.html"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 7h18M3 12h18M3 17h10M6 3v4M12 3v4M18 3v4"/></svg>Полка</a>
-    <button class="tab tab-primary" type="button" id="brewFab" aria-label="Заварить чай">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9h11v6a5 5 0 0 1-5 5H10a5 5 0 0 1-5-5V9zM16 10h2.5a2.5 2.5 0 0 1 0 5H16M8 5c0-1 1-1 1-2M12 5c0-1 1-1 1-2"/></svg>
-      <b>Заварил</b>
-    </button>
-    <a class="tab" href="journal.html"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 19V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zm0 0a2 2 0 0 0 2 2h13"/><path d="M9 7h6M9 11h6"/></svg>Журнал</a>
-    <button class="tab" type="button" data-open-chat aria-label="Открыть ИИ-ассистента"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/><circle cx="12" cy="12" r="4"/></svg>Ассистент</button>
-  </div>
+  <a class="tb-item active" href="catalog.html">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4Zm3 3h10M7 11h10M7 15h6"/></svg>
+    <span>Каталог</span>
+  </a>
+  <a class="tb-item" href="shelf.html">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h16M4 15h16M6 3v18M18 3v18"/></svg>
+    <span>Полка</span>
+  </a>
+  <button class="tb-fab" id="brewFab" type="button">Заварил</button>
+  <a class="tb-item" href="journal.html">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6Zm8 0v5h5"/></svg>
+    <span>Журнал</span>
+  </a>
+  <a class="tb-item" href="profile.html">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-8 8c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5"/></svg>
+    <span>Профиль</span>
+  </a>
 </nav>
 
-  <script type="module" src="js/catalog.js"></script>
+<script type="module" src="js/catalog.js"></script>
 </body>
 </html>
