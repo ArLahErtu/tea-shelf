@@ -162,7 +162,7 @@ async function load() {
   const user = getUser();
   currentUser = user;
 
-  $('#modeSwitch').classList.toggle('hidden', !isModerationActive());
+  $('#modeSwitch')?.classList.toggle('hidden', !isModerationActive());
 
   if (user) {
       const [p, sh, wl] = await Promise.all([
