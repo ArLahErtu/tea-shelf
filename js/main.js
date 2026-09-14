@@ -1,8 +1,7 @@
 // ============================================================
-// main.js — точка входа лонгрида (index.html, редизайн v2).
-// Страница только для гостей: вошедших уводит gate.js.
+// main.js — точка входа лонгрида (index.html).
 // «Библиотека» — мини-каталог с поиском и отбором по типу:
-// показывает НЕ больше 3 карточек; полный каталог — ссылкой в примечании.
+// максимум 3 карточки; полный каталог — ссылкой в примечании.
 // ============================================================
 import { initCommon } from './common.js';
 import { supabase, isConfigured } from './supabaseClient.js';
@@ -13,16 +12,20 @@ import { nextParam } from './gate.js';
 
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '');
 
-// ---------- готовность приложения для прелоадера ----------
 function signalReady() {
   window.dispatchEvent(new Event('tea-app-ready'));
 }
 
-// ---------- состояние фильтров библиотеки ----------
+function initPreloader() {
+  const pre = document.getElementById('pre');
+  const hide = () => pre && pre.classList.add('done');
+  window.addEventListener('load', () => setTimeout(hide, 350));
+  setTimeout(hide, 1600);
+}
+
 const libState = { q: '', type: 'all' };
 let libTimer = null;
 
-// ---------- библиотека: мини-каталог с поиском (максимум 3 карточки) ----------
 function buildLibQuery() {
   let query = supabase
     .from(TABLES.catalog)
@@ -31,7 +34,6 @@ function buildLibQuery() {
 
   if (libState.type !== 'all') query = query.ilike('type', libState.type);
 
-  // защита .or() от запятых и скобок в пользовательской строке
   const term = libState.q.replace(/[,()"']/g, '').trim();
   if (term) {
     query = query.or(`name.ilike.%${term}%,region.ilike.%${term}%`);
@@ -63,24 +65,49 @@ function libCard(t) {
 
 async function loadLibrary() {
   const grid = $('#libGrid');
-  if (!grid || !isConfigured()) return;
-
-  const { data, error } = await buildLibQuery();
-  if (error) {
-    console.warn('[library]', error.message);
+  if (!grid) {
+    console.warn('[library] grid not found');
+    return;
+  }
+  if (!isConfigured()) {
+    console.warn('[library] supabase not configured — оставлен статический фолбэк');
+    signalReady();
     return;
   }
 
+  console.log('[library] запрос к каталогу...');
+  const { data, error } = await buildLibQuery();
+  if (error) {
+    console.warn('[library] ошибка Supabase:', error.message, error);
+    // сретраим один раз через 1.5 с
+    await new Promise((r) => setTimeout(r, 1500));
+    const { data: retryData, error: retryError } = await buildLibQuery();
+    if (retryError) {
+      console.warn('[library] ретрай тоже упал:', retryError.message);
+      signalReady();
+      return;
+    }
+    if (retryData?.length) {
+      grid.innerHTML = '';
+      retryData.slice(0, 3).forEach((t) => grid.appendChild(libCard(t)));
+    }
+    signalReady();
+    return;
+  }
+
+  console.log('[library] получено записей:', data?.length);
   if (!data?.length) {
     grid.innerHTML = `<div class="empty grid-col-span">
       <h3>Ничего не нашлось</h3>
       <p>Попробуйте другой запрос или тип — в полном каталоге сортов значительно больше.</p>
     </div>`;
+    signalReady();
     return;
   }
 
   grid.innerHTML = '';
   data.slice(0, 3).forEach((t) => grid.appendChild(libCard(t)));
+  signalReady();
 }
 
 function initLibFilters() {
@@ -106,7 +133,6 @@ async function init() {
   initPreloader();
   await initCommon();
 
-  // гость пришёл с сервисной страницы (?next=…) — сразу показываем вход
   if (nextParam()) openAuth();
 
   initLibFilters();
@@ -114,8 +140,8 @@ async function init() {
     await loadLibrary();
   } catch (e) {
     console.warn('[library]', e?.message || e);
+    signalReady();
   }
-  signalReady();   // данные отрисованы (или ошибка обработана) — прелоадер можно снимать
 }
 
 init();

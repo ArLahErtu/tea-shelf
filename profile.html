@@ -6,32 +6,26 @@
   <title>Профиль — Чайная полка</title>
   <meta name="description" content="Профиль «Чайной полки»: фото, почта, пароль, уведомления, план и лимиты ИИ-помощника, удаление аккаунта.">
   <link rel="canonical" href="https://tea-shelf.vercel.app/profile.html">
-
   <meta property="og:type" content="website">
   <meta property="og:title" content="Профиль — Чайная полка">
   <meta property="og:description" content="Профиль «Чайной полки»: фото, почта, пароль, уведомления, план и лимиты ИИ-помощника, удаление аккаунта.">
   <meta property="og:url" content="https://tea-shelf.vercel.app/profile.html">
   <meta property="og:image" content="https://tea-shelf.vercel.app/img/icon-512.png">
   <meta name="twitter:card" content="summary_large_image">
-
   <meta name="theme-color" content="#F4EEDD">
-
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="img/icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Чайная полка">
-
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Prata&display=swap" rel="stylesheet">
-
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/pages/profile.css">
   <link rel="stylesheet" href="css/chatbot.css">
-
   <script>
     window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
   </script>
@@ -41,7 +35,6 @@
 <body class="page-profile has-tabbar">
 <a class="skip-link" href="#main">Перейти к содержанию</a>
 
-
 <header class="topbar">
   <div class="wrap in">
     <a class="logo" href="index.html" aria-label="Чайная полка — на главную">
@@ -49,9 +42,9 @@
       <span class="txt">Чайная полка</span>
     </a>
     <nav class="nav" aria-label="Основная навигация">
-      <a href="#features">Возможности</a>
-      <a href="#steps">Как начать</a>
-      <a href="#library">Библиотека</a>
+      <a href="catalog.html">Каталог</a>
+      <a href="shelf.html">Полка</a>
+      <a href="journal.html">Журнал</a>
     </nav>
     <div class="tb-right">
       <span class="db-chip" id="dbStatus" role="status" aria-live="polite"><i aria-hidden="true"></i>подключение…</span>
@@ -78,6 +71,7 @@
     </div>
   </div>
 </header>
+
 <main id="main">
   <div class="wrap">
     <div class="phead">
@@ -167,8 +161,8 @@
           <div class="urow"><span class="k">Уничтожение после запроса</span><span class="v">до 30 дней</span></div>
           <div class="urow"><span class="k">Оператор</span><span class="v">владелец сервиса</span></div>
           <div style="margin-top:18px;display:flex;gap:12px;flex-wrap:wrap">
-            <a class="btn-line" style="padding:11px 4px;font-size:14.5px" href="privacy.html">Политика <svg class="" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
-            <a class="btn-line" style="padding:11px 4px;font-size:14.5px" href="mailto:busyatv3@gmail.com">Запрос о данных <svg class="" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+            <a class="btn-line" style="padding:11px 4px;font-size:14.5px" href="privacy.html">Политика <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+            <a class="btn-line" style="padding:11px 4px;font-size:14.5px" href="mailto:busyatv3@gmail.com">Запрос о данных <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
           </div>
         </div>
 
@@ -182,65 +176,50 @@
     </div>
   </div>
 </main>
-  <div class="overlay" id="authOverlay" hidden>
-    <div class="modal narrow" role="dialog" aria-modal="true" aria-labelledby="authTitle">
-      <div class="modal-head">
-        <h2 id="authTitle">Вход</h2>
-        <button class="icon-btn" id="authClose" type="button" aria-label="Закрыть окно входа">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
-        </button>
-      </div>
 
-      <div class="auth-tabs" aria-label="Выбор режима входа">
-        <button type="button" class="active" id="tabLogin">Вход</button>
-        <button type="button" id="tabRegister">Регистрация</button>
-      </div>
-
-      <div class="global-err" id="authError" role="alert"></div>
-
-      <form id="authForm" novalidate>
-        <div class="field hidden" id="fieldName">
-          <label for="authName">Имя</label>
-          <input id="authName" name="name" type="text" autocomplete="name" placeholder="Укажите имя">
-          <p class="err">Укажите имя</p>
-        </div>
-
-        <div class="field" id="fieldEmail">
-          <label for="authEmail">Email <span class="req">*</span></label>
-          <input
-            id="authEmail" name="email" type="email" required autocomplete="email"
-            placeholder="Укажите корректный email"
-          >
-          <p class="err">Укажите корректный email</p>
-        </div>
-
-        <div class="field" id="fieldPassword">
-          <label for="authPassword">Пароль <span class="req">*</span></label>
-          <input
-            id="authPassword" name="password" required minlength="6"
-            autocomplete="current-password" placeholder="Пароль — минимум 6 символов"
-            type="password"
-          >
-          <p class="err">Пароль — минимум 6 символов</p>
-        </div>
-
-        <button class="btn btn-primary" id="authSubmit" type="submit">Войти</button>
-      </form>
+<div class="overlay" id="authOverlay" hidden>
+  <div class="modal narrow" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+    <div class="modal-head">
+      <h2 id="authTitle">Вход</h2>
+      <button class="icon-btn" id="authClose" type="button" aria-label="Закрыть окно входа">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
     </div>
+    <div class="auth-tabs" aria-label="Выбор режима входа">
+      <button type="button" class="active" id="tabLogin">Вход</button>
+      <button type="button" id="tabRegister">Регистрация</button>
+    </div>
+    <div class="global-err" id="authError" role="alert"></div>
+    <form id="authForm" novalidate>
+      <div class="field hidden" id="fieldName">
+        <label for="authName">Имя</label>
+        <input id="authName" name="name" type="text" autocomplete="name" placeholder="Укажите имя">
+        <p class="err">Укажите имя</p>
+      </div>
+      <div class="field" id="fieldEmail">
+        <label for="authEmail">Email <span class="req">*</span></label>
+        <input id="authEmail" name="email" type="email" required autocomplete="email" placeholder="Укажите корректный email">
+        <p class="err">Укажите корректный email</p>
+      </div>
+      <div class="field" id="fieldPassword">
+        <label for="authPassword">Пароль <span class="req">*</span></label>
+        <input id="authPassword" name="password" required minlength="6" autocomplete="current-password" placeholder="Пароль — минимум 6 символов" type="password">
+        <p class="err">Пароль — минимум 6 символов</p>
+      </div>
+      <button class="btn btn-primary" id="authSubmit" type="submit">Войти</button>
+    </form>
   </div>
+</div>
 
-  <div id="toasts" aria-live="polite"></div>
-
-  <!-- CHATBOT: HTML генерируется автоматически через js/chatbotHTML.js -->
-
-  <!-- Шаблон карточки полки (Блок А: qty-row + иконка журнала) -->
+<div id="toasts" aria-live="polite"></div>
 
 <nav class="tabbar" aria-label="Нижняя навигация">
   <div class="grid">
     <a class="tab" href="catalog.html"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 19.5V4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/><path d="M9 7h7M9 11h7"/></svg>Каталог</a>
     <a class="tab" href="shelf.html"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 7h18M3 12h18M3 17h10M6 3v4M12 3v4M18 3v4"/></svg>Полка</a>
-    <button class="tab fab" type="button" id="brewFab" aria-label="Заварить чай">
-      <i aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 9h11v6a5 5 0 0 1-5 5H10a5 5 0 0 1-5-5V9zM16 10h2.5a2.5 2.5 0 0 1 0 5H16M8 5c0-1 1-1 1-2M12 5c0-1 1-1 1-2"/></svg></i><b>Заварил</b>
+    <button class="tab tab-primary" type="button" id="brewFab" aria-label="Заварить чай">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9h11v6a5 5 0 0 1-5 5H10a5 5 0 0 1-5-5V9zM16 10h2.5a2.5 2.5 0 0 1 0 5H16M8 5c0-1 1-1 1-2M12 5c0-1 1-1 1-2"/></svg>
+      <b>Заварил</b>
     </button>
     <a class="tab" href="journal.html"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 19V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zm0 0a2 2 0 0 0 2 2h13"/><path d="M9 7h6M9 11h6"/></svg>Журнал</a>
     <button class="tab" type="button" data-open-chat aria-label="Открыть ИИ-ассистента"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/><circle cx="12" cy="12" r="4"/></svg>Ассистент</button>
@@ -282,6 +261,6 @@
   <div class="f-bot"><div class="wrap in"><span>© 2026 Чайная полка</span><span>заваривайте осознанно 🌿</span></div></div>
 </footer>
 
-  <script type="module" src="js/profile.js"></script>
+<script type="module" src="js/profile.js"></script>
 </body>
 </html>

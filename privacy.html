@@ -6,32 +6,26 @@
   <title>Политика обработки персональных данных — Чайная полка</title>
   <meta name="description" content="Политика обработки персональных данных сервиса «Чайная полка»: какие данные собираем, зачем, где и сколько храним, как уничтожаем.">
   <link rel="canonical" href="https://tea-shelf.vercel.app/privacy.html">
-
   <meta property="og:type" content="website">
   <meta property="og:title" content="Политика обработки персональных данных — Чайная полка">
   <meta property="og:description" content="Политика обработки персональных данных сервиса «Чайная полка»: какие данные собираем, зачем, где и сколько храним, как уничтожаем.">
   <meta property="og:url" content="https://tea-shelf.vercel.app/privacy.html">
   <meta property="og:image" content="https://tea-shelf.vercel.app/img/icon-512.png">
   <meta name="twitter:card" content="summary_large_image">
-
   <meta name="theme-color" content="#F4EEDD">
-
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="img/icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Чайная полка">
-
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Prata&display=swap" rel="stylesheet">
-
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/pages/profile.css">
   <link rel="stylesheet" href="css/chatbot.css">
-
   <script>
     window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
   </script>
@@ -40,7 +34,6 @@
 </head>
 <body class="page-privacy">
 <a class="skip-link" href="#main">Перейти к содержанию</a>
-
 
 <header class="topbar">
   <div class="wrap in">
@@ -51,7 +44,7 @@
     <nav class="nav" id="mainNav" aria-label="Основная навигация">
       <a href="index.html">Главная</a>
       <a href="catalog.html">Каталог</a>
-      <a href="shelf.html">Моя полка</a>
+      <a href="shelf.html">Полка</a>
       <a href="profile.html">Профиль</a>
     </nav>
     <div class="tb-right">
@@ -84,6 +77,7 @@
     </div>
   </div>
 </header>
+
 <main id="main">
   <div class="wrap">
     <div class="phead">
@@ -146,61 +140,44 @@
     </div>
   </div>
 </main>
-  <div class="overlay" id="authOverlay" hidden>
-    <div class="modal narrow" role="dialog" aria-modal="true" aria-labelledby="authTitle">
-      <div class="modal-head">
-        <h2 id="authTitle">Вход</h2>
-        <button class="icon-btn" id="authClose" type="button" aria-label="Закрыть окно входа">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
-        </button>
-      </div>
 
-      <div class="auth-tabs" aria-label="Выбор режима входа">
-        <button type="button" class="active" id="tabLogin">Вход</button>
-        <button type="button" id="tabRegister">Регистрация</button>
-      </div>
-
-      <div class="global-err" id="authError" role="alert"></div>
-
-      <form id="authForm" novalidate>
-        <div class="field hidden" id="fieldName">
-          <label for="authName">Имя</label>
-          <input id="authName" name="name" type="text" autocomplete="name" placeholder="Укажите имя">
-          <p class="err">Укажите имя</p>
-        </div>
-
-        <div class="field" id="fieldEmail">
-          <label for="authEmail">Email <span class="req">*</span></label>
-          <input
-            id="authEmail" name="email" type="email" required autocomplete="email"
-            placeholder="Укажите корректный email"
-          >
-          <p class="err">Укажите корректный email</p>
-        </div>
-
-        <div class="field" id="fieldPassword">
-          <label for="authPassword">Пароль <span class="req">*</span></label>
-          <input
-            id="authPassword" name="password" required minlength="6"
-            autocomplete="current-password" placeholder="Пароль — минимум 6 символов"
-            type="password"
-          >
-          <p class="err">Пароль — минимум 6 символов</p>
-        </div>
-
-        <button class="btn btn-primary" id="authSubmit" type="submit">Войти</button>
-      </form>
+<div class="overlay" id="authOverlay" hidden>
+  <div class="modal narrow" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+    <div class="modal-head">
+      <h2 id="authTitle">Вход</h2>
+      <button class="icon-btn" id="authClose" type="button" aria-label="Закрыть окно входа">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
     </div>
+    <div class="auth-tabs" aria-label="Выбор режима входа">
+      <button type="button" class="active" id="tabLogin">Вход</button>
+      <button type="button" id="tabRegister">Регистрация</button>
+    </div>
+    <div class="global-err" id="authError" role="alert"></div>
+    <form id="authForm" novalidate>
+      <div class="field hidden" id="fieldName">
+        <label for="authName">Имя</label>
+        <input id="authName" name="name" type="text" autocomplete="name" placeholder="Укажите имя">
+        <p class="err">Укажите имя</p>
+      </div>
+      <div class="field" id="fieldEmail">
+        <label for="authEmail">Email <span class="req">*</span></label>
+        <input id="authEmail" name="email" type="email" required autocomplete="email" placeholder="Укажите корректный email">
+        <p class="err">Укажите корректный email</p>
+      </div>
+      <div class="field" id="fieldPassword">
+        <label for="authPassword">Пароль <span class="req">*</span></label>
+        <input id="authPassword" name="password" required minlength="6" autocomplete="current-password" placeholder="Пароль — минимум 6 символов" type="password">
+        <p class="err">Пароль — минимум 6 символов</p>
+      </div>
+      <button class="btn btn-primary" id="authSubmit" type="submit">Войти</button>
+    </form>
   </div>
+</div>
 
-  <div id="toasts" aria-live="polite"></div>
+<div id="toasts" aria-live="polite"></div>
 
-  <!-- CHATBOT: HTML генерируется автоматически через js/chatbotHTML.js -->
-
-  <!-- Шаблон карточки полки (Блок А: qty-row + иконка журнала) -->
-
-<nav class="tabbar" aria-label="Нижняя навигация" id="privacyTabbar">
-  <span class="tabbar-indicator" aria-hidden="true"></span>
+<nav class="tabbar" aria-label="Нижняя навигация">
   <div class="grid">
     <a class="tab" href="catalog.html"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 19.5V4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/><path d="M9 7h7M9 11h7"/></svg>Каталог</a>
     <a class="tab" href="shelf.html"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 7h18M3 12h18M3 17h10M6 3v4M12 3v4M18 3v4"/></svg>Полка</a>
@@ -248,13 +225,13 @@
   <div class="f-bot"><div class="wrap in"><span>© 2026 Чайная полка</span><span>заваривайте осознанно 🌿</span></div></div>
 </footer>
 
-  <script type="module" src="js/doc.js"></script>
-  <script type="module">
-    import { getUser } from './js/auth.js';
-    // Если пользователь вошёл — включаем таб-бар, иначе — бургер
-    (function () {
-      if (getUser()) document.body.classList.add('has-tabbar');
-    })();
-  </script>
+<script type="module" src="js/common.js"></script>
+<script type="module">
+  import { getUser } from './js/auth.js';
+  // Если пользователь вошёл — включаем таб-бар, иначе бургер
+  (function () {
+    if (getUser()) document.body.classList.add('has-tabbar');
+  })();
+</script>
 </body>
 </html>

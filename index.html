@@ -6,34 +6,26 @@
   <title>Чайная полка — личный дневник чая</title>
   <meta name="description" content="«Чайная полка» — спокойный личный учёт чая: остатки, журнал завариваний с оценками, список покупок и общий каталог сортов.">
   <link rel="canonical" href="https://tea-shelf.vercel.app/index.html">
-
   <meta property="og:type" content="website">
   <meta property="og:title" content="Чайная полка — личный дневник чая">
   <meta property="og:description" content="«Чайная полка» — спокойный личный учёт чая: остатки, журнал завариваний с оценками, список покупок и общий каталог сортов.">
   <meta property="og:url" content="https://tea-shelf.vercel.app/index.html">
   <meta property="og:image" content="https://tea-shelf.vercel.app/img/icon-512.png">
   <meta name="twitter:card" content="summary_large_image">
-
   <meta name="theme-color" content="#F4EEDD">
-
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="img/icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Чайная полка">
-
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Prata&display=swap" rel="stylesheet">
-
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/pages/index.css">
   <link rel="stylesheet" href="css/chatbot.css">
-  <link rel="preconnect" href="https://zpcajyjrrzksrymygeck.supabase.co">
-  <link rel="dns-prefetch" href="https://zpcajyjrrzksrymygeck.supabase.co">
-
   <script>
     window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
   </script>
@@ -62,8 +54,6 @@
   </svg>
 </div>
 <script>
-  /* прелоадер закрывается по событию tea-app-ready (main.js шлёт его,
-     когда библиотека отрисована); страховка — 4.5 с на холодную БД */
   (function () {
     var hidden = false;
     var hide = function () {
@@ -118,9 +108,8 @@
     </div>
   </div>
 </header>
-<main id="main">
 
-  <!-- hero -->
+<main id="main">
   <section class="hero">
     <svg class="enso-bg" viewBox="0 0 100 100" aria-hidden="true">
       <path d="M50 6 a44 44 0 1 0 32 13"/>
@@ -133,7 +122,7 @@
            каталог сортов — в одном спокойном месте. Без ленты, магазина и шума.</p>
         <div class="cta-row st">
           <a class="btn btn-green btn-lg" href="shelf.html">Начать вести полку</a>
-          <a class="btn-line" href="catalog.html">Открыть каталог <svg class="" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          <a class="btn-line" href="catalog.html">Открыть каталог <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
         </div>
       </div>
       <div class="kake" role="img" aria-label="Чайная церемония: гайвань и настой жёлтого чая у окна">
@@ -149,7 +138,6 @@
     </div>
   </section>
 
-  <!-- лента типов -->
   <div class="marquee" aria-hidden="true">
     <div class="track">
       <span>жёлтый <em>·</em> зелёный <em>·</em> улун <em>·</em> пуэр <em>·</em> белый <em>·</em> красный <em>·</em> тизаны <em>·</em>&nbsp;</span>
@@ -157,7 +145,6 @@
     </div>
   </div>
 
-  <!-- возможности -->
   <section class="sec" id="features">
     <div class="wrap">
       <div class="sec-head"><span class="k">静</span><h2>Что умеет полка</h2><span class="rule"></span></div>
@@ -190,7 +177,6 @@
     </div>
   </section>
 
-  <!-- шаги -->
   <section class="sec" id="steps">
     <div class="wrap">
       <div class="sec-head"><span class="k">序</span><h2>Три шага до первой чашки</h2><span class="rule"></span></div>
@@ -205,11 +191,9 @@
     </div>
   </section>
 
-  <!-- библиотека: мини-каталог с поиском и отбором по типу, максимум 3 карточки -->
   <section class="sec" id="library">
     <div class="wrap">
       <div class="sec-head"><span class="k">味</span><h2>Из каталога — вживую</h2><span class="rule"></span></div>
-
       <div class="lib-toolbar" role="group" aria-label="Поиск и отбор по каталогу">
         <label class="search" style="max-width:340px">
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
@@ -233,7 +217,6 @@
           <option value="Смесь">Смесь / купаж</option>
         </select>
       </div>
-
       <div class="lib" id="libGrid">
         <a class="tea" href="catalog.html">
           <div class="ph-wrap"><img src="img/photo-leaves.jpg" width="960" height="720" loading="lazy" alt="Сухой жёлтый чай и светлый настой в гайвани"></div>
@@ -251,14 +234,12 @@
           <span class="p">80–85 °C · 20–30 сек</span></div>
         </a>
       </div>
-
       <p class="lib-note">Это лишь витрина: в полном каталоге — десятки сортов с фото,
          параметрами заваривания и оценками сообщества.
          <a href="catalog.html">Открыть полный каталог</a>.</p>
     </div>
   </section>
 
-  <!-- полоса тишины -->
   <section class="zen">
     <div class="wrap in">
       <div>
@@ -271,68 +252,53 @@
     </div>
   </section>
 
-  <!-- финальный CTA -->
   <section class="final">
     <div class="wrap">
       <h2>Начните вести свою полку — это займёт две минуты</h2>
       <p class="note">Регистрация — минута. Без магазина, ленты и уведомительного шума.</p>
       <div class="cta-row" style="margin-top:30px">
         <a class="btn btn-green btn-lg" href="shelf.html">Создать полку</a>
-        <a class="btn-line" href="https://t.me/teashelf_off">Telegram-канал <svg class="" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        <a class="btn-line" href="https://t.me/teashelf_off">Telegram-канал <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
       </div>
     </div>
   </section>
 </main>
-  <div class="overlay" id="authOverlay" hidden>
-    <div class="modal narrow" role="dialog" aria-modal="true" aria-labelledby="authTitle">
-      <div class="modal-head">
-        <h2 id="authTitle">Вход</h2>
-        <button class="icon-btn" id="authClose" type="button" aria-label="Закрыть окно входа">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
-        </button>
-      </div>
 
-      <div class="auth-tabs" aria-label="Выбор режима входа">
-        <button type="button" class="active" id="tabLogin">Вход</button>
-        <button type="button" id="tabRegister">Регистрация</button>
-      </div>
-
-      <div class="global-err" id="authError" role="alert"></div>
-
-      <form id="authForm" novalidate>
-        <div class="field hidden" id="fieldName">
-          <label for="authName">Имя</label>
-          <input id="authName" name="name" type="text" autocomplete="name" placeholder="Укажите имя">
-          <p class="err">Укажите имя</p>
-        </div>
-
-        <div class="field" id="fieldEmail">
-          <label for="authEmail">Email <span class="req">*</span></label>
-          <input
-            id="authEmail" name="email" type="email" required autocomplete="email"
-            placeholder="Укажите корректный email"
-          >
-          <p class="err">Укажите корректный email</p>
-        </div>
-
-        <div class="field" id="fieldPassword">
-          <label for="authPassword">Пароль <span class="req">*</span></label>
-          <input
-            id="authPassword" name="password" required minlength="6"
-            autocomplete="current-password" placeholder="Пароль — минимум 6 символов"
-            type="password"
-          >
-          <p class="err">Пароль — минимум 6 символов</p>
-        </div>
-
-        <button class="btn btn-primary" id="authSubmit" type="submit">Войти</button>
-      </form>
+<div class="overlay" id="authOverlay" hidden>
+  <div class="modal narrow" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+    <div class="modal-head">
+      <h2 id="authTitle">Вход</h2>
+      <button class="icon-btn" id="authClose" type="button" aria-label="Закрыть окно входа">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
     </div>
+    <div class="auth-tabs" aria-label="Выбор режима входа">
+      <button type="button" class="active" id="tabLogin">Вход</button>
+      <button type="button" id="tabRegister">Регистрация</button>
+    </div>
+    <div class="global-err" id="authError" role="alert"></div>
+    <form id="authForm" novalidate>
+      <div class="field hidden" id="fieldName">
+        <label for="authName">Имя</label>
+        <input id="authName" name="name" type="text" autocomplete="name" placeholder="Укажите имя">
+        <p class="err">Укажите имя</p>
+      </div>
+      <div class="field" id="fieldEmail">
+        <label for="authEmail">Email <span class="req">*</span></label>
+        <input id="authEmail" name="email" type="email" required autocomplete="email" placeholder="Укажите корректный email">
+        <p class="err">Укажите корректный email</p>
+      </div>
+      <div class="field" id="fieldPassword">
+        <label for="authPassword">Пароль <span class="req">*</span></label>
+        <input id="authPassword" name="password" required minlength="6" autocomplete="current-password" placeholder="Пароль — минимум 6 символов" type="password">
+        <p class="err">Пароль — минимум 6 символов</p>
+      </div>
+      <button class="btn btn-primary" id="authSubmit" type="submit">Войти</button>
+    </form>
   </div>
+</div>
 
-  <div id="toasts" aria-live="polite"></div>
-
-  <!-- CHATBOT: HTML генерируется автоматически через js/chatbotHTML.js -->
+<div id="toasts" aria-live="polite"></div>
 
 <footer>
   <div class="wrap f-grid">
@@ -369,6 +335,6 @@
   <div class="f-bot"><div class="wrap in"><span>© 2026 Чайная полка</span><span>заваривайте осознанно 🌿</span></div></div>
 </footer>
 
-  <script type="module" src="js/main.js"></script>
+<script type="module" src="js/main.js"></script>
 </body>
 </html>

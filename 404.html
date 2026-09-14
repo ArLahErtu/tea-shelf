@@ -13,6 +13,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Prata&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/chatbot.css">
   <style>
     .nf { min-height: calc(100vh - 200px); display: grid; place-items: center; text-align: center; padding: 60px 0; }
     .nf .code { font-family: var(--serif); font-size: clamp(80px, 18vw, 160px); line-height: 1; color: var(--green); opacity: .9; }
@@ -80,8 +81,43 @@
   </div>
 </main>
 
-<nav class="tabbar" aria-label="Нижняя навигация" id="errorTabbar">
-  <span class="tabbar-indicator" aria-hidden="true"></span>
+<div class="overlay" id="authOverlay" hidden>
+  <div class="modal narrow" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+    <div class="modal-head">
+      <h2 id="authTitle">Вход</h2>
+      <button class="icon-btn" id="authClose" type="button" aria-label="Закрыть окно входа">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="auth-tabs" aria-label="Выбор режима входа">
+      <button type="button" class="active" id="tabLogin">Вход</button>
+      <button type="button" id="tabRegister">Регистрация</button>
+    </div>
+    <div class="global-err" id="authError" role="alert"></div>
+    <form id="authForm" novalidate>
+      <div class="field hidden" id="fieldName">
+        <label for="authName">Имя</label>
+        <input id="authName" name="name" type="text" autocomplete="name" placeholder="Укажите имя">
+        <p class="err">Укажите имя</p>
+      </div>
+      <div class="field" id="fieldEmail">
+        <label for="authEmail">Email <span class="req">*</span></label>
+        <input id="authEmail" name="email" type="email" required autocomplete="email" placeholder="Укажите корректный email">
+        <p class="err">Укажите корректный email</p>
+      </div>
+      <div class="field" id="fieldPassword">
+        <label for="authPassword">Пароль <span class="req">*</span></label>
+        <input id="authPassword" name="password" required minlength="6" autocomplete="current-password" placeholder="Пароль — минимум 6 символов" type="password">
+        <p class="err">Пароль — минимум 6 символов</p>
+      </div>
+      <button class="btn btn-primary" id="authSubmit" type="submit">Войти</button>
+    </form>
+  </div>
+</div>
+
+<div id="toasts" aria-live="polite"></div>
+
+<nav class="tabbar" aria-label="Нижняя навигация">
   <div class="grid">
     <a class="tab" href="catalog.html"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 19.5V4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/><path d="M9 7h7M9 11h7"/></svg>Каталог</a>
     <a class="tab" href="shelf.html"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 7h18M3 12h18M3 17h10M6 3v4M12 3v4M18 3v4"/></svg>Полка</a>
@@ -98,9 +134,12 @@
   <div class="f-bot"><div class="wrap in"><span>© 2026 Чайная полка</span><span>заваривайте осознанно 🌿</span></div></div>
 </footer>
 
+<script type="module" src="js/common.js"></script>
 <script type="module">
   import { getUser } from './js/auth.js';
-  if (getUser()) document.body.classList.add('has-tabbar');
+  (function () {
+    if (getUser()) document.body.classList.add('has-tabbar');
+  })();
 </script>
 </body>
 </html>

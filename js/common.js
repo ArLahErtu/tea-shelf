@@ -11,22 +11,20 @@ import { initChatbot } from './chatbot.js';
 import { initAmountModal } from './amountModal.js';
 import { $, closeOverlay, $$ } from './ui.js';
 import { FEEDBACK_URL } from './config.js';
-import { initGate, currentFile } from './gate.js';
+import { initGate } from './gate.js';
 
 export async function initCommon() {
-  initDbStatus();          // чип статуса БД (скрыт в CSS)
-  await initAuth();        // шапка + меню профиля + модалка входа
-  initGate();              // «две страницы»: гости и вошедшие не пересекаются
-  initAmountModal();       // модалка количества — теперь на каждой странице
-  initChatbot();           // окно чат-помощника (FAB скрыт, триггеры в шапке/таб-баре)
-  initChatTriggers();      // кнопки «ИИ-ассистент» в шапке и таб-баре
-  initBrewFab();           // FAB «Заварил» в таб-баре
-  initBurger();            // бургер-меню на мобильных страницах без таб-бара
-  initTabbarIndicator();   // «бегущая» полоска активной вкладки в таб-баре
-  initFeedbackLink();      // страховка: ссылка обратной связи, если её нет в разметке
-  registerSW();            // Регистрация Service Worker для PWA
+  initDbStatus();
+  await initAuth();
+  initGate();
+  initAmountModal();
+  initChatbot();
+  initChatTriggers();
+  initBrewFab();
+  initBurger();
+  initFeedbackLink();
+  registerSW();
 
-  // Esc закрывает любую открытую модалку
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       $$('.overlay.show').forEach(closeOverlay);
@@ -34,73 +32,9 @@ export async function initCommon() {
   });
 }
 
-// ============================================================
-// Cookie-согласие и аналитика
-// ============================================================
-const COOKIE_CONSENT_KEY = 'tea_shelf_cookie_consent';
-
-function initAnalytics() {
-  // >>> METRIKA SNIPPET START <<<
-  (function(m,e,t,r,i,k,a){
-    m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
-    m[i].l=1*new Date();
-    for (var j = 0; j < document.scripts.length; j++) {
-      if (document.scripts[j].src === r) { return; }
-    }
-    k=e.createElement(t),a=e.getElementsByTagName(t)[0],
-    k.async=1,k.src=r,a.parentNode.insertBefore(k,a);
-  })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=111729275', 'ym');
-
-  ym(111729275, 'init', {
-    ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer",
-    referrer: document.referrer, url: location.href,
-    accurateTrackBounce:true, trackLinks:true
-  });
-  // >>> METRIKA SNIPPET END <<<
-}
-
-function initCookieConsent() {
-  const stored = localStorage.getItem(COOKIE_CONSENT_KEY);
-
-  // Согласие дано ранее — метрика стартует сразу
-  if (stored === 'yes') { initAnalytics(); return; }
-  // Отказ — метрика НЕ загружается вообще, плашку не показываем
-  if (stored === 'no') return;
-
-  // Согласия ещё не было — показываем плашку
-  const bar = document.createElement('div');
-  bar.className = 'cookie-bar';
-  bar.setAttribute('role', 'dialog');
-  bar.setAttribute('aria-label', 'Согласие на использование cookie и аналитики');
-  bar.innerHTML = `
-    <div class="wrap cookie-bar-in">
-      <p>Мы используем cookie и Яндекс.Метрику только после вашего согласия.
-        Пока вы не нажали «Принять», метрика не загружается.
-        <a href="privacy.html#cookies">Подробнее в политике</a>.</p>
-      <div class="cookie-bar-btns">
-        <button class="btn btn-primary btn-sm" type="button" data-cookie="accept">Принять</button>
-        <button class="btn btn-outline btn-sm" type="button" data-cookie="decline">Отклонить</button>
-      </div>
-    </div>`;
-  document.body.appendChild(bar);
-
-  bar.querySelector('[data-cookie="accept"]').addEventListener('click', () => {
-    localStorage.setItem(COOKIE_CONSENT_KEY, 'yes');
-    bar.remove();
-    initAnalytics();
-  });
-
-  bar.querySelector('[data-cookie="decline"]').addEventListener('click', () => {
-    localStorage.setItem(COOKIE_CONSENT_KEY, 'no');
-    bar.remove();
-  });
-}
-initCookieConsent();
-
-// ---------- Обратная связь: страховка, если ссылки нет в разметке ----------
 function initFeedbackLink() {
   if (!FEEDBACK_URL) return;
-  if (document.querySelector('[data-footer-feedback]')) return; // ссылка уже в футере
+  if (document.querySelector('[data-footer-feedback]')) return;
   const wrap = document.querySelector('footer .wrap');
   if (!wrap) return;
   const a = document.createElement('a');
@@ -113,9 +47,6 @@ function initFeedbackLink() {
   wrap.appendChild(a);
 }
 
-// ---------- Триггеры чат-помощника (шапка + таб-бар) ----------
-// Само окно и его FAB генерирует chatbot.js; в редизайне FAB скрыт в CSS,
-// а открывают чат кнопки с data-open-chat.
 function initChatTriggers() {
   document.addEventListener('click', (e) => {
     const t = e.target.closest('[data-open-chat]');
@@ -125,9 +56,6 @@ function initChatTriggers() {
   });
 }
 
-// ---------- FAB «Заварил» в нижнем таб-баре ----------
-// На полке открывает выбор чая + таймер, на остальных страницах уводит
-// на полку к тому же сценарию.
 function initBrewFab() {
   const fab = document.getElementById('brewFab');
   if (!fab) return;
@@ -142,8 +70,8 @@ function initBrewFab() {
 
 // ---------- бургер-меню (мобильные страницы без таб-бара) ----------
 function initBurger() {
-  const btn = $('#burgerBtn');
-  const nav = $('#mainNav');
+  const btn = document.getElementById('burgerBtn');
+  const nav = document.getElementById('mainNav');
   if (!btn || !nav) return;
 
   const close = () => {
@@ -158,7 +86,6 @@ function initBurger() {
     btn.setAttribute('aria-expanded', String(open));
   });
 
-  // закрытие: клик по пункту меню, клик вне шапки, Escape
   nav.addEventListener('click', (e) => {
     if (e.target.closest('a, button')) close();
   });
@@ -170,52 +97,12 @@ function initBurger() {
   });
 }
 
-// ---------- «бегущая» полоска активной вкладки в таб-баре ----------
-function initTabbarIndicator() {
-  const bar = document.querySelector('.tabbar');
-  if (!bar) return;
-  const indicator = bar.querySelector('.tabbar-indicator');
-  if (!indicator) return;
-
-  const move = () => {
-    const active = bar.querySelector('.tab.active, .tab.tab-primary');
-    if (!active || !active.offsetParent) {
-      indicator.style.opacity = '0';
-      return;
-    }
-    // ширина индикатора под активную кнопку (но не шире самой кнопки)
-    const w = Math.min(48, active.offsetWidth * 0.6);
-    indicator.style.width = w + 'px';
-    // смещение: центр активной кнопки минус половина ширины индикатора
-    const offset = active.offsetLeft + (active.offsetWidth - w) / 2;
-    indicator.style.transform = `translateX(${offset}px)`;
-    indicator.style.opacity = '1';
-  };
-
-  // пересчёт: на старте, при ресайзе, при клике на вкладку
-  move();
-  window.addEventListener('resize', move);
-
-  bar.addEventListener('click', (e) => {
-    const tab = e.target.closest('.tab');
-    if (!tab) return;
-    // даём браузеру обновить класс .active
-    requestAnimationFrame(() => requestAnimationFrame(move));
-  });
-}
-
-// ---------- Регистрация Service Worker (PWA) ----------
 function registerSW() {
   if ('serviceWorker' in navigator) {
-    // Регистрируем после загрузки страницы, чтобы не блокировать отрисовку интерфейса
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js', { scope: '/' })
-        .then((registration) => {
-          console.log('[SW] Успешная регистрация, scope:', registration.scope);
-        })
-        .catch((error) => {
-          console.warn('[SW] Ошибка регистрации:', error);
-        });
+      navigator.serviceWorker.register('/sw.js').catch((err) => {
+        console.warn('[sw] register failed', err);
+      });
     });
   }
 }
