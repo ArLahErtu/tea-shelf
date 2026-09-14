@@ -22,7 +22,7 @@
     .nf .kanji { font-family: var(--serif); color: var(--hair); font-size: 22px; margin-bottom: 14px; }
   </style>
 </head>
-<body>
+<body class="page-404">
 <a class="skip-link" href="#main">Перейти к содержанию</a>
 
 <header class="topbar">
@@ -31,10 +31,36 @@
       <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M12 3C7 7 5 10.5 5 14a7 7 0 0 0 14 0c0-3.5-2-7-7-11Zm0 17a5 5 0 0 1-5-5c0-.4.3-.7.7-.7s.7.3.7.7a3.6 3.6 0 0 0 3.6 3.6c.4 0 .7.3.7.7s-.3.7-.7.7Z"/></svg></span>
       <span class="txt">Чайная полка</span>
     </a>
-    <nav class="nav" aria-label="Основная навигация">
+    <nav class="nav" id="mainNav" aria-label="Основная навигация">
       <a href="index.html">Главная</a>
       <a href="catalog.html">Каталог</a>
+      <a href="shelf.html">Полка</a>
+      <a href="journal.html">Журнал</a>
     </nav>
+    <div class="tb-right">
+      <button class="burger" id="burgerBtn" type="button"
+              aria-label="Открыть меню" aria-expanded="false" aria-controls="mainNav">
+        <svg class="i-burger" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        <svg class="i-close" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+      <span class="db-chip" id="dbStatus" role="status" aria-live="polite"><i aria-hidden="true"></i>подключение…</span>
+      <button class="btn btn-green tb-login" id="authOpen" type="button">Войти</button>
+      <div class="avatar-btn hidden" id="userArea">
+        <button class="avatar" id="avatarBtn" type="button" aria-haspopup="true"
+                aria-expanded="false" aria-label="Меню профиля">?</button>
+        <div class="user-menu hidden" id="userMenu">
+          <p class="um-mail" id="userEmail">user@example.com</p>
+          <a href="profile.html">
+            <svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/><path d="M4 20c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5"/></svg>
+            Профиль
+          </a>
+          <button class="danger" id="logoutBtn" type="button">
+            <svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4H5v16h4M15 8l4 4-4 4M19 12H9"/></svg>
+            Выйти
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </header>
 
@@ -54,8 +80,27 @@
   </div>
 </main>
 
+<nav class="tabbar" aria-label="Нижняя навигация" id="errorTabbar">
+  <span class="tabbar-indicator" aria-hidden="true"></span>
+  <div class="grid">
+    <a class="tab" href="catalog.html"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 19.5V4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/><path d="M9 7h7M9 11h7"/></svg>Каталог</a>
+    <a class="tab" href="shelf.html"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 7h18M3 12h18M3 17h10M6 3v4M12 3v4M18 3v4"/></svg>Полка</a>
+    <button class="tab tab-primary" type="button" id="brewFab" aria-label="Заварить чай">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9h11v6a5 5 0 0 1-5 5H10a5 5 0 0 1-5-5V9zM16 10h2.5a2.5 2.5 0 0 1 0 5H16M8 5c0-1 1-1 1-2M12 5c0-1 1-1 1-2"/></svg>
+      <b>Заварил</b>
+    </button>
+    <a class="tab" href="journal.html"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 19V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zm0 0a2 2 0 0 0 2 2h13"/><path d="M9 7h6M9 11h6"/></svg>Журнал</a>
+    <button class="tab" type="button" data-open-chat aria-label="Открыть ИИ-ассистента"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/><circle cx="12" cy="12" r="4"/></svg>Ассистент</button>
+  </div>
+</nav>
+
 <footer>
   <div class="f-bot"><div class="wrap in"><span>© 2026 Чайная полка</span><span>заваривайте осознанно 🌿</span></div></div>
 </footer>
+
+<script type="module">
+  import { getUser } from './js/auth.js';
+  if (getUser()) document.body.classList.add('has-tabbar');
+</script>
 </body>
 </html>

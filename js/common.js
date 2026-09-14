@@ -11,7 +11,7 @@ import { initChatbot } from './chatbot.js';
 import { initAmountModal } from './amountModal.js';
 import { $, closeOverlay, $$ } from './ui.js';
 import { FEEDBACK_URL } from './config.js';
-import { initGate } from './gate.js';
+import { initGate, currentFile } from './gate.js';
 
 export async function initCommon() {
   initDbStatus();          // чип статуса БД (скрыт в CSS)
@@ -22,6 +22,7 @@ export async function initCommon() {
   initChatTriggers();      // кнопки «ИИ-ассистент» в шапке и таб-баре
   initBrewFab();           // FAB «Заварил» в таб-баре
   initBurger();            // бургер-меню на мобильных страницах без таб-бара
+  initTabbarIndicator();   // «бегущая» полоска активной вкладки в таб-баре
   initFeedbackLink();      // страховка: ссылка обратной связи, если её нет в разметке
   registerSW();            // Регистрация Service Worker для PWA
 
@@ -166,6 +167,40 @@ function initBurger() {
   });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') close();
+  });
+}
+
+// ---------- «бегущая» полоска активной вкладки в таб-баре ----------
+function initTabbarIndicator() {
+  const bar = document.querySelector('.tabbar');
+  if (!bar) return;
+  const indicator = bar.querySelector('.tabbar-indicator');
+  if (!indicator) return;
+
+  const move = () => {
+    const active = bar.querySelector('.tab.active, .tab.tab-primary');
+    if (!active || !active.offsetParent) {
+      indicator.style.opacity = '0';
+      return;
+    }
+    // ширина индикатора под активную кнопку (но не шире самой кнопки)
+    const w = Math.min(48, active.offsetWidth * 0.6);
+    indicator.style.width = w + 'px';
+    // смещение: центр активной кнопки минус половина ширины индикатора
+    const offset = active.offsetLeft + (active.offsetWidth - w) / 2;
+    indicator.style.transform = `translateX(${offset}px)`;
+    indicator.style.opacity = '1';
+  };
+
+  // пересчёт: на старте, при ресайзе, при клике на вкладку
+  move();
+  window.addEventListener('resize', move);
+
+  bar.addEventListener('click', (e) => {
+    const tab = e.target.closest('.tab');
+    if (!tab) return;
+    // даём браузеру обновить класс .active
+    requestAnimationFrame(() => requestAnimationFrame(move));
   });
 }
 

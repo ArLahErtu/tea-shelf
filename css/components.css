@@ -198,6 +198,36 @@
 .modal-sub { color: var(--gray); font-size: 14px; margin-bottom: 16px; }
 .modal-foot { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
 
+/* ---------- мобильные модалки: таймер и чат на весь экран ---------- */
+@media (max-width: 860px) {
+  .overlay { padding: 0; }
+  .overlay .modal {
+    width: 100%; max-width: 100%; height: 100%; max-height: 100%;
+    border-radius: 0; border: 0;
+    padding: 16px 16px 20px;
+    display: flex; flex-direction: column;
+    transform: none;
+  }
+  .overlay .modal.narrow,
+  .overlay .modal.wide { max-width: 100%; width: 100%; }
+  .overlay .modal-head { padding-top: env(safe-area-inset-top); }
+  .overlay .modal-foot { margin-top: auto; }
+}
+
+/* чат-бот — отдельный fullscreen для окна чата */
+@media (max-width: 860px) {
+  .chatbot-window {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    border-radius: 0 !important;
+    border: 0 !important;
+  }
+}
+
 /* ---------- вкладки входа ---------- */
 .auth-tabs { display: flex; gap: 4px; background: color-mix(in srgb, var(--ink) 5%, transparent); border-radius: 999px; padding: 4px; margin: 10px 0 16px; }
 .auth-tabs button { flex: 1; border: 0; background: none; border-radius: 999px; padding: 9px 12px; font-size: 14px; font-weight: 700; color: var(--ink-soft); }

@@ -7,7 +7,7 @@
 // иначе клиенты останутся на старом кэше (баг «первая страница работает,
 // следующие ломаются»).
 
-const CACHE_VERSION = 'v6';
+const CACHE_VERSION = 'v7';
 const CACHE_NAME = `tea-shelf-${CACHE_VERSION}`;
 
 self.addEventListener('install', () => {

@@ -173,65 +173,94 @@ p { text-wrap: pretty; }
   width: 42px; height: 42px; flex: none;
   border: 0; border-radius: 11px;
   background: color-mix(in srgb, var(--ink) 5%, transparent);
+  cursor: pointer;
   transition: background-color .15s;
+  z-index: 60;
 }
 .burger:hover { background: color-mix(in srgb, var(--ink) 10%, transparent); }
-.burger svg { width: 20px; height: 20px; stroke: var(--ink); fill: none; stroke-width: 2; stroke-linecap: round; }
+.burger svg { width: 20px; height: 20px; stroke: var(--ink); fill: none; stroke-width: 2; stroke-linecap: round; pointer-events: none; }
 .burger .i-close { display: none; }
 .burger.open .i-close { display: block; }
 .burger.open .i-burger { display: none; }
 
-/* ---------- нижний таб-бар (мобильные, сервисные страницы) ---------- */
+/* ---------- нижний таб-бар (мобильные сервисные страницы) ---------- */
 .tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 45; display: none;
   background: color-mix(in srgb, var(--paper) 92%, transparent);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-top: 1px solid var(--line);
-  padding: 8px 6px calc(8px + env(safe-area-inset-bottom));
+  padding: 10px 8px calc(10px + env(safe-area-inset-bottom));
 }
-.tabbar .grid { display: grid; grid-template-columns: repeat(5, 1fr); align-items: end; }
+.tabbar .grid {
+  display: grid; grid-template-columns: repeat(5, 1fr); align-items: center;
+  position: relative;
+}
 .tab {
   border: 0; background: none; display: flex; flex-direction: column; align-items: center; gap: 3px;
-  font-size: 11px; font-weight: 600; color: var(--gray); padding: 6px 0; border-radius: 12px;
-  text-decoration: none; min-height: 44px; justify-content: flex-end;
+  font-size: 11px; font-weight: 600; color: var(--gray); padding: 8px 0; border-radius: 12px;
+  text-decoration: none; min-height: 44px; justify-content: center;
+  cursor: pointer; position: relative; z-index: 2;
 }
-.tab svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.tab svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
 .tab.active { color: var(--green); }
-.tab.fab { position: relative; }
-.tab.fab i {
-  position: absolute; top: -18px; left: 50%; transform: translateX(-50%);
-  width: 52px; height: 52px; border-radius: 50%; background: var(--green);
-  display: grid; place-items: center; box-shadow: 0 6px 18px rgba(47, 93, 60, .35);
-}
-.tab.fab i svg { stroke: #fff; width: 24px; height: 24px; }
-.tab.fab b { margin-top: 22px; font-weight: 600; }
 
-body.has-tabbar { padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); }
+/* FAB «Заварил» — прямоугольный, со скруглёнными углами, как другие кнопки */
+.tab.tab-primary {
+  background: var(--green);
+  color: var(--cream);
+  border-radius: 11px;
+  padding: 6px 10px;
+  min-height: 38px;
+  gap: 6px;
+  box-shadow: 0 4px 12px rgba(47, 93, 60, .28);
+}
+.tab.tab-primary svg { stroke: var(--cream); width: 18px; height: 18px; }
+.tab.tab-primary b { font-size: 13px; font-weight: 700; margin-top: 0; }
+
+/* индикатор активной вкладки (бегущая полоска под таб-баром) */
+.tabbar-indicator {
+  position: absolute; bottom: 4px; left: 0;
+  width: 32px; height: 3px; border-radius: 2px;
+  background: var(--green);
+  transition: transform .3s cubic-bezier(.22, 1, .36, 1), width .2s ease;
+  z-index: 1;
+  pointer-events: none;
+}
+
+body.has-tabbar { padding-bottom: calc(78px + env(safe-area-inset-bottom)); }
 @media (max-width: 860px) {
   body.has-tabbar .tabbar { display: block; }
   body.has-tabbar .nav { display: none; }
-  /* аватар/кнопка «Войти» всегда у правого края, независимо от nav */
+  /* аватар/кнопка «Войти» всегда у правого края */
   .tb-right { margin-left: auto !important; }
 }
 
-/* ---------- подвал ---------- */
-footer { border-top: 1px solid var(--hair); padding: 34px 0 0; margin-top: 40px; }
-.f-grid { display: grid; grid-template-columns: 1.2fr .8fr .9fr 1.3fr; gap: 34px; padding-bottom: 34px; }
-.f-brand .logo .mark { width: 30px; height: 30px; }
-.f-brand .tag { color: var(--gray); font-size: 14px; margin-top: 12px; max-width: 26ch; }
-.f-col { display: flex; flex-direction: column; gap: 9px; font-size: 14px; }
-.f-col h4 { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--gray); font-weight: 700; margin-bottom: 4px; }
-.f-col a { text-decoration: none; color: var(--ink-soft); }
-.f-col a:hover { color: var(--green); text-decoration: underline; }
-.f-legal { color: var(--gray); font-size: 13px; line-height: 1.5; }
-.f-mail a { color: var(--ink-soft); font-weight: 600; }
-.f-hint { display: block; color: var(--gray); font-size: 12.5px; }
-.f-bot { border-top: 1px solid var(--line); padding: 16px 0 calc(16px + env(safe-area-inset-bottom)); }
-.f-bot .in { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; font-size: 13.5px; color: var(--gray); }
-
-@media (max-width: 960px) { .f-grid { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 560px) { .f-grid { grid-template-columns: 1fr; gap: 26px; } }
+/* страницы без таб-бара: меню прячется под бургер */
+@media (max-width: 860px) {
+  body:not(.has-tabbar) .burger { display: grid; }
+  body:not(.has-tabbar) .topbar .in { flex-wrap: nowrap; }
+  body:not(.has-tabbar) .nav {
+    position: absolute; top: 100%; left: 0; right: 0;
+    display: none; flex-direction: column; align-items: stretch; gap: 0;
+    margin: 0; padding: 6px 18px 12px;
+    background: var(--paper);
+    border-bottom: 1px solid var(--line);
+    box-shadow: var(--shadow-2);
+    z-index: 50;
+  }
+  body:not(.has-tabbar) .nav.open { display: flex; }
+  body:not(.has-tabbar) .nav a,
+  body:not(.has-tabbar) .nav button {
+    padding: 12px 6px; font-size: 16px;
+    border-bottom: 1px solid var(--line);
+    z-index: 51;
+  }
+  body:not(.has-tabbar) .nav a:last-child,
+  body:not(.has-tabbar) .nav button:last-child { border-bottom: 0; }
+  body:not(.has-tabbar) .nav a::after,
+  body:not(.has-tabbar) .nav button::after { display: none; }
+}
 
 /* ---------- служебное ---------- */
 .skip-link {
@@ -251,28 +280,3 @@ footer { border-top: 1px solid var(--hair); padding: 34px 0 0; margin-top: 40px;
     transition-duration: .01ms !important;
   }
 }
-
-/* страницы без таб-бара (лонгрид, профиль, документы): на мобильных
-   меню прячется под бургер и открывается дропдауном от шапки */
-@media (max-width: 860px) {
-  body:not(.has-tabbar) .burger { display: grid; }
-  body:not(.has-tabbar) .topbar .in { flex-wrap: nowrap; }
-  body:not(.has-tabbar) .nav {
-    position: absolute; top: 100%; left: 0; right: 0;
-    display: none; flex-direction: column; align-items: stretch; gap: 0;
-    margin: 0; padding: 6px 18px 12px;
-    background: var(--paper);
-    border-bottom: 1px solid var(--line);
-    box-shadow: var(--shadow-2);
-  }
-  body:not(.has-tabbar) .nav.open { display: flex; }
-  body:not(.has-tabbar) .nav a,
-  body:not(.has-tabbar) .nav button {
-    padding: 12px 6px; font-size: 16px;
-    border-bottom: 1px solid var(--line);
-  }
-  body:not(.has-tabbar) .nav a:last-child,
-  body:not(.has-tabbar) .nav button:last-child { border-bottom: 0; }
-  body:not(.has-tabbar) .nav a::after,
-  body:not(.has-tabbar) .nav button::after { display: none; }
-  }
