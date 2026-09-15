@@ -215,9 +215,35 @@ p { text-wrap: pretty; }
 .tab.tab-primary svg { stroke: var(--cream); width: 18px; height: 18px; }
 .tab.tab-primary b { font-size: 13px; font-weight: 700; }
 
+/* Альтернативные классы для таб-бара (catalog.html, shelf.html) */
+.tb-item {
+  border: 0; background: none; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  font-size: 11px; font-weight: 600; color: var(--gray); padding: 8px 0; border-radius: 12px;
+  text-decoration: none; min-height: 44px; justify-content: center;
+  cursor: pointer; flex: 1;
+}
+.tb-item svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.tb-item.active { color: var(--green); }
+
+.tb-fab {
+  background: var(--green);
+  color: var(--cream);
+  border: 0;
+  border-radius: 11px;
+  padding: 6px 10px;
+  min-height: 38px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(47, 93, 60, .28);
+  flex: 1;
+}
+
 body.has-tabbar { padding-bottom: calc(78px + env(safe-area-inset-bottom)); }
 @media (max-width: 860px) {
-  body.has-tabbar .tabbar { display: block; }
+  body.has-tabbar .tabbar { display: flex; }
+  body.has-tabbar .tabbar .grid,
+  body.has-tabbar .tabbar { display: flex; gap: 6px; align-items: center; }
   body.has-tabbar .nav { display: none; }
   .tb-right { margin-left: auto !important; }
 }
@@ -266,9 +292,105 @@ body.has-tabbar { padding-bottom: calc(78px + env(safe-area-inset-bottom)); }
   }
 }
 
-/* Футтер не должен перекрываться таб-баром на мобильных */
+/* Футер не должен перекрываться таб-баром на мобильных */
 @media (max-width: 860px) {
   body.has-tabbar footer {
     margin-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 20px);
   }
+}
+
+/* ---------- подвал (footer) ---------- */
+footer {
+  background: var(--paper);
+  border-top: 1px solid var(--line);
+  padding: 60px 0 0;
+  margin-top: 80px;
+}
+
+.f-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr 1.5fr;
+  gap: 40px;
+}
+
+.f-brand .logo { margin-bottom: 16px; }
+
+.f-brand .tag {
+  color: var(--gray);
+  font-size: 14px;
+  line-height: 1.6;
+  max-width: 320px;
+}
+
+.f-col h4 {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 18px;
+  margin-bottom: 16px;
+  color: var(--ink);
+}
+
+.f-col a {
+  display: block;
+  color: var(--ink-soft);
+  text-decoration: none;
+  font-size: 14px;
+  padding: 6px 0;
+  transition: color .15s;
+}
+
+.f-col a:hover { color: var(--green); }
+
+.f-legal {
+  color: var(--gray);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.f-mail {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 12px;
+}
+
+.f-mail a {
+  color: var(--green);
+  font-weight: 700;
+  font-size: 15px;
+  padding: 0;
+}
+
+.f-hint {
+  color: var(--gray);
+  font-size: 12px;
+}
+
+.f-bot {
+  margin-top: 40px;
+  padding: 20px 0;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--gray);
+}
+
+.f-bot .in {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+@media (max-width: 960px) {
+  .f-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+  }
+  .f-brand { grid-column: 1 / -1; }
+}
+
+@media (max-width: 620px) {
+  .f-grid { grid-template-columns: 1fr; }
+  footer { padding: 40px 0 0; }
+  .f-bot .in { flex-direction: column; gap: 8px; text-align: center; }
 }

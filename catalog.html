@@ -68,8 +68,8 @@
       <a href="shelf.html">Полка</a>
       <a href="journal.html">Журнал</a>
       <a href="#" data-open-chat>ИИ-помощник</a>
-      <a href="profile.html">Профиль</a>
     </nav>
+
     <div class="tb-right">
       <span class="db-chip" id="dbStatus" role="status" aria-live="polite"><i aria-hidden="true"></i>подключение…</span>
       <button class="btn btn-green tb-login" id="authOpen" type="button">Войти</button>
@@ -570,6 +570,69 @@
     <span>Профиль</span>
   </a>
 </nav>
+
+<!-- ============================================================
+     ОВЕРЛЕЙ: КАРТОЧКА ЧАЯ
+     ============================================================ -->
+<div class="overlay" id="teaOverlay" hidden>
+  <div class="modal wide" role="dialog" aria-modal="true" aria-labelledby="teaTitle">
+    <div class="modal-head">
+      <h2 id="teaTitle">Карточка чая</h2>
+      <button class="icon-btn" id="teaClose" type="button" aria-label="Закрыть карточку чая">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    
+    <div class="dmedia">
+      <img id="teaImage" class="hidden" alt="">
+      <div class="ph" id="teaPlaceholder">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20c0-8 5-13 14-15-1 9-6 14-14 15Z"/></svg>
+      </div>
+    </div>
+    
+    <div class="dmeta">
+      <span class="typechip" id="teaTypeChip">—</span>
+      <span class="dorigin" id="teaOrigin">—</span>
+    </div>
+    
+    <p class="ddesc" id="teaDescription">Описания пока нет.</p>
+    
+    <div class="bgrid">
+      <div class="bcell">
+        <div class="v">—</div>
+        <div class="l">температура</div>
+      </div>
+      <div class="bcell">
+        <div class="v">—</div>
+        <div class="l">время</div>
+      </div>
+      <div class="bcell">
+        <div class="v">—</div>
+        <div class="l">доза</div>
+      </div>
+      <div class="bcell">
+        <div class="v">—</div>
+        <div class="l">проливов</div>
+      </div>
+    </div>
+    
+    <div id="teaTags" class="tagrow"></div>
+    
+    <div class="simtitle">Похожие чаи</div>
+    <div id="teaSimilar"></div>
+    
+    <div class="modal-foot">
+      <button class="btn btn-outline" id="wishlistBtn" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10Z"/></svg>
+        <span id="wishlistBtnText">В избранное</span>
+      </button>
+      <button class="btn btn-primary" id="addToShelfBtn" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        Пополнить
+      </button>
+    </div>
+  </div>
+</div>
 
 <script type="module" src="js/catalog.js"></script>
 </body>

@@ -224,7 +224,9 @@ async function refresh() {
 
   // Если выбран тип «Тизан» — загружаем тизаны
   // FIX: проверяем и кириллицу, и латиницу
-  if (state.type === 'tisane' || state.type === 'Тизан') {
+  const isTisaneType = state.type === 'tisane' || state.type === 'Тизан' || 
+                       (state.type || '').toLowerCase() === 'tisane';
+  if (isTisaneType) {
     const first = await loadTisanes(0);
     if (first === null) return showToast('Не удалось обновить список', 'warn');
     tisanes = first;
