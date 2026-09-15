@@ -265,3 +265,10 @@ body.has-tabbar { padding-bottom: calc(78px + env(safe-area-inset-bottom)); }
     transition-duration: .01ms !important;
   }
 }
+
+/* Футтер не должен перекрываться таб-баром на мобильных */
+@media (max-width: 860px) {
+  body.has-tabbar footer {
+    margin-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 20px);
+  }
+}

@@ -108,6 +108,15 @@ function renderState() {
     $('#userEmail').textContent = email;
     $('#avatarBtn').textContent = initials || '?';
 
+    // Добавляем класс для таб-бара на сервисных страницах
+    const isServicePage = document.body.classList.contains('page-catalog') ||
+                          document.body.classList.contains('page-shelf') ||
+                          document.body.classList.contains('page-journal') ||
+                          document.body.classList.contains('page-profile');
+    if (isServicePage) {
+      document.body.classList.add('has-tabbar');
+    }
+
     // Тумблер «Режим модератора»: виден только обладателям роли,
     // текст и состояние зависят от того, включён ли режим сейчас.
     const modBtn = $('#openModerationBtn');
@@ -121,6 +130,10 @@ function renderState() {
     openBtn.classList.remove('hidden');
     userArea.classList.add('hidden');
     $('#userMenu')?.classList.add('hidden');
+
+    // Скрываем ссылки на защищённые страницы для гостей
+    const protectedLinks = document.querySelectorAll('.nav a[href="shelf.html"], .nav a[href="journal.html"], .nav a[href="profile.html"]');
+    protectedLinks.forEach(link => link.classList.add('hidden'));
   }
 }
 

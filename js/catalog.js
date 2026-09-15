@@ -223,7 +223,8 @@ async function refresh() {
   }
 
   // Если выбран тип «Тизан» — загружаем тизаны
-  if (state.type === 'tisane') {
+  // FIX: проверяем и кириллицу, и латиницу
+  if (state.type === 'tisane' || state.type === 'Тизан') {
     const first = await loadTisanes(0);
     if (first === null) return showToast('Не удалось обновить список', 'warn');
     tisanes = first;
@@ -554,7 +555,6 @@ function tisaneCardNode(tisane) {
 // ============================================================
 function render() {
   const grid = $('#catalogGrid');
-  if (!grid) return;
   grid.setAttribute('aria-busy', 'false');
   grid.innerHTML = '';
 
@@ -580,7 +580,8 @@ function render() {
   }
 
   // ----- Режим каталога: тизаны -----
-  if (state.type === 'tisane') {
+  // FIX: проверяем и кириллицу, и латиницу
+  if (state.type === 'tisane' || state.type === 'Тизан') {
     if (!tisanes.length) {
       grid.innerHTML = `<div class="empty grid-col-span">
         <h3>Тизанов пока нет</h3>

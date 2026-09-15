@@ -28,9 +28,15 @@ export function openTeaModal(tea, allTeas = []) {
 
   if (!wired) {
     wireOverlay(ov);
-    $('#teaClose')?.addEventListener('click', () =>
-      ov.classList.contains('show') && closeIt(ov));
-    $('#teaCloseFooter')?.addEventListener('click', () => closeIt(ov));
+    const closeBtn = $('#teaClose');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => {
+        if (ov.classList.contains('show')) {
+          ov.classList.remove('show');
+          setTimeout(() => { ov.hidden = true; }, 200);
+        }
+      });
+    }
     wired = true;
   }
 
@@ -117,5 +123,12 @@ export function openTeaModal(tea, allTeas = []) {
     simBox.innerHTML = '<p class="hint">Похожих чаёв пока нет.</p>';
   }
 
+    // Убедимся, что оверлей скрыт перед открытием
+  ov.hidden = false;
+  // Небольшая задержка для срабатывания CSS-перехода
+  requestAnimationFrame(() => {
+    ov.classList.add('show');
+  });
+  
   openOverlay(ov);
 }
