@@ -552,23 +552,16 @@
 
 <!-- Нижний таб-бар (виден при body.has-tabbar; класс ставит catalog.js) -->
 <nav class="tabbar" aria-label="Нижняя навигация">
-  <a class="tb-item active" href="catalog.html">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4Zm3 3h10M7 11h10M7 15h6"/></svg>
-    <span>Каталог</span>
-  </a>
-  <a class="tb-item" href="shelf.html">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h16M4 15h16M6 3v18M18 3v18"/></svg>
-    <span>Полка</span>
-  </a>
-  <button class="tb-fab" id="brewFab" type="button">Заварил</button>
-  <a class="tb-item" href="journal.html">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6Zm8 0v5h5"/></svg>
-    <span>Журнал</span>
-  </a>
-  <a class="tb-item" href="profile.html">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-8 8c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5"/></svg>
-    <span>Профиль</span>
-  </a>
+  <div class="grid">
+    <a class="tab active" href="catalog.html"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 19.5V4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/><path d="M9 7h7M9 11h7"/></svg>Каталог</a>
+    <a class="tab" href="shelf.html"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 7h18M3 12h18M3 17h10M6 3v4M12 3v4M18 3v4"/></svg>Полка</a>
+    <button class="tab tab-primary" type="button" id="brewFab" aria-label="Заварить чай">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9h11v6a5 5 0 0 1-5 5H10a5 5 0 0 1-5-5V9zM16 10h2.5a2.5 2.5 0 0 1 0 5H16M8 5c0-1 1-1 1-2M12 5c0-1 1-1 1-2"/></svg>
+      <b>Заварил</b>
+    </button>
+    <a class="tab" href="journal.html"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 19V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zm0 0a2 2 0 0 0 2 2h13"/><path d="M9 7h6M9 11h6"/></svg>Журнал</a>
+    <button class="tab" type="button" data-open-chat aria-label="Открыть ИИ-ассистента"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/><circle cx="12" cy="12" r="4"/></svg>Ассистент</button>
+  </div>
 </nav>
 
 <!-- ============================================================

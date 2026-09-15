@@ -264,8 +264,10 @@
   overflow: hidden; display: flex; flex-direction: column; text-decoration: none;
   transition: transform .2s ease, box-shadow .2s ease, border-color .2s;
   position: relative;
+  min-height: 320px;
 }
 .tcard:hover, .tea:hover { transform: translateY(-4px); box-shadow: var(--shadow-2); }
+
 .tmedia, .tea .ph-wrap { position: relative; aspect-ratio: 4 / 3; background: var(--green-tint); }
 .tmedia img, .tea .ph-wrap img { width: 100%; height: 100%; object-fit: cover; }
 .tmedia .ph, .tea .ph-wrap .ph { position: absolute; inset: 0; display: grid; place-items: center; }
@@ -283,7 +285,14 @@
 .heart svg { width: 18px; height: 18px; stroke: var(--ink-soft); fill: none; stroke-width: 1.8; }
 .heart.on svg { fill: var(--seal); stroke: var(--seal); }
 
-.tbody, .tea .b { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 7px; flex: 1; }
+.tbody, .tea .b { 
+  padding: 16px 18px 18px; 
+  display: flex; 
+  flex-direction: column; 
+  gap: 7px; 
+  flex: 1;
+  min-height: 0;
+}
 .tname, .tea .t { font-weight: 800; font-size: 17px; line-height: 1.25; }
 .torigin, .tea .r { color: var(--gray); font-size: 13px; }
 .tdesc { color: var(--ink-soft); font-size: 13.5px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
